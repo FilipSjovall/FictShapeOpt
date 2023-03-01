@@ -9,7 +9,7 @@ using BenchmarkTools
 #file = open(mesh_path,"r") 
 function getMesh_ASCII(filename)
 
-    mesh_path = mkpath("..//data//"*filename)
+    mesh_path = "..//data//"*filename
     n    = 0
     file    = open("data//mesh.txt","r") 
     n       = 0
@@ -18,7 +18,7 @@ function getMesh_ASCII(filename)
     elstart = 0
     eled    = 0
 
-    coord   = Matrix{Float64}[]
+    coord   = Array{Float64}[]
     enod    = Array{Int64}[]
 
     indices = [1 6 7 8 9 10 11]
@@ -36,7 +36,6 @@ function getMesh_ASCII(filename)
         elseif chomp(line) == "\$ENDELM"
             eled    = n
         end
-        #println(line)
     end
     reset(file)
 
@@ -45,26 +44,22 @@ function getMesh_ASCII(filename)
     while ! eof(file) 
         n += 1
         line = readline(file)
-        if n > nstart + 1 && n < nend - 1
-            nums = split(line," ")
-            num1 = parse(Float64,String(nums[2]))
-            num2 = parse(Float64,String(nums[3]))
-
-            push!(coord, [num1 num2])
+        if n > nstart + 1 && n <= nend - 1
+            numb = parse.(Float64,split(line," ")[2:3])
+            push!(coord, numb)
         elseif n > elstart + 1 && n < eled - 1
-            numb = parse.(Int64, split(line, " "))
-            push!(enod,numb[indices])
+            numb = parse.(Int64, split(line, " ")[indices])
+            push!(enod,numb)
         else
 
         end
     end
 
     close(file)
-    return coord, enod
+
+    return mapreduce(permutedims, vcat, coord), enod
 end
 
-#@benchmark getMesh("mesh.txt")
-coord, enod = getMesh_ASCII("mesh.txt");
 
 
 function getEdof(enod)
@@ -72,20 +67,13 @@ function getEdof(enod)
     for el = 1 : enod[end][1]
         edof[el,1:2:11] = enod[el][2:7]*2 - ones(6)
         edof[el,2:2:12] = enod[el][2:7]*2
-        println(el)
     end
 
     return edof
 end
 
-edof = getEdof(enod)
-
 function readAscii(filename)
-    coord, enod = getMesh_ASCII(filename);
-    edof = getEdof(enod)
+    coord,enod = getMesh_ASCII(filename)
+    edof       = getEdof(enod)
     return coord, enod, edof
 end
-
-filename = "mesh.txt"
- 
-coord, enod, edof = readAscii(filename)
