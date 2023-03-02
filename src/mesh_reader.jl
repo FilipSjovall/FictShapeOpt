@@ -9,9 +9,9 @@ using BenchmarkTools
 #file = open(mesh_path,"r") 
 function getMesh_ASCII(filename)
 
-    mesh_path = "..//data//"*filename
+    mesh_path = "data//"*filename
     n    = 0
-    file    = open("data//mesh.txt","r") 
+    file    = open(mesh_path,"r") 
     n       = 0
     nstart  = 0 
     nend    = 0
@@ -47,7 +47,8 @@ function getMesh_ASCII(filename)
         if n > nstart + 1 && n <= nend - 1
             numb = parse.(Float64,split(line," ")[2:3])
             push!(coord, numb)
-        elseif n > elstart + 1 && n < eled - 1
+        elseif n > elstart + 1 && n < eled 
+            println(line)
             numb = parse.(Int64, split(line, " ")[indices])
             push!(enod,numb)
         else

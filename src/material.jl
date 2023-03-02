@@ -4,7 +4,7 @@
 #
 using LinearAlgebra
 
-function neohooke1!(S,eff,mp)
+function neohooke1(eff,mp)
 
     Kₘ = mp[1]
     Gₘ = mp[2]
@@ -22,16 +22,16 @@ function neohooke1!(S,eff,mp)
     C⁻¹ = inv(C)
     J   = det(Fₚ)
 
-    S   = Kₘ/2.0 * (J^2 - 1.0)*C⁻¹ + Gₘ*J^(-2/3)*( I - tr(C)/3.0*C⁻¹ )
+    Stress   = Kₘ/2.0 * (J^2 - 1.0)*C⁻¹ + Gₘ*J^(-2/3)*( I - tr(C)/3.0*C⁻¹ )
+    S        = [Stress[1,1]; Stress[2,2]; Stress[3,3]; Stress[1,2]]
     return S
 end
 
 function neohookeS!(Sₑ,eff,mp)
    ngp = size(eff,2)
    for gp ∈ 1 : ngp 
-        neohooke1!(Sₑ[:,gp],eff[:,gp],mp)
+        Sₑ[:,gp] = neohooke1(eff[:,gp],mp)
    end
-   return Sₑ
 end
 
 function dneohooke1(eff,mp)
@@ -47,14 +47,16 @@ function dneohooke1(eff,mp)
     F[2,:] = [eff[3] eff[4] 0.0]
     F[3,:] = [0.0 0.0 1.0]
 
+ 
     C = transpose(F)*F
 
     C⁻¹ = inv(C)
     J   = det(F)
 
-    a₁ = Kₘ * J * 2.0 + 2.0/9.0 * Gₘ * J^(-2/3) * tr(C)
+    a₁ = Kₘ * J ^ 2.0 + 2.0/9.0 * Gₘ * J^(-2/3) * tr(C)
     a₂ = 2.0 * Gₘ / 3.0 * J^(-2.0/3.0)
     a₃ = Gₘ/3.0 * J^(-2/3)*tr(C) - Kₘ/2.0 * (J^2 - 1.0)
+
 
     ix = Matrix{Int32}(undef,6,4)
     ix[1,:] = [1 1 1 1]
@@ -70,12 +72,11 @@ function dneohooke1(eff,mp)
             jj = ix[el,2]
             kk = ix[el,3]
             l  = ix[el,4]
+
             Ds[el] = a₁ * C⁻¹[i,jj] * C⁻¹[kk,l] - 
                      a₂ * ( I[i,jj] * C⁻¹[kk,l] + C⁻¹[i,jj] * I[kk,l] ) +
-                     a₃ * ( C⁻¹[i,kk] * C⁻¹[jj,l] + C⁻¹[i,l] + C⁻¹[jj,kk] ) 
+                     a₃ * ( C⁻¹[i,kk] * C⁻¹[jj,l] + C⁻¹[i,l] * C⁻¹[jj,kk] ) 
         end
-
-        
 
         D[1,:] = [Ds[1] Ds[2] Ds[3]]
         D[2,:] = [Ds[2] Ds[4] Ds[5]]
@@ -88,5 +89,4 @@ function dneohookeD!(Dgp,eff,mp)
     for gp ∈ 1 : ngp 
        Dgp[:,:,gp] = dneohooke1(eff[:,gp], mp)
     end
-    return Dgp
 end
