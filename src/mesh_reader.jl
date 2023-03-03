@@ -78,3 +78,21 @@ function readAscii(filename)
     edof       = getEdof(enod)
     return coord, enod, edof
 end
+
+function modify_msh(filename)
+    mesh_path = "data//"*filename
+    n    = 0
+    file    = open(mesh_path,"w") 
+
+    while ! eof(file) && (flag_1 == false )
+        line = readline(file)
+        if chomp(line)=="\$NOD"
+            flag_2 = true
+        elseif chomp(line) == "\$ENDNOD"
+            flag_1 == true
+        end
+        if flag_2 == true && flag_1 == false
+            print(line[1:3])
+        end
+    end
+end
