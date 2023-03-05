@@ -75,7 +75,6 @@ function solver()
     # bcval    = [0.0; 0.005]
     # bcdof    = Vector{Int64}(undef,2)
     #bcdof    = [1;7] - fine
-    
 
     #bcval    = zeros(6)
     #bcval    = [0.0; 0.0; 0.05; 0.05; 0.0; 0.0]
