@@ -96,3 +96,36 @@ function modify_msh(filename)
         end
     end
 end
+
+function setBC(bc_load,dh)
+    ## Find bc cell_dofs
+    bc_dof = Vector{Int64}()
+    bc_val = Vector{Float64}()
+    for cell in CellIterator(dh)
+        c = getcoordinates(cell)
+        for i in 1:6
+            x = c[i][1]
+            y = c[i][2]
+            if y == 0.0 
+                idx = celldofs(cell)[2*i] 
+                if idx ∉ bc_dof
+                    push!(bc_dof,idx)
+                    push!(bc_val,0.0)
+                end
+            elseif x == 0.0
+                idx = celldofs(cell)[2*i-1] 
+                if idx ∉ bc_dof
+                    push!(bc_dof,idx)
+                    push!(bc_val,0.0)
+                end
+            elseif x == 0.5
+                idx = celldofs(cell)[2*i-1] 
+                if idx ∉ bc_dof
+                    push!(bc_dof,idx)
+                    push!(bc_val,bc_load)
+                end
+            end
+        end
+    end
+    return bc_dof, bc_val
+end

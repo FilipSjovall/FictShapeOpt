@@ -28,3 +28,40 @@ add!(dh, :u, 2)
 close!(dh)
 K = create_sparsity_pattern(dh)
 
+
+ie = 0
+for cell in CellIterator(dh)
+    ie +=1
+    
+    println(coord)
+end
+
+coord  = getcoordinates(grid,1)
+
+
+function setBC(bc_load)
+    ## Find bc cell_dofs
+    bc_dof = Vector{Int64}()
+    bc_val = Vector{Float64}()
+    for cell in CellIterator(dh)
+        c = getcoordinates(cell)
+        for i in 1:6
+            x = c[i][1]
+            y = c[i][2]
+            if y == 0.0
+                idx = celldofs(cell)[2*i] 
+                push!(bc_dof,idx)
+                push!(bc_val,0.0)
+            elseif x == 0.0
+                idx = celldofs(cell)[2*i-1] 
+                push!(bc_dof,idx)
+                push!(bc_val,0.0)
+            elseif x == 0.5
+                idx = celldofs(cell)[2*i-1] 
+                push!(bc_dof,idx)
+                push!(bc_val,bc_load)
+            end
+        end
+    end
+    return bc_dof, bc_val
+end
