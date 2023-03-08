@@ -172,7 +172,8 @@ function solve()
         # Construct the current guess
         u .= un .+ Δu
         # Compute residual and tangent for current guess
-        assemble_global!(K, g, dh, cv, fv, mp, u, ΓN)
+        println("Timing global assemble for ", _ndofs, " degrees of freedom")
+        @time assemble_global!(K, g, dh, cv, fv, mp, u, ΓN)
         # Apply boundary conditions
         apply_zero!(K, g, dbcs)
         # Compute the residual norm and compare with tolerance
