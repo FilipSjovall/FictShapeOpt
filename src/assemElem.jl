@@ -80,7 +80,6 @@ function assemGP(coord,ed,gp,mp,t)
 
     
     # Deformation gradient
-    
     eff[1,1] = A_temp[1] + 1.0
     eff[1,2] = A_temp[2]
     eff[2,1] = A_temp[3]
@@ -105,6 +104,29 @@ function assemGP(coord,ed,gp,mp,t)
     kₑ            = (transpose(B₀)*D*B₀ + transpose(H₀)*R*H₀)*detJ*t*w[gp]/2 
     
     return kₑ, fₑ
+end
+
+function RobinIntegral(ke,ge,cell,ΓN,fv,uₑ,λ,dₑ)
+    for face in 1:nfaces(cell)
+        if (cellid(cell), face) in ΓN
+            Ferrite.reinit!(fv, cell, face)
+            for q_point in 1:getnquadpoints(fv)
+                t = 1 * getnormal(fv, q_point)
+                dΓ = getdetJdV(fv, q_point)
+                for i in 1:12#ndofs
+                    #δui = shape_value(fv, q_point, i)
+                    Ni = shape_value(fv, q_point, i)
+                    #ge[i] -= (δui ⋅ t) * dΓ
+                    for j in 1:12
+                        Nj = shape_value(fv, q_point, j)
+                        ge[i]   += Ni ⋅ Nj * (uₑ[i] - λ * dₑ[i]) * dΓ
+                        ke[i,j] += Ni ⋅ Nj * dΓ
+                    end
+                end
+            end
+        end
+    end
+    return ke,ge
 end
 
 function assemElem(coord,ed,mp,t)

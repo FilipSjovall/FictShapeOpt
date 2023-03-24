@@ -3,9 +3,6 @@
 #
 
 using BenchmarkTools
-
-
-
 #file = open(mesh_path,"r") 
 function getMesh_ASCII(filename)
 
@@ -60,8 +57,6 @@ function getMesh_ASCII(filename)
 
     return mapreduce(permutedims, vcat, coord), enod
 end
-
-
 
 function getEdof(enod)
     edof = Array{Int64,2}(undef,length(enod),2*(size(enod[1],2)-1))
@@ -118,7 +113,7 @@ function setBC(bc_load,dh)
                     push!(bc_dof,idx)
                     push!(bc_val,0.0)
                 end
-            elseif x == 0.5
+            elseif x == 1.0
                 idx = celldofs(cell)[2*i-1] 
                 if idx ∉ bc_dof
                     push!(bc_dof,idx)
@@ -128,4 +123,72 @@ function setBC(bc_load,dh)
         end
     end
     return bc_dof, bc_val
+end
+
+#function setDesignDofs(dh)
+#    for cell in dh.grid.cells
+#        for face in Ferrite.faces(cell)
+#            x₁ , y₁ = grid.nodes[face[1]].x
+#            x₂ , y₂ = grid.nodes[face[2]].x
+#            if [y₁,y₂] == [0.5,0.5] && [x₁,x₂] > [0.0,0.0] && [x₁,x₂] <= [0.5,0.5]
+#                println("Design face y found")
+#            elseif [x₁,x₂] == [0.5,0.5] && [y₁,y₂] > [0.0,0.0] && [y₁,y₂] <= [0.5,0.5]
+#                #idx = celldofs(cell)[2*i-1] 
+#                println("Design face x found")
+#            end
+#        end
+#    end 
+#end
+
+function setup_grid(h)
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+    # Add the points
+    o  = gmsh.model.geo.add_point(0.0, 0.0, 0.0, h)
+    p1 = gmsh.model.geo.add_point(0.5, 0.0, 0.0, h)
+    p2 = gmsh.model.geo.add_point(1.0, 0.0, 0.0, h)
+    p3 = gmsh.model.geo.add_point(1.0, 1.0, 0.0, h)
+    p4 = gmsh.model.geo.add_point(0.0, 1.0, 0.0, h)
+    p5 = gmsh.model.geo.add_point(0.0, 0.5, 0.0, h)
+    p6 = gmsh.model.geo.add_point(0.5, 0.5, 0.0, h)
+
+    # Add the lines
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    l3 = gmsh.model.geo.add_line(p3, p4)
+    l4 = gmsh.model.geo.add_line(p4, p5)
+    l5 = gmsh.model.geo.add_line(p5, p6)
+    l6 = gmsh.model.geo.add_line(p6, p1)
+
+    # Create the closed curve loop and the surface
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6])
+    surf = gmsh.model.geo.add_plane_surface([loop])
+
+    # Synchronize the model
+    gmsh.model.geo.synchronize()
+
+    # Create the physical domains
+    gmsh.model.add_physical_group(1, [l1], -1, "Γ1")
+    gmsh.model.add_physical_group(1, [l2], -1, "Γ2")
+    gmsh.model.add_physical_group(1, [l3], -1, "Γ3")
+    gmsh.model.add_physical_group(1, [l4], -1, "Γ4")
+    gmsh.model.add_physical_group(1, [l5], -1, "Γ5")
+    gmsh.model.add_physical_group(1, [l6], -1, "Γ6")
+    gmsh.model.add_physical_group(2, [surf])
+
+    # Generate a 2D mesh
+    gmsh.model.mesh.generate(2)
+
+    # Save the mesh, and read back in as a Ferrite Grid
+    grid = mktempdir() do dir
+        path = joinpath(dir, "mesh.msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+
+    # Finalize the Gmsh library
+    Gmsh.finalize()
+
+    return grid
 end
