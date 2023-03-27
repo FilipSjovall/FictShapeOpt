@@ -113,6 +113,12 @@ function setBC(bc_load,dh)
                     push!(bc_dof,idx)
                     push!(bc_val,0.0)
                 end
+            elseif y == 0.0
+                idx = celldofs(cell)[2*i] 
+                if idx ∉ bc_dof
+                    push!(bc_dof,idx)
+                    push!(bc_val,bc_load)
+                end
             elseif x == 1.0
                 idx = celldofs(cell)[2*i-1] 
                 if idx ∉ bc_dof

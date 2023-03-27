@@ -33,3 +33,8 @@ function solveq!(a,K,f,bcdof,bcval)
     a[pdofs] = bcval
     
 end
+
+function externalForce!(F_ext,r,F_int,F)
+    F_ext[freeDofs] = r[freeDofs] - F_int(freeDofs)
+    F_ext[dirDofs]  = F[dirDofs]
+end

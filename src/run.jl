@@ -134,14 +134,16 @@ function fictitious_solver()
     close!(dh)
     K  = create_sparsity_pattern(dh)
 
+
+    # Borde flyttas utanför och bevaras
     addfaceset!(dh.grid, "Γ₁", x -> norm(x[1]) ≈ 0.5)
     addfaceset!(dh.grid, "Γ₂", x -> norm(x[2]) ≈ 0.5)
-    addfaceset!(dh.grid, "Γ₃", x -> norm(x[2]) ≈ 1.0)
+    #addfaceset!(dh.grid, "Γ₃", x -> norm(x[2]) ≈ 1.0)
 
     ΓN = union(
             getfaceset(grid, "Γ₁"),
             getfaceset(grid, "Γ₂"),
-            getfaceset(grid, "Γ₃"),
+            #getfaceset(grid, "Γ₃"),
         )
 
     ip = Lagrange{2, RefTetrahedron, 2}()
@@ -173,7 +175,7 @@ function fictitious_solver()
     # ---------- #
     # Set params # // Kanske som input till solver???
     # ---------- #
-    mp       = [175 80.769230769230759] ## Ändra så att bulk och skjuv K,G = 1
+    mp       = [1.0 1.0] 
     t        = 1.0
 
     bcval₀   = bcval
@@ -224,5 +226,5 @@ end
 
 
 
-#ndofs = 12 #getnbasefunctions(cv)
+
 
