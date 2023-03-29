@@ -116,7 +116,7 @@ function solver(dh)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K
 end
 
-function fictitious_solver(d,dh)
+function fictitious_solver(d,dh0)
     imax     = 25
     TOL      = 1e-6
     residual = 0.0
@@ -134,7 +134,7 @@ function fictitious_solver(d,dh)
     #dh = DofHandler(grid)
     #add!(dh, :u, 2)
     #close!(dh)
-    K  = create_sparsity_pattern(dh)
+    Kψ  = create_sparsity_pattern(dh0)
 
 
     # Borde flyttas utanför och bevaras
@@ -167,11 +167,11 @@ function fictitious_solver(d,dh)
     #  ----- #
     Fᵢₙₜ     = zeros(ndof)
     Fₑₓₜ     = zeros(ndof)
-    a        = zeros(ndof)
+    Ψ        = zeros(ndof)
     #d        = ones(ndof)*0.5
-    Δa       = zeros(ndof)
+    ΔΨ       = zeros(ndof)
     res      = zeros(ndof)
-    bcdof,bcval = setBC(0.0,dh)
+    bcdof,bcval = setBC(0.0,dh0)
     pdofs       = bcdof
     fdofs       = setdiff(1:ndof,pdofs)
     # ---------- #
@@ -188,7 +188,7 @@ function fictitious_solver(d,dh)
         residual = 0*residual
         iter  = 0
         λ     = 0.1 * n
-        fill!(Δa,0.0)
+        fill!(ΔΨ,0.0)
         
         println("Starting equillibrium iteration at loadstep: ",n)
 
@@ -199,21 +199,21 @@ function fictitious_solver(d,dh)
 
             iter += 1
             
-            a += Δa
+            Ψ += ΔΨ
 
-            assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,fv,λ,d,ΓN)
+            assemGlobal!(Kψ,Fᵢₙₜ,dh0,mp,t,Ψ,coord,enod,fv,λ,d,ΓN)
         
-            solveq!(Δa, K, -Fᵢₙₜ, bcdof, bcval*0)
+            solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof, bcval*0)
 
             bcval      = 0*bcval
             res        = Fᵢₙₜ - Fₑₓₜ
             res[bcdof] = 0*res[bcdof]
             residual   = norm(res,2)
-            a[bcdof]   = bcval*0.0;
-            println("Iteration: ", iter, " Residual: ", residual)
+            Ψ[bcdof]   = bcval*0.0;
+            println("Iteration: ", iter, "| Residual: ", residual, "| Load level λ: ", λ)
         end
     end
-    return a, dh, K
+    return Ψ, dh0, Kψ, Fᵢₙₜ
 end
 
 function postprocess(a,dh)

@@ -6,8 +6,6 @@ end
 function drψ(dr_dd,dh,a,fv,λ,d,ΓN)
     assembler = start_assemble(dr_dd)
     ie = 0
-    kₑ = zeros(12,12)
-    fₑ = zeros(12)
     for cell in CellIterator(dh)
         ie += 1
         cell_dofs= celldofs(cell)

@@ -184,12 +184,12 @@ function setup_grid(h)
     return grid
 end
 
-function updateCoords!(dh,u)
+function updateCoords!(dh,Ψ)
     c       = similar(dh.grid.nodes)
-    u_sorted = sortNodalDisplacements(dh,u)
+    Ψ_sorted = sortNodalDisplacements(dh,Ψ)
     x_new = Vec{2,Float64}
     for i in 1:length(c)
-        x_new = Vec{2}(dh.grid.nodes[i].x + u_sorted[:,i])
+        x_new = Vec{2}(dh.grid.nodes[i].x + Ψ_sorted[:,i])
         c[i] = Node(x_new)
     end
     copyto!(dh.grid.nodes, c)
