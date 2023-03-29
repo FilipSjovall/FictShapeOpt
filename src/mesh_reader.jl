@@ -113,7 +113,7 @@ function setBC(bc_load,dh)
                     push!(bc_dof,idx)
                     push!(bc_val,0.0)
                 end
-            elseif y == 0.0
+            elseif y == 1.0
                 idx = celldofs(cell)[2*i] 
                 if idx ∉ bc_dof
                     push!(bc_dof,idx)
@@ -130,21 +130,6 @@ function setBC(bc_load,dh)
     end
     return bc_dof, bc_val
 end
-
-#function setDesignDofs(dh)
-#    for cell in dh.grid.cells
-#        for face in Ferrite.faces(cell)
-#            x₁ , y₁ = grid.nodes[face[1]].x
-#            x₂ , y₂ = grid.nodes[face[2]].x
-#            if [y₁,y₂] == [0.5,0.5] && [x₁,x₂] > [0.0,0.0] && [x₁,x₂] <= [0.5,0.5]
-#                println("Design face y found")
-#            elseif [x₁,x₂] == [0.5,0.5] && [y₁,y₂] > [0.0,0.0] && [y₁,y₂] <= [0.5,0.5]
-#                #idx = celldofs(cell)[2*i-1] 
-#                println("Design face x found")
-#            end
-#        end
-#    end 
-#end
 
 function setup_grid(h)
     # Initialize gmsh
@@ -197,4 +182,34 @@ function setup_grid(h)
     Gmsh.finalize()
 
     return grid
+end
+
+function updateCoords!(dh,u)
+    c       = similar(dh.grid.nodes)
+    u_sorted = sortNodalDisplacements(dh,u)
+    x_new = Vec{2,Float64}
+    for i in 1:length(c)
+        x_new = Vec{2}(dh.grid.nodes[i].x + u_sorted[:,i])
+        c[i] = Node(x_new)
+    end
+    copyto!(dh.grid.nodes, c)
+end
+
+function sortNodalDisplacements(dh,a)
+    return reshape_to_nodes(dh, a, :u)[1:2,:]
+end
+
+function getX(dh)
+    x = []
+    for node in dh.grid.nodes
+        append!(x,node.x)
+    end
+    return x
+end
+
+function getCoord(X,dh)
+    coord = zeros(length(dh.grid.nodes),2)
+    coord[:,1] = X[1:2:end-1]
+    coord[:,2] = X[2:2:end]
+    return coord
 end

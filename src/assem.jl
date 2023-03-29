@@ -29,7 +29,8 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,fv,λ,d,ΓN)
         kₑ, fₑ = assemElem(coord[enod[ie][2:7],:],a[cell_dofs],mp,t)
         ke = zeros(12,12)
         fe = zeros(12)
-        ke, fe = RobinIntegral(ke,fe,cell,ΓN,fv,a[cell_dofs],λ,d[cell_dofs])
+        RobinIntegral(kₑ,fₑ,cell,ΓN,fv,a[cell_dofs],λ,d[cell_dofs])
         assemble!(assembler, cell_dofs, kₑ+ke, fₑ+fe)
     end            
 end
+

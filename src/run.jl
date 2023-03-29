@@ -18,15 +18,15 @@ function load_files()
     include("assemElem.jl")
 
     include("assem.jl")
-end
 
+    include("sensitivities.jl")
+end
 
 load_files()
 filename = "mesh2.txt"
-
 coord, enod, edof = readAscii(filename);
 
-function solver()
+function solver(dh)
     imax     = 25
     TOL      = 1e-6
     residual = 0.0
@@ -49,10 +49,10 @@ function solver()
     # ----------- #
     # Read "grid" #
     # ----------- #
-    grid = get_ferrite_grid("data/mesh2.inp")
-    dh = DofHandler(grid)
-    add!(dh, :u, 2)
-    close!(dh)
+    #grid = get_ferrite_grid("data/mesh2.inp")
+    #dh = DofHandler(grid)
+    #add!(dh, :u, 2)
+    #close!(dh)
     K  = create_sparsity_pattern(dh)
 
     #  -------- #
@@ -80,7 +80,7 @@ function solver()
 
     bcval₀   = bcval
 
-    for n ∈ 1 : 10
+    for n ∈ 1 : 2
         res   = res.*0
         bcval = bcval₀
         residual = 0*residual
@@ -110,11 +110,13 @@ function solver()
             println("Iteration: ", iter, " Residual: ", residual)
         end
     end
-    return a, dh
+
+    Fₑₓₜ = res - Fᵢₙₜ
+
+    return a, dh, Fₑₓₜ, Fᵢₙₜ, K
 end
 
-
-function fictitious_solver()
+function fictitious_solver(d,dh)
     imax     = 25
     TOL      = 1e-6
     residual = 0.0
@@ -128,23 +130,23 @@ function fictitious_solver()
     # ----------- #
     # Read "grid" #
     # ----------- #
-    grid = get_ferrite_grid("data/mesh2.inp")
-    dh = DofHandler(grid)
-    add!(dh, :u, 2)
-    close!(dh)
+    #grid = get_ferrite_grid("data/mesh2.inp")
+    #dh = DofHandler(grid)
+    #add!(dh, :u, 2)
+    #close!(dh)
     K  = create_sparsity_pattern(dh)
 
 
     # Borde flyttas utanför och bevaras
-    addfaceset!(dh.grid, "Γ₁", x -> norm(x[1]) ≈ 0.5)
-    addfaceset!(dh.grid, "Γ₂", x -> norm(x[2]) ≈ 0.5)
+   # addfaceset!(dh.grid, "Γ₁", x -> norm(x[1]) ≈ 0.5)
+   # addfaceset!(dh.grid, "Γ₂", x -> norm(x[2]) ≈ 0.5)
     #addfaceset!(dh.grid, "Γ₃", x -> norm(x[2]) ≈ 1.0)
 
-    ΓN = union(
-            getfaceset(grid, "Γ₁"),
-            getfaceset(grid, "Γ₂"),
-            #getfaceset(grid, "Γ₃"),
-        )
+  #  ΓN = union(
+   #         getfaceset(grid, "Γ₁"),
+    #        getfaceset(grid, "Γ₂"),
+     #       #getfaceset(grid, "Γ₃"),
+      #  )
 
     ip = Lagrange{2, RefTetrahedron, 2}()
     qr = QuadratureRule{2, RefTetrahedron}(2)
@@ -166,7 +168,7 @@ function fictitious_solver()
     Fᵢₙₜ     = zeros(ndof)
     Fₑₓₜ     = zeros(ndof)
     a        = zeros(ndof)
-    d        = ones(ndof)*0.5
+    #d        = ones(ndof)*0.5
     Δa       = zeros(ndof)
     res      = zeros(ndof)
     bcdof,bcval = setBC(0.0,dh)
@@ -180,7 +182,7 @@ function fictitious_solver()
 
     bcval₀   = bcval
 
-    for n ∈ 1 : 10
+    for n ∈ 1 : 2
         res   = res.*0
         bcval = bcval₀
         residual = 0*residual
@@ -211,7 +213,7 @@ function fictitious_solver()
             println("Iteration: ", iter, " Residual: ", residual)
         end
     end
-    return a, dh
+    return a, dh, K
 end
 
 function postprocess(a,dh)
@@ -222,8 +224,9 @@ function postprocess(a,dh)
     end
 end
 
-
-
+### 
+#dh0 = dh
+#updateCoords!(dh,a)
 
 
 

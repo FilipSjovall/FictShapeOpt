@@ -40,8 +40,8 @@ SdNᵣ[:,6] = [0.0 0.0 4.0*ξ[2,3]-1.0 0.0 4.0*ξ[2,2] 4.0*ξ[2,1]]
 SdNᵣ[:,7] = [4.0*ξ[3,1]-1.0 0.0 0.0 4.0*ξ[3,2] 0.0 4.0*ξ[3,3]]
 SdNᵣ[:,8] = [0.0 4.0*ξ[3,2]-1.0 0.0 4.0*ξ[3,1] 4.0*ξ[3,3] 0.0]
 SdNᵣ[:,9] = [0.0 0.0 4.0*ξ[3,3]-1.0 0.0 4.0*ξ[3,2] 4.0*ξ[3,1]]
-#dNᵣ = SMatrix{6,9,Float64}(SdNᵣ)
-dNᵣ = SdNᵣ
+dNᵣ = SMatrix{6,9,Float64}(SdNᵣ)
+#dNᵣ = SdNᵣ
 
 
 Jᵀ      = zeros(3,3)
@@ -68,7 +68,7 @@ S       = zeros(3)
 ∂S_∂x   = zeros(3)
 
 
-dr      = zeros(12,12)
+dre      = zeros(12,12)
 
 function assemGP(coord,ed,gp,mp,t)
     
@@ -129,14 +129,16 @@ function RobinIntegral(ke,ge,cell,ΓN,fv,uₑ,λ,dₑ)
         if (cellid(cell), face) in ΓN
             Ferrite.reinit!(fv, cell, face)
             for q_point in 1:getnquadpoints(fv)
-                t = 1 * getnormal(fv, q_point)
                 dΓ = getdetJdV(fv, q_point)
                 for i in 1:12#ndofs
                     #δui = shape_value(fv, q_point, i)
-                    Ni = shape_value(fv, q_point, i)
+                    Ni  = shape_value(fv, q_point, i)
+                    u_n = function_value(fv,q_point,uₑ)
+                    d_n = function_value(fv,q_point,dₑ)
+                    ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ
                     for j in 1:12
                         Nj = shape_value(fv, q_point, j)
-                        ge[i]   += Ni ⋅ Nj * (uₑ[i] - λ * dₑ[i]) * dΓ
+                        #ge[i]   += Ni ⋅ Nj * (uₑ[j] - λ * dₑ[j]) * dΓ # Borde vara *t på samtliga integraler
                         ke[i,j] += Ni ⋅ Nj * dΓ
                     end
                 end
@@ -241,14 +243,8 @@ function dr_GP(coord,ed,gp,mp,t)
    #     println("Shapes del 1: ")
    #     println(size(dB₀),size(S))
    #     println(size(transpose(dB₀)*S))
-#   
-   #     println("Shapes del 2: ")
-   #     println(size(B₀),size(∂S_∂x))
-   #     println(size(transpose(B₀)*∂S_∂x))
-#   
-   #     println("Important size", size(( transpose(dB₀)*S + transpose(B₀)*∂S_∂x)*detJ*t*w[gp]/2 ))
-        println(size(( transpose(dB₀)*S + transpose(B₀)*∂S_∂x) *detJ*t*w[gp]/2 + transpose(B₀)*S*∂J_∂x*t*w[gp]/2))
-        dr[:,dof]                      = ( transpose(dB₀)*S + transpose(B₀)*∂S_∂x) *detJ*t*w[gp]/2 + transpose(B₀)*S*∂J_∂x*t*w[gp]/2
+
+        dre[:,dof]                      = ( transpose(dB₀)*S + transpose(B₀)*∂S_∂x) *detJ*t*w[gp]/2 + transpose(B₀)*S*∂J_∂x*t*w[gp]/2
     end
-    return dr
+    return dre
 end
