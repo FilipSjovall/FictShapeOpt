@@ -32,16 +32,19 @@ fv = FaceVectorValues(qr_face, ip)
 ##### Test drᵤ_dx
 ######
     dX = init_∂X();
-    dr = dr_GP(coord[nods,:],ed,gp,mp,t)
-    index1,index2 = [1,2]
+    #dr = dr_GP(coord[nods,:],ed,gp,mp,t)
+    dr = assem_dr(coord[nods,:],ed,mp,t)
 
+    
     ke = zeros(12,12)
     fe = zeros(12,2)
 
+    index1,index2 = [1,2]
     for pert in 1:2
         coord[nods[index1],index2] = coord[nods[index1],index2] + ϵ * (-real(1*im^(pert)))
-        println((-real(1*im^(pert))))
-        ke,fe[:,pert] = assemGP(coord[nods,:],ed,gp,mp,t)
+        #ke,fe[:,pert] = assemGP(coord[nods,:],ed,gp,mp,t)
+        
+        ke, fe[:,pert] = assemElem(coord[nods,:],ed,mp,t)
     end
     numsens = (fe[:,2] - fe[:,1])/ϵ
     asens   = dr[:,2]
@@ -152,32 +155,54 @@ fv = FaceVectorValues(qr_face, ip)
     kvot = numsens./asens
     filter_kvot = filter(x-> abs(x)<10,kvot)
 ## Test global dr_dx
-    ϵ = 1e-2
+    ϵ = 1e-6
     
     X = getX(dh)
     incr = zeros(898)
     C = zeros(898,2)
+    indexet = 6
     for pert in 1:2
         if pert == 1
             X[indexet]   +=   ϵ
-            incr[indexet] =   ϵ 
-            updateCoords!(dh,incr)
+            #incr[indexet] =   ϵ 
+            #updateCoords!(dh,incr)
         else
             X[indexet]   -=   ϵ
-            incr[indexet] = - ϵ 
-            updateCoords!(dh,incr)
+            #incr[indexet] = - ϵ 
+            #updateCoords!(dh,incr)
         end
         coord = getCoord(X,dh) # borde flyttas in i solver..
+        Fᵢₙₜ .=0
         assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod)
         #a, _, Fₑₓₜ, Fᵢₙₜ, K       = solver(dh);
         #C[pert]                   = compliance(Fₑₓₜ,a)
         C[:,pert]                   = Fᵢₙₜ;
     end
     ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
-    numsens = (C[:,1]-C[:,2])/ϵ
-    asens   = ∂rᵤ_∂x[:,indexet]
+    numsens = (C[:,1]-C[:,2])./ϵ
+    #asens   = ∂rᵤ_∂x[:,indexet]
+    asens   = ∂rᵤ_∂x[:,2]
     kvot    = numsens./asens
     filter_kvot = filter(x-> abs(x)<10,kvot)
+
+
+    # Create conversion chart nods < - > dofs
+    function index_nod_to_grid(dh,coord)
+        X = getX(dh)
+        X_nods = reshape_to_nodes(dh, X, :u)[1:2,:] 
+        index_register = zeros(Int,length(dh.grid.nodes),2)
+        for ii in 1:449
+            temp1 = coord[ii,:]
+            for jj in 1:449
+                temp2 = X_nods[:,jj]
+                if temp1 == temp2
+                    index_register[ii,:] = [ii,jj]
+                end
+            end
+        end
+        return index_register
+    end
+
 ## Test global sensitivity with adjoint
     load_files()
     filename = "mesh2.txt"
@@ -216,7 +241,7 @@ fv = FaceVectorValues(qr_face, ip)
     mp     = [175 80.769230769230759]
     t      = 1.0 
 
-    indexet = 294
+    indexet = 293
     ϵ       = 1e-6
 
     
@@ -269,5 +294,6 @@ fv = FaceVectorValues(qr_face, ip)
     asens   = ∂g_∂d[indexet]
     numsens/asens
 ####
-    # 
+    # Nonzero elements in ∂g_∂d
+    # [55, 56, 57, 58, 59, 60, 121, 122, 123, 124, 127, 128, 291, 292, 293, 294, 295, 296, 385, 386, 435, 436, 445, 446, 465, 466, 585, 586, 587, 588, 591, 592, 593, 594, 597, 598, 799, 800, 825, 826, 835, 836]
     # call adjoint function

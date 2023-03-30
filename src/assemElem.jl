@@ -159,6 +159,15 @@ function assemElem(coord,ed,mp,t)
     return kₑ, fₑ
 end
 
+function assem_dr(coord,ed,mp,t)
+    drₑ = zeros(12,12)
+    for gp ∈ 1 : 3
+        dre  = dr_GP(coord,ed,gp,mp,t)
+        drₑ += dre
+    end
+    return drₑ
+end
+
 function init_∂X()
     dX = zeros(12,6,2)
     for j in 1:6
@@ -186,6 +195,7 @@ function dr_GP(coord,ed,gp,mp,t)
     @inbounds Bₗ₀[2,2:2:12] = dNₓ[2,:]  
     @inbounds Bₗ₀[3,1:2:11] = dNₓ[2,:]
     @inbounds Bₗ₀[3,2:2:12] = dNₓ[1,:]
+    
 
     A_temp = H₀*ed
     @inbounds A[1,:]        = [A_temp[1] 0.0 A_temp[3] 0.0]
@@ -244,7 +254,7 @@ function dr_GP(coord,ed,gp,mp,t)
    #     println(size(dB₀),size(S))
    #     println(size(transpose(dB₀)*S))
 
-        dre[:,dof]                      = ( transpose(dB₀)*S + transpose(B₀)*∂S_∂x) *detJ*t*w[gp]/2 + transpose(B₀)*S*∂J_∂x*t*w[gp]/2
+        dre[:,dof]                      = ( transpose(dB₀)*S + transpose(B₀)*∂S_∂x ) *detJ*t*w[gp]/2 + transpose(B₀)*S*∂J_∂x*t*w[gp]/2
     end
     return dre
 end

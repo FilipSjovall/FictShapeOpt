@@ -15,9 +15,6 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod)
     end            
 end
 
-
-
-
 function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,fv,λ,d,ΓN)
     assembler = start_assemble(K,Fᵢₙₜ)
     ie = 0

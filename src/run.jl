@@ -218,7 +218,7 @@ end
 
 function postprocess(a,dh)
         begin
-        vtk_grid("hyperelasticity", dh) do vtkfile
+        vtk_grid("hyperelasticity3", dh) do vtkfile
             vtk_point_data(vtkfile, dh, a)
         end
     end

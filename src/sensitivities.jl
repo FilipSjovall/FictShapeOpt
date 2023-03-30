@@ -48,19 +48,17 @@ function drᵤ_dx(dr,dh,mp,t,a,coord,enod)
     for cell in CellIterator(dh)
         ie += 1
         cell_dofs= celldofs(cell)
+        #dofy = (cell.nodes.*2)
+        #dofx = (cell.nodes.*2).-1
+        # Experiment
+        
         drₑ = assem_dr(coord[enod[ie][2:7],:],a[cell_dofs],mp,t)
+        #cell_dofs =collect(Iterators.flatten(zip(dofx,dofy)))
+        #dr[cell_dofs,cell_dofs] += drₑ
         assemble!(assembler, cell_dofs, drₑ)
     end 
     return dr
 end
 
-function assem_dr(coord,ed,mp,t)
-    drₑ = zeros(12,12)
-    dre = zeros(12,12)
-    for gp ∈ 1 : 3
-        dre= dr_GP(coord,ed,gp,mp,t)
-        drₑ += dre
-    end
-    return dre
-end
+
 

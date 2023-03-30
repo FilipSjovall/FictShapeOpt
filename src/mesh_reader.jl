@@ -200,7 +200,8 @@ function sortNodalDisplacements(dh,a)
 end
 
 function getX(dh)
-    x = []
+    # Size dh.ndofs.x
+    x = Float64[]
     for node in dh.grid.nodes
         append!(x,node.x)
     end
