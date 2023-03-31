@@ -1,12 +1,10 @@
 using LinearSolve, LinearSolvePardiso, SparseArrays,  StaticArrays
-using FerriteMeshParser
-using Ferrite
-using IterativeSolvers
-using AlgebraicMultigrid
-using IncompleteLU
+using FerriteMeshParser,Ferrite, IterativeSolvers, AlgebraicMultigrid, IncompleteLU
 ##using Gmsh, FerriteGmsh, Plots, Gr # Behöver byggas om....
 
 function load_files()
+
+    
     include("mesh_reader.jl")
 
     include("material.jl")
@@ -136,26 +134,6 @@ function fictitious_solver(d,dh0)
     #close!(dh)
     Kψ  = create_sparsity_pattern(dh0)
 
-
-    # Borde flyttas utanför och bevaras
-   # addfaceset!(dh.grid, "Γ₁", x -> norm(x[1]) ≈ 0.5)
-   # addfaceset!(dh.grid, "Γ₂", x -> norm(x[2]) ≈ 0.5)
-    #addfaceset!(dh.grid, "Γ₃", x -> norm(x[2]) ≈ 1.0)
-
-  #  ΓN = union(
-   #         getfaceset(grid, "Γ₁"),
-    #        getfaceset(grid, "Γ₂"),
-     #       #getfaceset(grid, "Γ₃"),
-      #  )
-
-    ip = Lagrange{2, RefTetrahedron, 2}()
-    qr = QuadratureRule{2, RefTetrahedron}(2)
-    qr_face = QuadratureRule{1, RefTetrahedron}(2)
-
-    cv = CellVectorValues(qr, ip)
-    fv = FaceVectorValues(qr_face, ip)
-
-
     #  -------- #
     # Convert   #
     #  -------- #
@@ -168,7 +146,6 @@ function fictitious_solver(d,dh0)
     Fᵢₙₜ     = zeros(ndof)
     Fₑₓₜ     = zeros(ndof)
     Ψ        = zeros(ndof)
-    #d        = ones(ndof)*0.5
     ΔΨ       = zeros(ndof)
     res      = zeros(ndof)
     bcdof,bcval = setBC(0.0,dh0)
@@ -177,8 +154,6 @@ function fictitious_solver(d,dh0)
     # ---------- #
     # Set params # // Kanske som input till solver???
     # ---------- #
-    mp       = [1.0 1.0] 
-    t        = 1.0
 
     bcval₀   = bcval
 
@@ -200,8 +175,8 @@ function fictitious_solver(d,dh0)
             iter += 1
             
             Ψ += ΔΨ
-
-            assemGlobal!(Kψ,Fᵢₙₜ,dh0,mp,t,Ψ,coord,enod,fv,λ,d,ΓN)
+            println(size(Kψ),size(Fᵢₙₜ),size(Ψ),size(coord),size(enod),size(d))
+            assemGlobal!(Kψ,Fᵢₙₜ,dh0,mp₀,t,Ψ,coord,enod,fv,λ,d,ΓN)
         
             solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof, bcval*0)
 
@@ -218,7 +193,7 @@ end
 
 function postprocess(a,dh)
         begin
-        vtk_grid("hyperelasticity3", dh) do vtkfile
+        vtk_grid("hyperelasticity", dh) do vtkfile
             vtk_point_data(vtkfile, dh, a)
         end
     end
