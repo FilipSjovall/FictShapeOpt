@@ -1,5 +1,5 @@
 using LinearSolve, LinearSolvePardiso, SparseArrays,  StaticArrays
-using FerriteMeshParse,Ferrite, IterativeSolvers, AlgebraicMultigrid, IncompleteLU
+using FerriteMeshParser,Ferrite, IterativeSolvers, AlgebraicMultigrid, IncompleteLU
 
 include("initialize.jl")
 include("mma.jl")
@@ -8,7 +8,7 @@ init_hyper()
 
 function Optimize(dh)
     dh0 = deepcopy(dh);
-    init_MMA();
+    #init_MMA();
     # Flytta allt nedan till init_opt?
     λψ = similar(a);
     λᵤ = similar(a);
@@ -17,7 +17,8 @@ function Optimize(dh)
     tol= 1e-4
     OptIter = 0
     #
-    while kktnorm > tol || OptIter < 1
+    while kktnorm > tol || OptIter < 3 #&& OptIter < 5
+
         global d
         global Ψ   
         global a   
@@ -50,53 +51,88 @@ function Optimize(dh)
         global kktnorm  
         global outit    
         global change   
+        global λ
+
         OptIter +=1
+        global g_hist = []
+        global pdofs       = bcdof
+        global fdofs       = setdiff(1:length(a),pdofs)
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
         coord = getCoord(getX(dh0),dh0); # x₀ 
-        Ψ, _, Kψ,_               = fictitious_solver(d,dh0); # Döp om till "~coord0"
+        Ψ, _, Kψ, _, λ               = fictitious_solver(d,dh0); # Döp om till "~coord0"
+
         # # # # # # 
         # Filter  #
         # # # # # # 
         updateCoords!(dh,Ψ); # x₀ + Ψ = x
         coord = getCoord(getX(dh),dh);
+
+        # **TEST**
+        updateCoords!(dh0,Ψ); # x₀ + Ψ = x
+
         # # # # # # # # #
         # Equillibrium  #
         # # # # # # # # #
-        a, _, _, _, K       = solver(dh);
+        a, _, _, Fᵢₙₜ, K       = solver(dh);
+
         # # # # # # # # # 
         # Sensitivities #
         # # # # # # # # # 
+        ∂g_∂x   =  zeros(size(a));
+        ∂g_∂u = zeros(size(d))
+        ∂g_∂u[fdofs]  = a[pdofs]'*K[pdofs,fdofs]
         ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
         dr_dd  = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
+
         # # # # # # # 
         # Objective #
         # # # # # # #
-        g       =  compliance(l,a);
+        #g       =  compliance(l,a);
+        g       =  -a[pdofs]'*Fᵢₙₜ[pdofs]
         ∂g_∂d   = -transpose(λψ)*dr_dd; # gör till funktion?
-        ∂g_∂x   =  zeros(size(a));
-        ∂g_∂u   =  l # gör till funktion ? 
+         
+
         # # # # # # #
         # Adjoints  #
         # # # # # # #
-        solveq!(λᵤ, K', l, bcdof, bcval*0);  # var Fₑₓₜ;
-        solveq!(λψ, Kψ', -transpose(λᵤ)*∂rᵤ_∂x, bcdof, bcval*0);
+        solveq!(λᵤ, K', ∂g_∂u, bcdof, bcval*0);  # var Fₑₓₜ;
+        ∂g_∂x[fdofs]  = a[pdofs]'*∂rᵤ_∂x[pdofs,fdofs]
+        solveq!(λψ, Kψ', ∂g_∂x-∂rᵤ_∂x'*λᵤ, bcdof, bcval*0);
+
         # # # # # # # # # # #
         # Full sensitivity  #
         # # # # # # # # # # #
-        ∂g_∂d   = -transpose(λψ)*dr_dd;
+        ∂g_∂d   = transpose(-transpose(λψ)*dr_dd);
+        @show ∂g_∂d[free_d]
         # # # # 
         # MMA # 
         # # # #  
-        X,ymma,zmma,lam,xsi,eta,mu,zet,S,low,upp=mmasub(m,n,OptIter,d,xmin,xmax,xold1,xold2, g,∂g_∂d,0,zeros(size(d)),low,upp,a0,am,C,d2);
+        X,ymma,zmma,lam,xsi,eta,mu,zet,S,low,upp=mmasub(m,n,OptIter,d,xmin,xmax,xold1,xold2, 10*g,10*∂g_∂d,[-1.0],zeros(size(d)),low,upp,a0,am,C,d2);
         xold2 = xold1;
         xold1 = d;
-        d  = X;
-        Xg=lower_bound+(upper_bound-lower_bound).*X;
+        d     = X;
+        @show d[free_d] 
+        #Xg=lower_bound+(upper_bound-lower_bound).*X;
         change=norm(d .-xold1);
+        append!(g_hist,g)
         #The residual vector of the KKT conditions is calculated:
-        residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,df0dx,fval,dfdx[:],a0,a,C,d2);
-        println("Iter: ",OptIter, "KKT-norm: ",kktnorm, "Objective: ", f0val)
+        #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
+        kktnorm = change
+        println("Iter: ",OptIter, " Norm of change: ",kktnorm, " Objective: ", g)
+        # postprocess_opt(Ψ,dh,"Shape"*string(OptIter))
+        postprocess_opt(a,dh,"Deformation"*string(OptIter))
+        println("Objective: ",g_hist)
     end
+    return g_hist
 end 
+
+
+function postprocess_opt(Ψ,dh,str)
+    begin
+    vtk_grid(str, dh) do vtkfile
+        vtk_point_data(vtkfile, dh, Ψ)
+    end
+end
+end

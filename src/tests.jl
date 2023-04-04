@@ -241,7 +241,7 @@ fv = FaceVectorValues(qr_face, ip)
     mp     = [175 80.769230769230759]
     t      = 1.0 
 
-    indexet = 293
+    indexet = 292
     ϵ       = 1e-6
 
     
@@ -274,21 +274,24 @@ fv = FaceVectorValues(qr_face, ip)
         coord = getCoord(getX(dh),dh)
         a, _, Fₑₓₜ, Fᵢₙₜ, K       = solver(dh);
         #C[pert]                   = compliance(Fₑₓₜ,a)
-        C[pert]                   = transpose(l)*a;
+        C[pert]                   = -a[pdofs]'*Fᵢₙₜ[pdofs];
     end
 
-    ∂g_∂u  = Fₑₓₜ
-    
-    λ      = 0.2
+    ∂g_∂u = zeros(size(d))
+    ∂g_∂u[fdofs]  = a[pdofs]'*K[pdofs,fdofs]
+    ∂g_∂x = zeros(size(d))
+    λ      = 1 # 0.2
 
     dX = init_∂X();
     ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
     dr_dd = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
+
+    ∂g_∂x[fdofs]  = a[pdofs]'*∂rᵤ_∂x[pdofs,fdofs]
     #∂rψ_∂d = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
     λψ = similar(a);
     λᵤ = similar(a);
-    solveq!(λᵤ, K', l, bcdof, bcval*0);  # var Fₑₓₜ;
-    solveq!(λψ, Kψ', -transpose(λᵤ)*∂rᵤ_∂x, bcdof, bcval*0);
+    solveq!(λᵤ, K', ∂g_∂u, bcdof, bcval*0);  # var Fₑₓₜ;
+    solveq!(λψ, Kψ',∂g_∂x-∂rᵤ_∂x'*λᵤ, bcdof, bcval*0);
     ∂g_∂d   = -transpose(λψ)*dr_dd;
     numsens = (C[1]-C[2])/ϵ
     asens   = ∂g_∂d[indexet]

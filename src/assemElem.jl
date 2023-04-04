@@ -203,6 +203,7 @@ function dr_GP(coord,ed,gp,mp,t)
     @inbounds A[3,:]        = [A_temp[2] A_temp[1] A_temp[4] A_temp[3]]
 
     B₀                      = Bₗ₀ + A*H₀
+    dX = init_∂X();
     for dof in 1:12
         ## Sensitivities
         ∂G_∂x                   = - dNₓ * dX[dof,:,:] * dNₓ

@@ -67,7 +67,7 @@ function solver(dh)
     a        = zeros(ndof)
     Δa       = zeros(ndof)
     res      = zeros(ndof)
-    bcdof,bcval = setBC(0.05,dh)
+    bcdof,bcval = setBC(0.02,dh)
     pdofs       = bcdof
     fdofs       = setdiff(1:ndof,pdofs)
     # ---------- #
@@ -78,7 +78,7 @@ function solver(dh)
 
     bcval₀   = bcval
 
-    for n ∈ 1 : 2
+    for n ∈ 1 : 10
         res   = res.*0
         bcval = bcval₀
         residual = 0*residual
@@ -119,7 +119,7 @@ function fictitious_solver(d,dh0)
     TOL      = 1e-6
     residual = 0.0
     iter     = 1
-
+    global λ
     ndof     = size(coord,1)*2 
     nelm     = size(enod,1)
 
@@ -157,7 +157,7 @@ function fictitious_solver(d,dh0)
 
     bcval₀   = bcval
 
-    for n ∈ 1 : 2
+    for n ∈ 1 : 10
         res   = res.*0
         bcval = bcval₀
         residual = 0*residual
@@ -175,7 +175,6 @@ function fictitious_solver(d,dh0)
             iter += 1
             
             Ψ += ΔΨ
-            println(size(Kψ),size(Fᵢₙₜ),size(Ψ),size(coord),size(enod),size(d))
             assemGlobal!(Kψ,Fᵢₙₜ,dh0,mp₀,t,Ψ,coord,enod,fv,λ,d,ΓN)
         
             solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof, bcval*0)
@@ -185,10 +184,10 @@ function fictitious_solver(d,dh0)
             res[bcdof] = 0*res[bcdof]
             residual   = norm(res,2)
             Ψ[bcdof]   = bcval*0.0;
-            println("Iteration: ", iter, "| Residual: ", residual, "| Load level λ: ", λ)
+            println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
         end
     end
-    return Ψ, dh0, Kψ, Fᵢₙₜ
+    return Ψ, dh0, Kψ, Fᵢₙₜ, λ
 end
 
 function postprocess(a,dh)
