@@ -114,9 +114,10 @@ function solver(dh)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K
 end
 
+
 function fictitious_solver(d,dh0)
     imax     = 25
-    TOL      = 1e-6
+    TOL      = 1e-10
     residual = 0.0
     iter     = 1
     global λ
@@ -148,7 +149,7 @@ function fictitious_solver(d,dh0)
     Ψ        = zeros(ndof)
     ΔΨ       = zeros(ndof)
     res      = zeros(ndof)
-    bcdof,bcval = setBC(0.0,dh0)
+    bcdof,bcval = setBC(0,dh0)
     pdofs       = bcdof
     fdofs       = setdiff(1:ndof,pdofs)
     # ---------- #
@@ -176,15 +177,14 @@ function fictitious_solver(d,dh0)
             
             Ψ += ΔΨ
             assemGlobal!(Kψ,Fᵢₙₜ,dh0,mp₀,t,Ψ,coord,enod,fv,λ,d,ΓN)
-        
-            solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof, bcval*0)
+            solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof, bcval)
 
             bcval      = 0*bcval
             res        = Fᵢₙₜ - Fₑₓₜ
             res[bcdof] = 0*res[bcdof]
             residual   = norm(res,2)
-            Ψ[bcdof]   = bcval*0.0;
-            println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
+            Ψ[bcdof]   = bcval;
+           println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
         end
     end
     return Ψ, dh0, Kψ, Fᵢₙₜ, λ

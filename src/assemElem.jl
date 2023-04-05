@@ -15,6 +15,8 @@ P₀     = [0.0 1.0 0.0; 0.0 0.0 1.0]
 
 
 Np        = Matrix{Real}(undef,3,6)
+Npf       = Matrix{Real}(undef,3,6)
+Nf        = Array{Real}(undef,2,12,3)
 #N = SMatrix{3,6,Float64}
 
 Np[:,1]   = ξ[1,:].*(2.0.*ξ[1,:] .- 1.0)
@@ -23,7 +25,33 @@ Np[:,3]   = ξ[3,:].*(2.0.*ξ[3,:] .- 1.0)
 Np[:,4]   = 4.0.*ξ[1,:].*ξ[2,:]
 Np[:,5]   = 4.0.*ξ[2,:].*ξ[3,:]
 Np[:,6]   = 4.0.*ξ[1,:].*ξ[3,:]
- 
+
+Npf[:,1]   = ξ[1,:].*(2.0.*ξ[1,:] .- 1.0)
+Npf[:,2]   = ξ[2,:].*(2.0.*ξ[2,:] .- 1.0)
+Npf[:,3]   = ξ[3,:].*(2.0.*ξ[3,:] .- 1.0).*0
+Npf[:,4]   = 4.0.*ξ[1,:].*ξ[2,:]
+Npf[:,5]   = 4.0.*ξ[2,:].*ξ[3,:].*0
+Npf[:,6]   = 4.0.*ξ[1,:].*ξ[3,:].*0
+
+
+Nf[1,:,1] = [Npf[1,1] 0.0 Npf[1,2] 0.0 Npf[1,3] 0.0 Npf[1,4] 0.0 Npf[1,5] 0.0 Npf[1,6] 0.0] 
+Nf[2,:,1] = [0.0 Npf[1,1] 0.0 Npf[1,2] 0.0 Npf[1,3] 0.0 Npf[1,4] 0.0 Npf[1,5] 0.0 Npf[1,6]] 
+
+Nf[1,:,2] = [Npf[2,1] 0.0 Npf[2,2] 0.0 Npf[2,3] 0.0 Npf[2,4] 0.0 Npf[2,5] 0.0 Npf[2,6] 0.0] 
+Nf[2,:,2] = [0.0 Npf[2,1] 0.0 Npf[2,2] 0.0 Npf[2,3] 0.0 Npf[2,4] 0.0 Npf[2,5] 0.0 Npf[2,6]]
+
+Nf[1,:,3] = [Npf[3,1] 0.0 Npf[3,2] 0.0 Npf[3,3] 0.0 Npf[3,4] 0.0 Npf[3,5] 0.0 Npf[3,6] 0.0] 
+Nf[2,:,3] = [0.0 Npf[3,1] 0.0 Npf[3,2] 0.0 Npf[3,3] 0.0 Npf[3,4] 0.0 Npf[3,5] 0.0 Npf[3,6]]
+
+dNf      = Matrix{Float64}(undef,6,9)
+
+dNf[:,1] = [4.0*ξ[1,1]-1.0 0.0 0.0 4.0*ξ[1,2] 0.0 0.0]
+dNf[:,2] = [0.0 4.0*ξ[1,2]-1.0 0.0 4.0*ξ[1,1] 0.0 0.0]
+dNf[:,3] = [0.0 0.0 0.0 0.0 4.0*ξ[1,2] 4.0*ξ[1,1]]
+dNf[:,4] = [4.0*ξ[2,1]-1.0 0.0 0.0 4.0*ξ[2,2] 0.0 0.0]
+dNf[:,5] = [0.0 4.0*ξ[2,2]-1.0 0.0 4.0*ξ[2,1] 0.0 0.0]
+dNf[:,6] = [0.0 0.0 0.0 0.0 4.0*ξ[2,2] 4.0*ξ[2,1]]
+
 N = Np
 #N = SMatrix{3,6,Float64}(Np)
 
@@ -120,31 +148,65 @@ function assemGP(coord,ed,gp,mp,t)
     
     fₑ            = transpose(B₀)*S*detJ*t*w[gp]/2
     kₑ            = (transpose(B₀)*D*B₀ + transpose(H₀)*R*H₀)*detJ*t*w[gp]/2 
-    
     return kₑ, fₑ
 end
 
-function RobinIntegral(ke,ge,cell,ΓN,fv,uₑ,λ,dₑ)
+function RobinIntegral(ke,ge,cell,ΓN,fv,uₑ,λ,dₑ,coorde)
+    #ge2 = ge.*0;
+    #ke2 = ke.*0;
     for face in 1:nfaces(cell)
         if (cellid(cell), face) in ΓN
             Ferrite.reinit!(fv, cell, face)
-            for q_point in 1:getnquadpoints(fv)
-                dΓ = getdetJdV(fv, q_point)
-                for i in 1:12#ndofs
-                    #δui = shape_value(fv, q_point, i)
-                    Ni  = shape_value(fv, q_point, i)
-                    u_n = function_value(fv,q_point,uₑ)
-                    d_n = function_value(fv,q_point,dₑ)
-                    ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ
-                    for j in 1:12
-                        Nj = shape_value(fv, q_point, j)
-                        #ge[i]   += Ni ⋅ Nj * (uₑ[j] - λ * dₑ[j]) * dΓ # Borde vara *t på samtliga integraler
-                        ke[i,j] += Ni ⋅ Nj * dΓ
-                    end
+            #for q_point in 1:getnquadpoints(fv)
+            #    dΓ = getdetJdV(fv, q_point)
+            #    u_n = function_value(fv,q_point,uₑ)
+            #    d_n = function_value(fv,q_point,dₑ)
+            #    if (cellid(cell), face) in Γ1
+            #        for i in 1:2:11
+            #            Ni  = shape_value(fv, q_point, i)
+            #            ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ 
+            #            for j in 1:2:11
+            #                Nj = shape_value(fv, q_point, j)
+            #                ke[i,j] += Ni ⋅ Nj * dΓ 
+            #            end
+            #        end
+            #    elseif (cellid(cell), face) in Γ2
+            #        for i in 2:2:12
+            #            Ni  = shape_value(fv, q_point, i)
+            #            ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ 
+            #            for j in 2:2:12
+            #                Nj = shape_value(fv, q_point, j)
+            #                ke[i,j] += Ni ⋅ Nj * dΓ 
+            #            end
+            #        end
+            #    end 
+            #end
+            if (cellid(cell), face) in Γ1 
+                for gp in 1:2
+                    @inbounds Jᵀ[:,2:3]     = transpose(dNf[:,index[gp,:]]) * coorde
+                    J⁻                      = inv(Jᵀ)
+                    detJ                    = det(Jᵀ)
+                    dΓ                      = w[gp] * detJ /2
+                    #@inbounds ge[1:2:11]             += Nf[:,1:2:11,gp]' * (Nf[:,1:2:11,gp]*uₑ[1:2:11] - λ * Nf[:,1:2:11,gp] * dₑ[1:2:11]) * dΓ
+                    @inbounds ke[1:2:11,1:2:11]      += Nf[:,1:2:11,gp]' * Nf[:,1:2:11,gp] * dΓ
+                end
+            elseif  (cellid(cell), face) in Γ2
+                for gp in 1:2
+                    @inbounds Jᵀ[:,2:3]     = transpose(dNf[:,index[gp,:]]) * coorde
+                    J⁻                      = inv(Jᵀ)
+                    detJ                    = det(Jᵀ)
+                    dΓ                      = w[gp] * detJ /2
+                    #@inbounds ge[2:2:end]            += Nf[:,2:2:end,gp]' * (Nf[:,2:2:end,gp]*uₑ[2:2:12] - λ * Nf[:,2:2:end,gp] * dₑ[2:2:12]) * dΓ
+                    @inbounds ge            += Nf[:,:,gp]' * [1;1] 
+                    println(ge)
+                    @inbounds ke[2:2:end,2:2:end]    += Nf[:,2:2:end,gp]' * Nf[:,2:2:end,gp] * dΓ
                 end
             end
+            #println("ke = ", ke)
+            #println("ge = ", ge)
         end
     end
+    #println("ge = ", ge)
     return ke,ge
 end
 

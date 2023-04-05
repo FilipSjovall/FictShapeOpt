@@ -24,13 +24,30 @@ function d_RobinIntegral(dfe,cell,ΓN,fv,uₑ,λ,dₑ)
             for q_point in 1:getnquadpoints(fv)
                 #t = 1 * getnormal(fv, q_point)
                 dΓ = getdetJdV(fv, q_point)
-                for i in 1:12
-                    Ni = shape_value(fv, q_point, i)
-                    for j in 1:12
-                        Nj = shape_value(fv, q_point, j)
-                        dfe[i,j]   += Ni ⋅ Nj * ( - λ ) * dΓ
+                if (cellid(cell), face) in Γ1
+                    for i in 1:2:11
+                        Ni  = shape_value(fv, q_point, i)
+                        for j in 1:2:11
+                            Nj = shape_value(fv, q_point, j)
+                            dfe[i,j]   += Ni ⋅ Nj * ( - λ ) * dΓ 
+                        end
                     end
-                end
+                elseif (cellid(cell), face) in Γ2
+                    for i in 2:2:12
+                        Ni  = shape_value(fv, q_point, i)
+                        for j in 2:2:12
+                            Nj = shape_value(fv, q_point, j)
+                            dfe[i,j]   += Ni ⋅ Nj * ( - λ ) * dΓ 
+                        end
+                    end
+                end 
+                #for i in 1:12
+                #    Ni = shape_value(fv, q_point, i)
+                #    for j in 1:12
+                #        Nj = shape_value(fv, q_point, j)
+                #        dfe[i,j]   += Ni ⋅ Nj * ( - λ ) * dΓ
+                #    end
+                #end
             end
         end
     end

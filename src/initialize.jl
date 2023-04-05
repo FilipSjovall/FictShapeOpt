@@ -24,6 +24,8 @@ end
             getfaceset(grid, "Γ₁"),
             getfaceset(grid, "Γ₂"),
         )
+    Γ1 = getfaceset(grid, "Γ₁")
+    Γ2 = getfaceset(grid, "Γ₂")
     ip = Lagrange{2, RefTetrahedron, 2}()
     qr = QuadratureRule{2, RefTetrahedron}(2)
     qr_face = QuadratureRule{1, RefTetrahedron}(2)
@@ -95,26 +97,39 @@ end
 
     free_d = []
     
-    for cell in CellIterator(dh)
-        for face in 1:nfaces(cell)
-            if (cellid(cell), face) in ΓN
-                face_nod = Ferrite.faces(dh.grid.cells[cellid(cell)])[1]
-                println(face_nod)
-                # Detta är fel dofs
-                doftemp  = [register[face_nod[1],2]*2-1 register[face_nod[1],2]*2 ]
-                append!(free_d,doftemp)
-                doftemp  = [register[face_nod[2],2]*2-1 register[face_nod[2],2]*2 ]
-                append!(free_d,doftemp)
-                #append!(free_d,[face_nod[1]*2-1 face_nod[1]*2 face_nod[2]*2-1 face_nod[2]*2])
-            end
-        end
+    #for cell in CellIterator(dh)
+    #    for face in 1:nfaces(cell)
+    #        if (cellid(cell), face) in ΓN
+    #            face_nod = Ferrite.faces(dh.grid.cells[cellid(cell)])[1]
+    #            println(face_nod)
+    #            # Detta är fel dofs
+    #            doftemp  = [register[face_nod[1],2]*2-1 register[face_nod[1],2]*2 ]
+    #            append!(free_d,doftemp)
+    #            doftemp  = [register[face_nod[2],2]*2-1 register[face_nod[2],2]*2 ]
+    #            append!(free_d,doftemp)
+    #            #append!(free_d,[face_nod[1]*2-1 face_nod[1]*2 face_nod[2]*2-1 face_nod[2]*2])
+    #        end
+    #    end
+    #end
+    
+    #addnodeset!(dh.grid, "Γ₃", x -> norm(x[1]) ≈ 0.5)
+    addnodeset!(dh.grid, "Γ₄", x -> norm(x[2]) ≈ 0.5)
+
+    #nodx = Ferrite.getnodeset(dh.grid,"Γ₃")
+    nody = Ferrite.getnodeset(dh.grid,"Γ₄")
+
+    #for inod in nodx
+    #   append!(free_d,register[inod,2]*2-1)
+    #end
+
+    for jnod in nody
+       append!(free_d,register[jnod,2]*2)
     end
 
     xmin[free_d] .= -0.25
     xmax[free_d] .=  0.25
+    d[free_d]    .=  0.1
 
-    d[free_d]    .= 0.25
-
-    global low      = xmin;
-    global upp      = xmax;
+    global low    = xmin;
+    global upp    = xmax;
     #end

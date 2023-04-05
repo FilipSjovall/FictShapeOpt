@@ -53,7 +53,9 @@ function Optimize(dh)
         global change   
         global λ
 
+
         OptIter +=1
+        global g_ini
         global g_hist = []
         global pdofs       = bcdof
         global fdofs       = setdiff(1:length(a),pdofs)
@@ -70,7 +72,7 @@ function Optimize(dh)
         coord = getCoord(getX(dh),dh);
 
         # **TEST**
-        updateCoords!(dh0,Ψ); # x₀ + Ψ = x
+        #updateCoords!(dh0,Ψ); # x₀ + Ψ = x
 
         # # # # # # # # #
         # Equillibrium  #
@@ -80,18 +82,19 @@ function Optimize(dh)
         # # # # # # # # # 
         # Sensitivities #
         # # # # # # # # # 
-        ∂g_∂x   =  zeros(size(a));
-        ∂g_∂u = zeros(size(d))
-        ∂g_∂u[fdofs]  = a[pdofs]'*K[pdofs,fdofs]
-        ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
-        dr_dd  = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
+        ∂g_∂x         =  zeros(size(a));
+        ∂g_∂u         = zeros(size(d))
+        ∂g_∂u[fdofs]  = -a[pdofs]'*K[pdofs,fdofs]
+        ∂rᵤ_∂x        = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
+        dr_dd         = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
 
         # # # # # # # 
         # Objective #
         # # # # # # #
         #g       =  compliance(l,a);
         g       =  -a[pdofs]'*Fᵢₙₜ[pdofs]
-        ∂g_∂d   = -transpose(λψ)*dr_dd; # gör till funktion?
+        println(g)
+        #∂g_∂d   = -transpose(λψ)*dr_dd; # gör till funktion?
          
 
         # # # # # # #
@@ -116,13 +119,17 @@ function Optimize(dh)
         @show d[free_d] 
         #Xg=lower_bound+(upper_bound-lower_bound).*X;
         change=norm(d .-xold1);
-        append!(g_hist,g)
+        if OptIter == 1
+            g_ini = g
+        end
+
+        append!(g_hist,g/g_ini)
         #The residual vector of the KKT conditions is calculated:
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
         kktnorm = change
         println("Iter: ",OptIter, " Norm of change: ",kktnorm, " Objective: ", g)
-        # postprocess_opt(Ψ,dh,"Shape"*string(OptIter))
-        postprocess_opt(a,dh,"Deformation"*string(OptIter))
+        postprocess_opt(Ψ,dh0,"results/Shape"*string(OptIter))
+        postprocess_opt(a,dh,"results/Deformation"*string(OptIter))
         println("Objective: ",g_hist)
     end
     return g_hist
