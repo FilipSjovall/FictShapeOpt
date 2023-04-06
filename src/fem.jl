@@ -15,7 +15,8 @@ function solveq!(a,K,f,bcdof,bcval)
     #    MKLPardisoIterate(),
     #    UMFPACKFactorization(),
     #    KLUFactorization())
-    a[fdofs] = solve(prob, MKLPardisoIterate()).u
+    a[fdofs] = solve(prob, MKLPardisoFactorize()).u
+#    a[fdofs] = solve(prob, MKLPardisoIterate()).u
     
     # Algebraic multigrid
     #ml = ruge_stuben(K[fdofs,fdofs]) # Construct a Ruge-Stuben solver

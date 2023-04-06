@@ -64,7 +64,7 @@ fv = FaceVectorValues(qr_face, ip)
     numsens./asens
 #####
 ## Test f_int vs K in fictious domain
-    elnum = 35
+    elnum = 92
 
     ke = zeros(12,12)
     fe = zeros(12,2)

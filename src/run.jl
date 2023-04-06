@@ -20,9 +20,9 @@ function load_files()
     include("sensitivities.jl")
 end
 
-load_files()
-filename = "mesh2.txt"
-coord, enod, edof = readAscii(filename);
+#load_files()
+#filename = "mesh2.txt"
+#coord, enod, edof = readAscii(filename);
 
 function solver(dh)
     imax     = 25

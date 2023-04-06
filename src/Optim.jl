@@ -5,6 +5,8 @@ include("initialize.jl")
 include("mma.jl")
 init_hyper()
 
+dh0 = deepcopy(dh);
+
 
 function Optimize(dh)
     dh0 = deepcopy(dh);
@@ -54,7 +56,7 @@ function Optimize(dh)
         global λ
 
 
-        OptIter +=1
+        OptIter += 1
         global g_ini
         global g_hist = []
         global pdofs       = bcdof
@@ -112,7 +114,7 @@ function Optimize(dh)
         # # # # 
         # MMA # 
         # # # #  
-        X,ymma,zmma,lam,xsi,eta,mu,zet,S,low,upp=mmasub(m,n,OptIter,d,xmin,xmax,xold1,xold2, 10*g,10*∂g_∂d,[-1.0],zeros(size(d)),low,upp,a0,am,C,d2);
+        X,ymma,zmma,lam,xsi,eta,mu,zet,S,low,upp=mmasub(m,n,OptIter,d,xmin,xmax,xold1,xold2, -10*g,-10*∂g_∂d,[-1.0],zeros(size(d)),low,upp,a0,am,C,d2);
         xold2 = xold1;
         xold1 = d;
         d     = X;

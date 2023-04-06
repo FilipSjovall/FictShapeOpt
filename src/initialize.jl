@@ -80,10 +80,9 @@ end
         X = getX(dh)
         X_nods = reshape_to_nodes(dh, X, :u)[1:2,:] 
         index_register = zeros(Int,length(dh.grid.nodes),2)
-        for ii in 1:449
-            
+        for ii in 1:length(coord[:,1])
             temp2 = X_nods[:,ii]
-            for jj in 1:449
+            for jj in 1:length(coord[:,1])
                 temp1 = coord[jj,:]
                 if temp1 == temp2
                     index_register[ii,:] = [ii,jj]
@@ -112,15 +111,15 @@ end
     #    end
     #end
     
-    #addnodeset!(dh.grid, "Γ₃", x -> norm(x[1]) ≈ 0.5)
-    addnodeset!(dh.grid, "Γ₄", x -> norm(x[2]) ≈ 0.5)
+    addnodeset!(dh.grid, "Γ₃", x -> norm(x[1]) == 0.5)
+    addnodeset!(dh.grid, "Γ₄", x -> norm(x[2]) == 0.5)
 
-    #nodx = Ferrite.getnodeset(dh.grid,"Γ₃")
+    nodx = Ferrite.getnodeset(dh.grid,"Γ₃")
     nody = Ferrite.getnodeset(dh.grid,"Γ₄")
 
-    #for inod in nodx
-    #   append!(free_d,register[inod,2]*2-1)
-    #end
+    for inod in nodx
+       append!(free_d,register[inod,2]*2-1)
+    end
 
     for jnod in nody
        append!(free_d,register[jnod,2]*2)

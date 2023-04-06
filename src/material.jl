@@ -9,7 +9,7 @@ function neohooke1(eff,mp)
     Kₘ = mp[1]
     Gₘ = mp[2]
 
-    D₁ = 2/Kₘ
+    #D₁ = 2/Kₘ
 
     Fₚ  = zeros(3,3)
 
@@ -39,7 +39,7 @@ function dneohooke1(eff,mp)
     Kₘ = mp[1]
     Gₘ = mp[2]
 
-    D₁ = 2/Kₘ
+    #D₁ = 2/Kₘ
 
     F  = zeros(3,3)
 
@@ -66,22 +66,21 @@ function dneohooke1(eff,mp)
     ix[5,:] = [2 2 1 2]
     ix[6,:] = [1 2 1 2]
 
-        Ds = zeros(6)
-        for el ∈ 1 : 6
-            i  = ix[el,1]
-            jj = ix[el,2]
-            kk = ix[el,3]
-            l  = ix[el,4]
+    Ds = zeros(6)
+    for el ∈ 1 : 6
+        i  = ix[el,1]
+        jj = ix[el,2]
+        kk = ix[el,3]
+        l  = ix[el,4]
+        Ds[el] = a₁ * C⁻¹[i,jj] * C⁻¹[kk,l] - 
+                 a₂ * ( I[i,jj] * C⁻¹[kk,l] + C⁻¹[i,jj] * I[kk,l] ) +
+                 a₃ * ( C⁻¹[i,kk] * C⁻¹[jj,l] + C⁻¹[i,l] * C⁻¹[jj,kk] ) 
+    end
 
-            Ds[el] = a₁ * C⁻¹[i,jj] * C⁻¹[kk,l] - 
-                     a₂ * ( I[i,jj] * C⁻¹[kk,l] + C⁻¹[i,jj] * I[kk,l] ) +
-                     a₃ * ( C⁻¹[i,kk] * C⁻¹[jj,l] + C⁻¹[i,l] * C⁻¹[jj,kk] ) 
-        end
-
-        D[1,:] = [Ds[1] Ds[2] Ds[3]]
-        D[2,:] = [Ds[2] Ds[4] Ds[5]]
-        D[3,:] = [Ds[3] Ds[5] Ds[6]]
-        return D
+    D[1,:] = [Ds[1] Ds[2] Ds[3]]
+    D[2,:] = [Ds[2] Ds[4] Ds[5]]
+    D[3,:] = [Ds[3] Ds[5] Ds[6]]
+    return D
 end
 
 function dneohookeD!(Dgp,eff,mp)

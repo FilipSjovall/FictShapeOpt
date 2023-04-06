@@ -157,51 +157,53 @@ function RobinIntegral(ke,ge,cell,ΓN,fv,uₑ,λ,dₑ,coorde)
     for face in 1:nfaces(cell)
         if (cellid(cell), face) in ΓN
             Ferrite.reinit!(fv, cell, face)
-            #for q_point in 1:getnquadpoints(fv)
-            #    dΓ = getdetJdV(fv, q_point)
-            #    u_n = function_value(fv,q_point,uₑ)
-            #    d_n = function_value(fv,q_point,dₑ)
-            #    if (cellid(cell), face) in Γ1
-            #        for i in 1:2:11
-            #            Ni  = shape_value(fv, q_point, i)
-            #            ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ 
-            #            for j in 1:2:11
-            #                Nj = shape_value(fv, q_point, j)
-            #                ke[i,j] += Ni ⋅ Nj * dΓ 
-            #            end
-            #        end
-            #    elseif (cellid(cell), face) in Γ2
-            #        for i in 2:2:12
-            #            Ni  = shape_value(fv, q_point, i)
-            #            ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ 
-            #            for j in 2:2:12
-            #                Nj = shape_value(fv, q_point, j)
-            #                ke[i,j] += Ni ⋅ Nj * dΓ 
-            #            end
-            #        end
-            #    end 
-            #end
-            if (cellid(cell), face) in Γ1 
-                for gp in 1:2
-                    @inbounds Jᵀ[:,2:3]     = transpose(dNf[:,index[gp,:]]) * coorde
-                    J⁻                      = inv(Jᵀ)
-                    detJ                    = det(Jᵀ)
-                    dΓ                      = w[gp] * detJ /2
-                    #@inbounds ge[1:2:11]             += Nf[:,1:2:11,gp]' * (Nf[:,1:2:11,gp]*uₑ[1:2:11] - λ * Nf[:,1:2:11,gp] * dₑ[1:2:11]) * dΓ
-                    @inbounds ke[1:2:11,1:2:11]      += Nf[:,1:2:11,gp]' * Nf[:,1:2:11,gp] * dΓ
-                end
-            elseif  (cellid(cell), face) in Γ2
-                for gp in 1:2
-                    @inbounds Jᵀ[:,2:3]     = transpose(dNf[:,index[gp,:]]) * coorde
-                    J⁻                      = inv(Jᵀ)
-                    detJ                    = det(Jᵀ)
-                    dΓ                      = w[gp] * detJ /2
-                    #@inbounds ge[2:2:end]            += Nf[:,2:2:end,gp]' * (Nf[:,2:2:end,gp]*uₑ[2:2:12] - λ * Nf[:,2:2:end,gp] * dₑ[2:2:12]) * dΓ
-                    @inbounds ge            += Nf[:,:,gp]' * [1;1] 
-                    println(ge)
-                    @inbounds ke[2:2:end,2:2:end]    += Nf[:,2:2:end,gp]' * Nf[:,2:2:end,gp] * dΓ
-                end
+            for q_point in 1:getnquadpoints(fv)
+                dΓ = getdetJdV(fv, q_point)
+                u_n = function_value(fv,q_point,uₑ)
+                d_n = function_value(fv,q_point,dₑ)
+                if (cellid(cell), face) in Γ1
+                    for i in 1:2:11
+                        Ni  = shape_value(fv, q_point, i)
+                        #ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ 
+                        ge[i]   += Ni ⋅ [1;1] 
+                        for j in 1:2:11
+                            Nj = shape_value(fv, q_point, j)
+                            ke[i,j] += Ni ⋅ Nj * dΓ 
+                        end
+                    end
+                elseif (cellid(cell), face) in Γ2
+                    for i in 2:2:12
+                        Ni  = shape_value(fv, q_point, i)
+                        #ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ 
+                        ge[i]   += Ni ⋅ [1;1]  
+                        for j in 2:2:12
+                            Nj = shape_value(fv, q_point, j)
+                            ke[i,j] += Ni ⋅ Nj * dΓ 
+                        end
+                    end
+                end 
             end
+            #if (cellid(cell), face) in Γ1 
+            #    for gp in 1:2
+            #        @inbounds Jᵀ[:,2:3]     = transpose(dNf[:,index[gp,:]]) * coorde
+            #        J⁻                      = inv(Jᵀ)
+            #        detJ                    = det(Jᵀ)
+            #        dΓ                      = w[gp] * detJ /2
+            #        #@inbounds ge[1:2:11]             += Nf[:,1:2:11,gp]' * (Nf[:,1:2:11,gp]*uₑ[1:2:11] - λ * Nf[:,1:2:11,gp] * dₑ[1:2:11]) * dΓ
+            #        @inbounds ke[1:2:11,1:2:11]      += Nf[:,1:2:11,gp]' * Nf[:,1:2:11,gp] * dΓ
+            #    end
+            #elseif  (cellid(cell), face) in Γ2
+            #    for gp in 1:2
+            #        @inbounds Jᵀ[:,2:3]     = transpose(dNf[:,index[gp,:]]) * coorde
+            #        J⁻                      = inv(Jᵀ)
+            #        detJ                    = det(Jᵀ)
+            #        dΓ                      = w[gp] * detJ /2
+            #        #@inbounds ge[2:2:end]            += Nf[:,2:2:end,gp]' * (Nf[:,2:2:end,gp]*uₑ[2:2:12] - λ * Nf[:,2:2:end,gp] * dₑ[2:2:12]) * dΓ
+            #        @inbounds ge            += Nf[:,:,gp]' * [1;1] 
+            #        println(ge)
+            #        @inbounds ke[2:2:end,2:2:end]    += Nf[:,2:2:end,gp]' * Nf[:,2:2:end,gp] * dΓ
+            #    end
+            #end
             #println("ke = ", ke)
             #println("ge = ", ge)
         end
@@ -320,4 +322,39 @@ function dr_GP(coord,ed,gp,mp,t)
         dre[:,dof]                      = ( transpose(dB₀)*S + transpose(B₀)*∂S_∂x ) *detJ*t*w[gp]/2 + transpose(B₀)*S*∂J_∂x*t*w[gp]/2
     end
     return dre
+end
+
+
+
+
+function Robin(coorde,ue,de,λ)
+    L1 = norm(coorde[1,:] - coorde[3,:])
+    L2 = norm(coorde[1,:] - coorde[2,:])
+
+    N1N1 =L2/3 - ((L1*L2^2)/6 - L2^3/30)/L1^2
+    N1N2 = - (L2^3*(5*L1 - 2*L2))/(60*L1^2*(L1 - L2))
+    N1N3 = L2/6 + L2^3/(20*L1*(L1 - L2))
+    N2N2 = L2^5/(30*L1^2*(L1 - L2)^2)
+    N2N3 =  - (L2^3*(5*L1 - 3*L2))/(60*L1*(L1 - L2)^2)
+    N3N3 = L2/3 + ((L1*L2^2)/6 - (2*L2^3)/15)/(L1 - L2)^2
+
+    Kc   = zeros(6,6)
+
+    Kc[1,1:2:5] = [N1N1 N1N2 N1N3]
+    Kc[2,2:2:6] = [N1N1 N1N2 N1N3]
+    Kc[3,1:2:5] = [N1N2 N2N2 N2N3]
+    Kc[4,2:2:6] = [N1N2 N2N2 N2N3]
+    Kc[5,1:2:5] = [N1N3 N2N3 N3N3]
+    Kc[6,2:2:6] = [N1N3 N2N3 N3N3]
+
+    ∫N1         = L2/2 - L2^2/(6*L1)
+    ∫N2         = -L2^3/(6*L1*(L1 - L2))
+    ∫N3         = L2/2 + L2^2/(6*(L1 - L2)) 
+    #println("Kce = ", Kc)
+    #println("fce = ", Kc*(ue-λ*de))
+    #re = -[0;∫N1;0;∫N2;0;∫N3].*0.1
+    #println((∫N1*1+∫N2*1+∫N3*1)/L2)
+    #println(ue-λ*de)
+return  Kc.*0,  -[0;∫N1;0;∫N2;0;∫N3]*0.5   #Kc*(ue-λ*de)
+
 end

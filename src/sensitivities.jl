@@ -1,3 +1,7 @@
+# Funktion "assemGlobal"
+f1dofs = [1,2,3,4,7,8]
+f1  = [1,2,4]
+
 function compliance(F_ext,u)
     C = transpose(F_ext)*u
     return C
@@ -10,8 +14,16 @@ function drψ(dr_dd,dh,a,fv,λ,d,ΓN)
         ie += 1
         cell_dofs= celldofs(cell)
         dfe = zeros(12,12) ## 12x1 eller 12x12 ?? 
-        #dfe = RobinIntegral(dfe,cell,ΓN,fv,a[cell_dofs],λ,d[cell_dofs])
-        dfe = d_RobinIntegral(dfe,cell,ΓN,fv,a[cell_dofs],λ,d[cell_dofs])
+        
+        #dfe = d_RobinIntegral(dfe,cell,ΓN,fv,a[cell_dofs],λ,d[cell_dofs])
+        
+        for face in 1:nfaces(cell)
+            if (cellid(cell), face) in Γ2
+                dfe[f1dofs,f1dofs],_ = Robin(coord[enod[ie][f1.+1],:],a[cell_dofs[f1dofs]],d[cell_dofs[f1dofs]],λ)
+                #ke[1:2:end-1,1:2:end-1]       .= 0.0
+                #fe[1:2:end-1]                 .= 0.0
+            end
+        end
         assemble!(assembler, cell_dofs, dfe)
     end
     return dr_dd
