@@ -26,31 +26,7 @@ Np[:,4]   = 4.0.*ξ[1,:].*ξ[2,:]
 Np[:,5]   = 4.0.*ξ[2,:].*ξ[3,:]
 Np[:,6]   = 4.0.*ξ[1,:].*ξ[3,:]
 
-Npf[:,1]   = ξ[1,:].*(2.0.*ξ[1,:] .- 1.0)
-Npf[:,2]   = ξ[2,:].*(2.0.*ξ[2,:] .- 1.0)
-Npf[:,3]   = ξ[3,:].*(2.0.*ξ[3,:] .- 1.0).*0
-Npf[:,4]   = 4.0.*ξ[1,:].*ξ[2,:]
-Npf[:,5]   = 4.0.*ξ[2,:].*ξ[3,:].*0
-Npf[:,6]   = 4.0.*ξ[1,:].*ξ[3,:].*0
 
-
-Nf[1,:,1] = [Npf[1,1] 0.0 Npf[1,2] 0.0 Npf[1,3] 0.0 Npf[1,4] 0.0 Npf[1,5] 0.0 Npf[1,6] 0.0] 
-Nf[2,:,1] = [0.0 Npf[1,1] 0.0 Npf[1,2] 0.0 Npf[1,3] 0.0 Npf[1,4] 0.0 Npf[1,5] 0.0 Npf[1,6]] 
-
-Nf[1,:,2] = [Npf[2,1] 0.0 Npf[2,2] 0.0 Npf[2,3] 0.0 Npf[2,4] 0.0 Npf[2,5] 0.0 Npf[2,6] 0.0] 
-Nf[2,:,2] = [0.0 Npf[2,1] 0.0 Npf[2,2] 0.0 Npf[2,3] 0.0 Npf[2,4] 0.0 Npf[2,5] 0.0 Npf[2,6]]
-
-Nf[1,:,3] = [Npf[3,1] 0.0 Npf[3,2] 0.0 Npf[3,3] 0.0 Npf[3,4] 0.0 Npf[3,5] 0.0 Npf[3,6] 0.0] 
-Nf[2,:,3] = [0.0 Npf[3,1] 0.0 Npf[3,2] 0.0 Npf[3,3] 0.0 Npf[3,4] 0.0 Npf[3,5] 0.0 Npf[3,6]]
-
-dNf      = Matrix{Float64}(undef,6,9)
-
-dNf[:,1] = [4.0*ξ[1,1]-1.0 0.0 0.0 4.0*ξ[1,2] 0.0 0.0]
-dNf[:,2] = [0.0 4.0*ξ[1,2]-1.0 0.0 4.0*ξ[1,1] 0.0 0.0]
-dNf[:,3] = [0.0 0.0 0.0 0.0 4.0*ξ[1,2] 4.0*ξ[1,1]]
-dNf[:,4] = [4.0*ξ[2,1]-1.0 0.0 0.0 4.0*ξ[2,2] 0.0 0.0]
-dNf[:,5] = [0.0 4.0*ξ[2,2]-1.0 0.0 4.0*ξ[2,1] 0.0 0.0]
-dNf[:,6] = [0.0 0.0 0.0 0.0 4.0*ξ[2,2] 4.0*ξ[2,1]]
 
 N = Np
 #N = SMatrix{3,6,Float64}(Np)
@@ -102,7 +78,7 @@ function assemGP(coord,ed,gp,mp,t)
     
     @inbounds Jᵀ[:,2:3]     = transpose(dNᵣ[:,index[gp,:]]) * coord
     J⁻                      = inv(Jᵀ)
-    detJ                    = det(Jᵀ)
+    detJ                    = det(Jᵀ')
     dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
 
     # Gradient matrices  
@@ -134,9 +110,10 @@ function assemGP(coord,ed,gp,mp,t)
     ef = [eff[1,1] eff[1,2] eff[2,1] eff[2,2]]
 
     # Stress and material tangent
-    es = neohooke1(ef,mp)
-    D  = dneohooke1(ef,mp)
-
+    #es = neohooke1(ef,mp)
+    #D  = dneohooke1(ef,mp)
+    es = StVenantS(ef,mp)
+    D  = dStVenant(ef,mp)
 
     S                       = [es[1]; es[2]; es[4]]
 
@@ -355,6 +332,6 @@ function Robin(coorde,ue,de,λ)
     #re = -[0;∫N1;0;∫N2;0;∫N3].*0.1
     #println((∫N1*1+∫N2*1+∫N3*1)/L2)
     #println(ue-λ*de)
-return  Kc.*0,  -[0;∫N1;0;∫N2;0;∫N3]*0.5   #Kc*(ue-λ*de)
+return  Kc.*0,  [∫N1;0;∫N2;0;∫N3;0]*0.5   #Kc*(ue-λ*de)
 
 end

@@ -5,11 +5,11 @@ mp = [1.0 1.0]
 t  = 1.0
 gp = 1
 
-dofs = Ferrite.celldofs(dh,1)
-nods = enod[1][2:end]
+dofs = Ferrite.celldofs(dh,2)
+nods = enod[2][2:end]
 
 
-x_glob = reshape(coord,(449*2))
+x_glob = reshape(coord,(length(dh0.grid.nodes)*2))
 ed = a[dofs]
 xe = x_glob[dofs]
 addfaceset!(dh.grid, "Γ₁", x -> norm(x[1]) ≈ 0.5)
@@ -52,11 +52,16 @@ fv = FaceVectorValues(qr_face, ip)
 ######
 ##### Test f_int vs K
     indexet = 7
+    
 
     ke = zeros(12,12)
     fe = zeros(12,2)
     for pert in 1:2
-        ed[indexet] = ed[indexet] + ϵ * (-real(1*im^(pert)))
+        if pert == 1
+            ed[indexet] = ed[indexet] + ϵ 
+        else
+            ed[indexet] = ed[indexet] - ϵ 
+        end
         ke, fe[:,pert] = assemElem(coord[nods,:],ed,mp,t)
     end
     numsens = (fe[:,2] - fe[:,1])/ϵ

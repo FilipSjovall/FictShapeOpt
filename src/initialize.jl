@@ -12,14 +12,16 @@ end
 
 #function init_grid()
     load_files()
-    filename = "mesh2.txt"
+    filename = "box.txt"
     coord, enod, edof = readAscii(filename);
-    grid = get_ferrite_grid("data/mesh2.inp")
+    grid = get_ferrite_grid("data/box.inp")
     dh = DofHandler(grid)
     add!(dh, :u, 2)
     close!(dh)
-    addfaceset!(dh.grid, "Γ₁", x -> norm(x[1]) ≈ 0.5)
-    addfaceset!(dh.grid, "Γ₂", x -> norm(x[2]) ≈ 0.5)
+    #addfaceset!(dh.grid, "Γ₁", x -> norm(x[1]) ≈ 0.5)
+    #addfaceset!(dh.grid, "Γ₂", x -> norm(x[2]) ≈ 0.5)
+    addfaceset!(dh.grid, "Γ₁", x -> norm(x[1]) ≈ 0.0)
+    addfaceset!(dh.grid, "Γ₂", x -> norm(x[2]) ≈ 0.0)
     ΓN = union(
             getfaceset(grid, "Γ₁"),
             getfaceset(grid, "Γ₂"),
@@ -111,20 +113,20 @@ end
     #    end
     #end
     
-    addnodeset!(dh.grid, "Γ₃", x -> norm(x[1]) == 0.5)
-    addnodeset!(dh.grid, "Γ₄", x -> norm(x[2]) == 0.5)
+    addnodeset!(dh.grid, "Γ₃", x -> norm(x[1]) == 1.0)
+    #addnodeset!(dh.grid, "Γ₄", x -> norm(x[2]) == 0.5)
 
     nodx = Ferrite.getnodeset(dh.grid,"Γ₃")
-    nody = Ferrite.getnodeset(dh.grid,"Γ₄")
+    #nody = Ferrite.getnodeset(dh.grid,"Γ₄")
 
     for inod in nodx
        append!(free_d,register[inod,2]*2-1)
     end
 
-    for jnod in nody
-       append!(free_d,register[jnod,2]*2)
-    end
-
+    #for jnod in nody
+    #   append!(free_d,register[jnod,2]*2)
+    #end
+    Γ3 = getnodeset(grid, "Γ₃")
     xmin[free_d] .= -0.25
     xmax[free_d] .=  0.25
     d[free_d]    .=  0.1
@@ -132,3 +134,6 @@ end
     global low    = xmin;
     global upp    = xmax;
     #end
+
+    addfaceset!(dh.grid, "Γₜ", x -> norm(x[1]) == 1.0)
+    Γt = getfaceset(grid,"Γₜ")

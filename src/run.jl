@@ -149,7 +149,9 @@ function fictitious_solver(d,dh0)
     Ψ        = zeros(ndof)
     ΔΨ       = zeros(ndof)
     res      = zeros(ndof)
-    bcdof,bcval = setBC(0,dh0)
+    #bcdof,bcval = setBC(0,dh0)
+    bcdof = [19; 20; 1; 23]
+    bcval = [0.0; 0.0; 0.0; 0.0]
     pdofs       = bcdof
     fdofs       = setdiff(1:ndof,pdofs)
     # ---------- #

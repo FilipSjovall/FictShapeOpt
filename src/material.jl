@@ -89,3 +89,47 @@ function dneohookeD!(Dgp,eff,mp)
        Dgp[:,:,gp] = dneohooke1(eff[:,gp], mp)
     end
 end
+
+
+function StVenantS(eff,mp)
+    D  = zeros(3,3) 
+    Kₘ = mp[1]
+    Gₘ = mp[2]
+
+    #D₁ = 2/Kₘ
+
+    F  = zeros(3,3)
+
+    F[1,:] = [eff[1] eff[2] 0.0]
+    F[2,:] = [eff[3] eff[4] 0.0]
+    F[3,:] = [0.0 0.0 1.0]
+
+ 
+    C = transpose(F)*F
+
+    E = 1/2 * (C-I(3))
+
+    S = Kₘ*tr(E)*I(3) + 2*Gₘ*E
+    return [S[1,1] S[2,2] S[3,3] S[1,2]]
+end
+
+function dStVenant(eff,mp)
+    D  = zeros(3,3) 
+    K = mp[1]
+    G = mp[2]
+
+    #E = 9*K*G/(3*K+G)
+    #v = (3*K-2*G)/(3*K+G)  * (1/2)
+
+    E = 1e3 
+    v = 0.3
+
+    F  = zeros(3,3)
+
+    F[1,:] = [eff[1] eff[2] 0.0]
+    F[2,:] = [eff[3] eff[4] 0.0]
+    F[3,:] = [0.0 0.0 1.0]
+
+    D = E/((1+v)*(1-2*v)).*[1-v v 0; v 1-v 0; 0 0 1/2*(1-2*v)];
+
+end

@@ -1,0 +1,14 @@
+*Heading
+ C:\Users\Lakev\Documents\FictShapeOpt\data\box
+*NODE
+1, 1, 1, 0
+2, 0, 1, 0
+3, 0, 0, 0
+4, 1, 0, 0
+5, 0.5, 0.5, 0
+******* E L E M E N T S *************
+*ELEMENT, type=CPS3, ELSET=Surface1
+1, 2, 5, 1
+2, 1, 5, 4
+3, 3, 5, 2
+4, 4, 5, 3
