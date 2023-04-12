@@ -129,10 +129,12 @@ function fictitious_solver(d,dh0)
     # ----------- #
     # Read "grid" #
     # ----------- #
+    
     #grid = get_ferrite_grid("data/mesh2.inp")
     #dh = DofHandler(grid)
     #add!(dh, :u, 2)
     #close!(dh)
+
     Kψ  = create_sparsity_pattern(dh0)
 
     #  -------- #
@@ -150,7 +152,8 @@ function fictitious_solver(d,dh0)
     ΔΨ       = zeros(ndof)
     res      = zeros(ndof)
     #bcdof,bcval = setBC(0,dh0)
-    bcdof = [19; 20; 1; 23]
+    bcdof = [19; 1; 23; 24]
+    #bcdof = [5; 6; 15; 3]
     bcval = [0.0; 0.0; 0.0; 0.0]
     pdofs       = bcdof
     fdofs       = setdiff(1:ndof,pdofs)
@@ -160,7 +163,7 @@ function fictitious_solver(d,dh0)
 
     bcval₀   = bcval
 
-    for n ∈ 1 : 10
+    for n ∈ 1 : 1
         res   = res.*0
         bcval = bcval₀
         residual = 0*residual
@@ -174,19 +177,16 @@ function fictitious_solver(d,dh0)
         # Newton solve.  #
         # # # # # # # # # #
         while (iter < imax && residual > TOL ) || iter < 2
-
             iter += 1
-            
             Ψ += ΔΨ
             assemGlobal!(Kψ,Fᵢₙₜ,dh0,mp₀,t,Ψ,coord,enod,fv,λ,d,ΓN)
             solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof, bcval)
-
-            bcval      = 0*bcval
-            res        = Fᵢₙₜ - Fₑₓₜ
-            res[bcdof] = 0*res[bcdof]
+            bcval      = bcval.*0
+            res        = Fᵢₙₜ #- Fₑₓₜ
+            res[bcdof] = res[bcdof].*0
             residual   = norm(res,2)
             Ψ[bcdof]   = bcval;
-           println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
+            println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
         end
     end
     return Ψ, dh0, Kψ, Fᵢₙₜ, λ

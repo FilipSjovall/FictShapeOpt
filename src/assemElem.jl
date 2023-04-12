@@ -6,10 +6,14 @@ using LinearAlgebra
 
 ngp = 3
 
-ξ      = [2.0/3.0 1.0/3.0 1.0/3.0; 1.0/3.0 2.0/3.0 1.0/3.0; 1.0/3.0 1.0/3.0 2.0/3.0 ]
+#ξ      = [2.0/3.0 1.0/3.0 1.0/3.0; 1.0/3.0 2.0/3.0 1.0/3.0; 1.0/3.0 1.0/3.0 2.0/3.0 ]
+ξ      = [2.0/3.0 1.0/6.0 1.0/6.0; 1.0/6.0 2.0/3.0 1.0/6.0; 1.0/6.0 1.0/6.0 2.0/3.0 ]
 w      = [1.0/3.0 1.0/3.0 1.0/3.0]
 index  = [1 2 3; 4 5 6; 7 8 9] 
-#index  = [1 4 7; 2 5 8; 3 6 9] 
+#w      = [-9/32 25/96 25/96 25/96]
+#ξ      = [1/3 1/3 1-2/3; 3/5 1/5 1-4/5; 1/5 3/5 1-4/5; 1/5 1/5 1-2/5]
+#index  = [1 2 3; 4 5 6; 7 8 9; 10 11 12] 
+
 P₀     = [0.0 1.0 0.0; 0.0 0.0 1.0]
 #P₀     = [0.0 0.0; 1.0 0.0; 0.0 1.0]
 
@@ -31,8 +35,9 @@ Np[:,6]   = 4.0.*ξ[1,:].*ξ[3,:]
 N = Np
 #N = SMatrix{3,6,Float64}(Np)
 
-SdNᵣ      = Matrix{Float64}(undef,6,9)
-#dNᵣ      = @SMatrix zeros(6,9)
+#SdNᵣ      = Matrix{Float64}(undef,6,9)
+#SdNᵣ      = Matrix{Float64}(undef,6,12)
+dNᵣ      = @SMatrix zeros(6,9)
 SdNᵣ[:,1] = [4.0*ξ[1,1]-1.0 0.0 0.0 4.0*ξ[1,2] 0.0 4.0*ξ[1,3]]
 SdNᵣ[:,2] = [0.0 4.0*ξ[1,2]-1.0 0.0 4.0*ξ[1,1] 4.0*ξ[1,3] 0.0]
 SdNᵣ[:,3] = [0.0 0.0 4.0*ξ[1,3]-1.0 0.0 4.0*ξ[1,2] 4.0*ξ[1,1]]
@@ -44,7 +49,12 @@ SdNᵣ[:,6] = [0.0 0.0 4.0*ξ[2,3]-1.0 0.0 4.0*ξ[2,2] 4.0*ξ[2,1]]
 SdNᵣ[:,7] = [4.0*ξ[3,1]-1.0 0.0 0.0 4.0*ξ[3,2] 0.0 4.0*ξ[3,3]]
 SdNᵣ[:,8] = [0.0 4.0*ξ[3,2]-1.0 0.0 4.0*ξ[3,1] 4.0*ξ[3,3] 0.0]
 SdNᵣ[:,9] = [0.0 0.0 4.0*ξ[3,3]-1.0 0.0 4.0*ξ[3,2] 4.0*ξ[3,1]]
+
+#SdNᵣ[:,10] = [4.0*ξ[4,1]-1.0 0.0 0.0 4.0*ξ[4,2] 0.0 4.0*ξ[4,3]]
+#SdNᵣ[:,11] = [0.0 4.0*ξ[4,2]-1.0 0.0 4.0*ξ[4,1] 4.0*ξ[4,3] 0.0]
+#SdNᵣ[:,12] = [0.0 0.0 4.0*ξ[4,3]-1.0 0.0 4.0*ξ[4,2] 4.0*ξ[4,1]]
 dNᵣ = SMatrix{6,9,Float64}(SdNᵣ)
+#dNᵣ = SMatrix{6,12,Float64}(SdNᵣ)
 #dNᵣ = SdNᵣ
 
 
@@ -76,31 +86,31 @@ dre      = zeros(12,12)
 
 function assemGP(coord,ed,gp,mp,t)
     
-    @inbounds Jᵀ[:,2:3]     = transpose(dNᵣ[:,index[gp,:]]) * coord
+    Jᵀ[:,2:3]               = transpose(dNᵣ[:,index[gp,:]]) * coord
+
     J⁻                      = inv(Jᵀ)
-    detJ                    = det(Jᵀ')
+    detJ                    = det(Jᵀ)
     dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
 
     # Gradient matrices  
-    @inbounds H₀[1,1:2:11]  = dNₓ[1,:]
-    @inbounds H₀[2,1:2:11]  = dNₓ[2,:]
-    @inbounds H₀[3,2:2:12]  = dNₓ[1,:]
-    @inbounds H₀[4,2:2:12]  = dNₓ[2,:]
+    H₀[1,1:2:11]  = dNₓ[1,:]
+    H₀[2,1:2:11]  = dNₓ[2,:]
+    H₀[3,2:2:12]  = dNₓ[1,:]
+    H₀[4,2:2:12]  = dNₓ[2,:]
 
-    @inbounds Bₗ₀[1,1:2:11] = dNₓ[1,:]
-    @inbounds Bₗ₀[2,2:2:12] = dNₓ[2,:]  
-    @inbounds Bₗ₀[3,1:2:11] = dNₓ[2,:]
-    @inbounds Bₗ₀[3,2:2:12] = dNₓ[1,:]
+    Bₗ₀[1,1:2:11] = dNₓ[1,:]
+    Bₗ₀[2,2:2:12] = dNₓ[2,:]  
+    Bₗ₀[3,1:2:11] = dNₓ[2,:]
+    Bₗ₀[3,2:2:12] = dNₓ[1,:]
 
     A_temp = H₀*ed
-    @inbounds A[1,:]        = [A_temp[1] 0.0 A_temp[3] 0.0]
-    @inbounds A[2,:]        = [0.0 A_temp[2] 0.0 A_temp[4]]
-    @inbounds A[3,:]        = [A_temp[2] A_temp[1] A_temp[4] A_temp[3]]
 
-    B₀                      = Bₗ₀ + A*H₀
+    A[1,:]        = [A_temp[1] 0.0 A_temp[3] 0.0]
+    A[2,:]        = [0.0 A_temp[2] 0.0 A_temp[4]]
+    A[3,:]        = [A_temp[2] A_temp[1] A_temp[4] A_temp[3]]
 
+    B₀            = Bₗ₀ + A*H₀
 
-    
     # Deformation gradient
     eff[1,1] = A_temp[1] + 1.0
     eff[1,2] = A_temp[2]
@@ -110,13 +120,13 @@ function assemGP(coord,ed,gp,mp,t)
     ef = [eff[1,1] eff[1,2] eff[2,1] eff[2,2]]
 
     # Stress and material tangent
-    #es = neohooke1(ef,mp)
-    #D  = dneohooke1(ef,mp)
-    es = StVenantS(ef,mp)
-    D  = dStVenant(ef,mp)
+    es = neohooke1(ef,mp)
+    D  = dneohooke1(ef,mp)
+    #es = StVenantS(ef,mp)
+    #D  = dStVenant(ef,mp)
 
     S                       = [es[1]; es[2]; es[4]]
-
+    #println("Gauss Point " ,gp, " Stress: ", es[2])
     @inbounds Stress[1,:]   = [S[1] S[3]]
     @inbounds Stress[2,:]   = [S[3] S[2]]
     
@@ -124,7 +134,9 @@ function assemGP(coord,ed,gp,mp,t)
     @inbounds R[3:4,3:4]    = Stress
     
     fₑ            = transpose(B₀)*S*detJ*t*w[gp]/2
-    kₑ            = (transpose(B₀)*D*B₀ + transpose(H₀)*R*H₀)*detJ*t*w[gp]/2 
+
+    # ∫ δEᵀ D ΔE + ∇δuᵀ S ∇Δu dΩ 
+    kₑ            = ( transpose(B₀)*D*B₀ + transpose(H₀)*R*H₀ )*detJ*t*w[gp]/2 
     return kₑ, fₑ
 end
 
@@ -192,7 +204,7 @@ end
 function assemElem(coord,ed,mp,t)
     kₑ = zeros(12,12)
     fₑ = zeros(12)
-    for gp ∈ 1 : 3
+    for gp ∈ 1 : ngp
         ke, fe= assemGP(coord,ed,gp,mp,t)
         kₑ += ke
         fₑ += fe
@@ -202,7 +214,7 @@ end
 
 function assem_dr(coord,ed,mp,t)
     drₑ = zeros(12,12)
-    for gp ∈ 1 : 3
+    for gp ∈ 1 : ngp
         dre  = dr_GP(coord,ed,gp,mp,t)
         drₑ += dre
     end
@@ -259,6 +271,11 @@ function dr_GP(coord,ed,gp,mp,t)
         dBₗ₀[2,2:2:12] = ∂G_∂x[2,:]  
         dBₗ₀[3,1:2:11] = ∂G_∂x[2,:]
         dBₗ₀[3,2:2:12] = ∂G_∂x[1,:]
+        for cell in CellIterator(dh)
+            Ferrite.reinit!(cv,cell)
+            println("dNdx: ",cv.dNdξ[:,1])
+            println(" ")
+        end
 
         dA_temp        = dH₀ * ed
 
@@ -296,7 +313,7 @@ function dr_GP(coord,ed,gp,mp,t)
    #     println(size(dB₀),size(S))
    #     println(size(transpose(dB₀)*S))
 
-        dre[:,dof]                      = ( transpose(dB₀)*S + transpose(B₀)*∂S_∂x ) *detJ*t*w[gp]/2 + transpose(B₀)*S*∂J_∂x*t*w[gp]/2
+        dre[:,dof]              = ( transpose(dB₀)*S + transpose(B₀)*∂S_∂x ) *detJ*t*w[gp]/2 + transpose(B₀)*S*∂J_∂x*t*w[gp]/2
     end
     return dre
 end
