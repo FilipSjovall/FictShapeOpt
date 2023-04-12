@@ -1,4 +1,4 @@
-ϵ  = 1e-6
+ϵ  = 1e-8
 load_files()
 a,dh = solver();
 mp = [1.0 1.0]
@@ -71,6 +71,7 @@ fv = FaceVectorValues(qr_face, ip)
 ## Test f_int vs K in fictious domain
     elnum = 92
 
+
     ke = zeros(12,12)
     fe = zeros(12,2)
     ke2= zeros(12,12)
@@ -83,15 +84,21 @@ fv = FaceVectorValues(qr_face, ip)
     cΕll    = Ferrite.reinit!(cell.cc,elnum)
     λ    = 0.5
 
-    indexet = 8
+    indexet = 2
     for pert in 1:2
         fe[:,pert] .= 0.0
         ke= zeros(12,12)
-        ed[indexet] = ed[indexet] + ϵ * (-real(1*im^(pert)))
+        if pert == 1
+            ed[indexet] = ed[indexet] + ϵ 
+        else
+            ed[indexet] = ed[indexet] - ϵ 
+        end
+        # * (-real(1*im^(pert)))
         #ke, fe[:,pert]  = assemElem(coord[nods,:],ed,mp,t)
-        ke,fe[:,pert] = RobinIntegral(ke,fe[:,pert],cΕll,ΓN,fv,ed,λ,de,coord[nods,:])
+        #ke,fe[:,pert] = RobinIntegral(ke,fe[:,pert],cΕll,ΓN,fv,ed,λ,de,coord[nods,:])
+        ke[f1dofs,f1dofs],fe[f1dofs,pert]   = Robin(coord[nods[f1],:],ed[f1dofs],de[f1dofs],λ)
     end
-    numsens = (fe[:,2] - fe[:,1])/ϵ
+    numsens = (fe[:,1] - fe[:,2])/ϵ
     asens   = ke[:,indexet] 
     numsens./asens
 ####
@@ -107,35 +114,43 @@ fv = FaceVectorValues(qr_face, ip)
     dofs = Ferrite.celldofs(dh,elnum)
     nods = enod[elnum][2:end]
     cΕll = Ferrite.reinit!(cell.cc,elnum)
-    λ    = 0.5
+    λ    = 1
 
-    indexet = 8
+    indexet = 2
     for pert in 1:2
         ke = zeros(12,12)
         dfe= zeros(12,12)
         fe[:,pert] .= 0.0
-        de[indexet] = de[indexet] + ϵ * (-real(1*im^(pert)))
-        ke,fe[:,pert] = RobinIntegral(ke,fe[:,pert],cΕll,ΓN,fv,ed,λ,de)
-        dfe = d_RobinIntegral(dfe,cΕll,ΓN,fv,ed,λ,de)
+        if pert == 1
+            de[indexet] = de[indexet] + ϵ 
+        else
+            de[indexet] = de[indexet] - ϵ 
+        end
+        dfe[f1dofs,f1dofs],fe[f1dofs,pert]   = Robin(coord[nods[f1],:],ed[f1dofs],de[f1dofs],λ)
+        dfe = -dfe
     end
-    numsens = (fe[:,2] - fe[:,1])/ϵ
+    numsens = (fe[:,1] - fe[:,2])/ϵ
     asens   = dfe[:,indexet] 
     numsens./asens
 #####
 ## Test objective function and sensitivity
     a, dh, Fₑₓₜ, Fᵢₙₜ, K = solver(dh);
     C = zeros(2)
-    indexet = 13
+    indexet = 868
     for pert in 1:2
         if pert == 1
             a[indexet] = a[indexet] + ϵ 
         else
             a[indexet] = a[indexet] - ϵ 
         end
-        C[pert] = compliance(Fₑₓₜ,a)
+        assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod)
+        C[pert] = -a[pdofs]'*Fᵢₙₜ[pdofs]
     end
-    numsens = ( C[1] - C[2] ) / ϵ
-    asens   = Fₑₓₜ[indexet]
+    numsens = ( C[1] - C[2] ) / ϵ;
+    ∂g_∂u = zeros(size(a));
+    ∂g_∂u[fdofs]  = -a[pdofs]'*K[pdofs,fdofs];
+    ∂g_∂u[pdofs]  = -I(length(pdofs))'*Fᵢₙₜ[pdofs]  - (a[pdofs]'*K[pdofs,pdofs])';
+    asens = ∂g_∂u[indexet];
     numsens./asens
 #####
 ## Test global dr_dd
@@ -144,7 +159,7 @@ fv = FaceVectorValues(qr_face, ip)
     C = zeros(898,2)
     indexet = 294
     dr_dd = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
-    ϵ = 0.1
+    ϵ = 1e-6
     for pert in 1:2
         if pert == 1
             d[indexet] = d[indexet] + ϵ 
@@ -155,13 +170,12 @@ fv = FaceVectorValues(qr_face, ip)
         assemGlobal!(Kψ,Fψ,dh0,mp,t,Ψ,coord,enod,fv,λ,d,ΓN)
         C[:,pert]                   = Fψ;
     end
-    numsens = (C[:,1]-C[:,2])/ϵ
+    numsens = (C[:,1] - C[:,2])/ϵ
     asens   = dr_dd[:,indexet]
     kvot = numsens./asens
     filter_kvot = filter(x-> abs(x)<10,kvot)
 ## Test global dr_dx
     ϵ = 1e-6
-    
     X = getX(dh)
     incr = zeros(898)
     C = zeros(898,2)
@@ -184,9 +198,9 @@ fv = FaceVectorValues(qr_face, ip)
         C[:,pert]                   = Fᵢₙₜ;
     end
     ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
-    numsens = (C[:,1]-C[:,2])./ϵ
-    #asens   = ∂rᵤ_∂x[:,indexet]
-    asens   = ∂rᵤ_∂x[:,2]
+    numsens = (C[:,1]-C[:,2])./ϵ   
+    asens   = ∂rᵤ_∂x[:,indexet]
+    asens   = ∂rᵤ_∂x[:,2]; ## dof 6 motsvarar nod 2
     kvot    = numsens./asens
     filter_kvot = filter(x-> abs(x)<10,kvot)
 
@@ -243,15 +257,12 @@ fv = FaceVectorValues(qr_face, ip)
     dr_dd = similar(K)
     ∂rψ_∂d = similar(K)
     
+    
     mp     = [175 80.769230769230759]
     t      = 1.0 
 
-    indexet = 292
+    indexet = 296
     ϵ       = 1e-6
-
-    
-    l  = similar(a)
-    l .= 0.5
 
     for pert in 1:2
         if pert == 1
@@ -283,25 +294,28 @@ fv = FaceVectorValues(qr_face, ip)
     end
 
     ∂g_∂u = zeros(size(d))
-    ∂g_∂u[fdofs]  = a[pdofs]'*K[pdofs,fdofs]
-    ∂g_∂x = zeros(size(d))
+    ∂g_∂u[fdofs]  = -a[pdofs]'*K[pdofs,fdofs];
+    ∂g_∂u[pdofs]  = -I(length(pdofs))'*Fᵢₙₜ[pdofs]  - (a[pdofs]'*K[pdofs,pdofs])';
+    
     λ      = 1 # 0.2
 
-    dX = init_∂X();
     ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
+
     dr_dd = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
 
-    ∂g_∂x[fdofs]  = a[pdofs]'*∂rᵤ_∂x[pdofs,fdofs]
-    #∂rψ_∂d = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
-    λψ = similar(a);
-    λᵤ = similar(a);
+    ∂g_∂x = zeros(size(d))
+    ∂g_∂x[fdofs]  = -a[pdofs]'*∂rᵤ_∂x[pdofs,fdofs]
+    ∂g_∂x[pdofs]  = -a[pdofs]'*∂rᵤ_∂x[pdofs,pdofs]
+    
+
+    
+
     solveq!(λᵤ, K', ∂g_∂u, bcdof, bcval*0);  # var Fₑₓₜ;
-    solveq!(λψ, Kψ',∂g_∂x-∂rᵤ_∂x'*λᵤ, bcdof, bcval*0);
+    solveq!(λψ, Kψ',∂g_∂x' - λᵤ'*∂rᵤ_∂x, bcdof, bcval*0);
+
     ∂g_∂d   = -transpose(λψ)*dr_dd;
+
     numsens = (C[1]-C[2])/ϵ
     asens   = ∂g_∂d[indexet]
+
     numsens/asens
-####
-    # Nonzero elements in ∂g_∂d
-    # [55, 56, 57, 58, 59, 60, 121, 122, 123, 124, 127, 128, 291, 292, 293, 294, 295, 296, 385, 386, 435, 436, 445, 446, 465, 466, 585, 586, 587, 588, 591, 592, 593, 594, 597, 598, 799, 800, 825, 826, 835, 836]
-    # call adjoint function

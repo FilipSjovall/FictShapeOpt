@@ -14,17 +14,12 @@ function drψ(dr_dd,dh,a,fv,λ,d,ΓN)
         ie += 1
         cell_dofs= celldofs(cell)
         dfe = zeros(12,12) ## 12x1 eller 12x12 ?? 
-        
-        #dfe = d_RobinIntegral(dfe,cell,ΓN,fv,a[cell_dofs],λ,d[cell_dofs])
-        
         for face in 1:nfaces(cell)
-            if (cellid(cell), face) in Γ2
+            if (cellid(cell), face) in Γt
                 dfe[f1dofs,f1dofs],_ = Robin(coord[enod[ie][f1.+1],:],a[cell_dofs[f1dofs]],d[cell_dofs[f1dofs]],λ)
-                #ke[1:2:end-1,1:2:end-1]       .= 0.0
-                #fe[1:2:end-1]                 .= 0.0
             end
         end
-        assemble!(assembler, cell_dofs, dfe)
+        assemble!(assembler, cell_dofs, -dfe)
     end
     return dr_dd
 end
@@ -77,13 +72,9 @@ function drᵤ_dx(dr,dh,mp,t,a,coord,enod)
     for cell in CellIterator(dh)
         ie += 1
         cell_dofs= celldofs(cell)
-        #dofy = (cell.nodes.*2)
-        #dofx = (cell.nodes.*2).-1
-        # Experiment
         
         drₑ = assem_dr(coord[enod[ie][2:7],:],a[cell_dofs],mp,t)
-        #cell_dofs =collect(Iterators.flatten(zip(dofx,dofy)))
-        #dr[cell_dofs,cell_dofs] += drₑ
+
         assemble!(assembler, cell_dofs, drₑ)
     end 
     return dr

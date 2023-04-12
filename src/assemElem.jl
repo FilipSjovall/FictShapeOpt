@@ -271,11 +271,7 @@ function dr_GP(coord,ed,gp,mp,t)
         dBₗ₀[2,2:2:12] = ∂G_∂x[2,:]  
         dBₗ₀[3,1:2:11] = ∂G_∂x[2,:]
         dBₗ₀[3,2:2:12] = ∂G_∂x[1,:]
-        for cell in CellIterator(dh)
-            Ferrite.reinit!(cv,cell)
-            println("dNdx: ",cv.dNdξ[:,1])
-            println(" ")
-        end
+
 
         dA_temp        = dH₀ * ed
 
@@ -308,10 +304,6 @@ function dr_GP(coord,ed,gp,mp,t)
         @inbounds R[1:2,1:2]    = Stress
         @inbounds R[3:4,3:4]    = Stress
 
-        #fₑ            = transpose(B₀)*S*detJ*t*w[gp]/2
-   #     println("Shapes del 1: ")
-   #     println(size(dB₀),size(S))
-   #     println(size(transpose(dB₀)*S))
 
         dre[:,dof]              = ( transpose(dB₀)*S + transpose(B₀)*∂S_∂x ) *detJ*t*w[gp]/2 + transpose(B₀)*S*∂J_∂x*t*w[gp]/2
     end
@@ -336,19 +328,17 @@ function Robin(coorde,ue,de,λ)
 
     Kc[1,1:2:5] = [N1N1 N1N2 N1N3]
     Kc[2,2:2:6] = [N1N1 N1N2 N1N3]
-    Kc[3,1:2:5] = [N1N2 N2N2 N2N3]
-    Kc[4,2:2:6] = [N1N2 N2N2 N2N3]
-    Kc[5,1:2:5] = [N1N3 N2N3 N3N3]
-    Kc[6,2:2:6] = [N1N3 N2N3 N3N3]
+    
+    Kc[3,1:2:5] = [N1N3 N2N3 N3N3]
+    Kc[4,2:2:6] = [N1N3 N2N3 N3N3]
 
-    ∫N1         = L2/2 - L2^2/(6*L1)
-    ∫N2         = -L2^3/(6*L1*(L1 - L2))
-    ∫N3         = L2/2 + L2^2/(6*(L1 - L2)) 
-    #println("Kce = ", Kc)
-    #println("fce = ", Kc*(ue-λ*de))
-    #re = -[0;∫N1;0;∫N2;0;∫N3].*0.1
-    #println((∫N1*1+∫N2*1+∫N3*1)/L2)
-    #println(ue-λ*de)
-return  Kc.*0,  [∫N1;0;∫N2;0;∫N3;0]*0.5   #Kc*(ue-λ*de)
+    Kc[5,1:2:5] = [N1N2 N2N2 N2N3]
+    Kc[6,2:2:6] = [N1N2 N2N2 N2N3]
+
+    #∫N1         = L2/2 - L2^2/(6*L1)
+    #∫N2         = -L2^3/(6*L1*(L1 - L2))
+    #∫N3         = L2/2 + L2^2/(6*(L1 - L2)) 
+    
+return  Kc, Kc*(ue-λ*de) # [0;∫N1;0;∫N2;0;∫N3]*0.5
 
 end

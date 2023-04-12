@@ -81,21 +81,22 @@ function Optimize(dh)
         # # # # # # # # #
         a, _, _, Fᵢₙₜ, K       = solver(dh);
 
-        # # # # # # # # # 
-        # Sensitivities #
-        # # # # # # # # # 
-        ∂g_∂x         =  zeros(size(a));
-        ∂g_∂u         = zeros(size(d))
-        ∂g_∂u[fdofs]  = -a[pdofs]'*K[pdofs,fdofs]
-        ∂rᵤ_∂x        = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
-        dr_dd         = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
-
         # # # # # # # 
         # Objective #
         # # # # # # #
         #g       =  compliance(l,a);
-        g       =  -a[pdofs]'*Fᵢₙₜ[pdofs]
-        println(g)
+        g             =  -a[pdofs]'*Fᵢₙₜ[pdofs]
+
+        # # # # # # # # # 
+        # Sensitivities #
+        # # # # # # # # # 
+        ∂g_∂x         =  zeros(size(a));
+        ∂g_∂u         =  zeros(size(d));
+
+
+        ∂g_∂u[fdofs]  = -a[pdofs]'*K[pdofs,fdofs]
+        ∂rᵤ_∂x        = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
+        dr_dd         = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
         #∂g_∂d   = -transpose(λψ)*dr_dd; # gör till funktion?
          
 
@@ -110,7 +111,7 @@ function Optimize(dh)
         # Full sensitivity  #
         # # # # # # # # # # #
         ∂g_∂d   = transpose(-transpose(λψ)*dr_dd);
-        @show ∂g_∂d[free_d]
+        display(∂g_∂d[free_d])
         # # # # 
         # MMA # 
         # # # #  
@@ -118,7 +119,7 @@ function Optimize(dh)
         xold2 = xold1;
         xold1 = d;
         d     = X;
-        @show d[free_d] 
+        display(d[free_d]) 
         #Xg=lower_bound+(upper_bound-lower_bound).*X;
         change=norm(d .-xold1);
         if OptIter == 1

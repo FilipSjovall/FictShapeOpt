@@ -129,7 +129,7 @@ function fictitious_solver(d,dh0)
     # ----------- #
     # Read "grid" #
     # ----------- #
-    
+
     #grid = get_ferrite_grid("data/mesh2.inp")
     #dh = DofHandler(grid)
     #add!(dh, :u, 2)
@@ -151,10 +151,9 @@ function fictitious_solver(d,dh0)
     Ψ        = zeros(ndof)
     ΔΨ       = zeros(ndof)
     res      = zeros(ndof)
-    #bcdof,bcval = setBC(0,dh0)
-    bcdof = [19; 1; 23; 24]
-    #bcdof = [5; 6; 15; 3]
-    bcval = [0.0; 0.0; 0.0; 0.0]
+    bcdof,bcval = setBC(0,dh0)
+    #bcdof = [19; 1; 23; 24]
+    #bcval = [0.0; 0.0; 0.0; 0.0]
     pdofs       = bcdof
     fdofs       = setdiff(1:ndof,pdofs)
     # ---------- #
@@ -163,7 +162,7 @@ function fictitious_solver(d,dh0)
 
     bcval₀   = bcval
 
-    for n ∈ 1 : 1
+    for n ∈ 1 : 10
         res   = res.*0
         bcval = bcval₀
         residual = 0*residual
