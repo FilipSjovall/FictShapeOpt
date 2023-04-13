@@ -110,7 +110,7 @@ function Optimize(dh)
         # # # # # # # # # # #
         # Full sensitivity  #
         # # # # # # # # # # #
-        ∂g_∂d   = transpose(-transpose(λψ)*dr_dd);
+        ∂g_∂d   = (-transpose(λψ)*dr_dd)';
         display(∂g_∂d[free_d])
         # # # # 
         # MMA # 

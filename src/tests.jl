@@ -196,6 +196,7 @@ fv = FaceVectorValues(qr_face, ip)
         #a, _, Fₑₓₜ, Fᵢₙₜ, K       = solver(dh);
         #C[pert]                   = compliance(Fₑₓₜ,a)
         C[:,pert]                   = Fᵢₙₜ;
+        #C[pert] = -a[pdofs]'*Fᵢₙₜ[pdofs]
     end
     ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
     numsens = (C[:,1]-C[:,2])./ϵ   
@@ -203,6 +204,35 @@ fv = FaceVectorValues(qr_face, ip)
     asens   = ∂rᵤ_∂x[:,2]; ## dof 6 motsvarar nod 2
     kvot    = numsens./asens
     filter_kvot = filter(x-> abs(x)<10,kvot)
+
+
+## Test dg_dx
+    indexet = 6
+    C = zeros(2)
+    for pert in 1:2
+        if pert == 1
+            X[indexet]   +=   ϵ
+            #incr[indexet] =   ϵ 
+            #updateCoords!(dh,incr)
+        else
+            X[indexet]   -=   ϵ
+            #incr[indexet] = - ϵ 
+            #updateCoords!(dh,incr)
+        end
+        coord = getCoord(X,dh) # borde flyttas in i solver..
+        Fᵢₙₜ .=0
+        assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod)
+        #a, _, Fₑₓₜ, Fᵢₙₜ, K       = solver(dh);
+        #C[pert]                   = compliance(Fₑₓₜ,a)
+        #C[:,pert]                   = Fᵢₙₜ;
+        C[pert] = -a[pdofs]'*Fᵢₙₜ[pdofs]
+    end
+    ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
+    numsens = (C[1]-C[2])./ϵ   
+    asens   = -a[pdofs]'*∂rᵤ_∂x[pdofs,2]
+    #asens   = ∂rᵤ_∂x[:,2]; ## dof 6 motsvarar nod 2
+    kvot    = numsens./asens
+    
 
 
     # Create conversion chart nods < - > dofs
@@ -272,32 +302,25 @@ fv = FaceVectorValues(qr_face, ip)
             d[indexet] = d[indexet] + ϵ 
         else
             # perturbera d och resetta dh
-            dh.grid.nodes = deepcopy(dh0.grid.nodes)
             #dh = dh0
+            dh.grid.nodes = deepcopy(dh0.grid.nodes)
             d[indexet] = d[indexet] - ϵ 
         end
 
         # Check that grid is updated correctly
-        #println(dh.grid.nodes[1],dh0.grid.nodes[1])
         coord = getCoord(getX(dh0),dh0)
-        Ψ, _, Kψ,Fψ               = fictitious_solver(d,dh0);
-        # update coords
+        Ψ, _, Kψ, _, λ               = fictitious_solver(d,dh0); # 
+        # Update coords
         updateCoords!(dh,Ψ)
-        
-        # Check that grid is updated correctly
-        #println(dh.grid.nodes[1],dh0.grid.nodes[1])
-        
         coord = getCoord(getX(dh),dh)
-        a, _, Fₑₓₜ, Fᵢₙₜ, K       = solver(dh);
-        #C[pert]                   = compliance(Fₑₓₜ,a)
+
+        a, _, _, Fᵢₙₜ, K          = solver(dh);
         C[pert]                   = -a[pdofs]'*Fᵢₙₜ[pdofs];
     end
 
     ∂g_∂u = zeros(size(d))
     ∂g_∂u[fdofs]  = -a[pdofs]'*K[pdofs,fdofs];
-    ∂g_∂u[pdofs]  = -I(length(pdofs))'*Fᵢₙₜ[pdofs]  - (a[pdofs]'*K[pdofs,pdofs])';
-    
-    λ      = 1 # 0.2
+    #∂g_∂u[pdofs]  = -I(length(pdofs))'*Fᵢₙₜ[pdofs]  - (a[pdofs]'*K[pdofs,pdofs])';
 
     ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
 
@@ -305,13 +328,10 @@ fv = FaceVectorValues(qr_face, ip)
 
     ∂g_∂x = zeros(size(d))
     ∂g_∂x[fdofs]  = -a[pdofs]'*∂rᵤ_∂x[pdofs,fdofs]
-    ∂g_∂x[pdofs]  = -a[pdofs]'*∂rᵤ_∂x[pdofs,pdofs]
-    
+    #∂g_∂x[pdofs]  = -a[pdofs]'*∂rᵤ_∂x[pdofs,pdofs]
 
-    
-
-    solveq!(λᵤ, K', ∂g_∂u, bcdof, bcval*0);  # var Fₑₓₜ;
-    solveq!(λψ, Kψ',∂g_∂x' - λᵤ'*∂rᵤ_∂x, bcdof, bcval*0);
+    solveq!(λᵤ, K, ∂g_∂u, bcdof, bcval.*0);  # var Fₑₓₜ;
+    solveq!(λψ, Kψ,∂g_∂x - ∂rᵤ_∂x'*λᵤ, bcdof, bcval.*0);
 
     ∂g_∂d   = -transpose(λψ)*dr_dd;
 

@@ -111,22 +111,22 @@ end
     #    end
     #end
     
-    #addnodeset!(dh.grid, "Γ₃", x -> norm(x[1]) == 0.5)
+    addnodeset!(dh.grid, "Γ₃", x -> norm(x[1]) == 0.5)
     addnodeset!(dh.grid, "Γ₄", x -> norm(x[2]) == 0.5)
 
-    #nodx = Ferrite.getnodeset(dh.grid,"Γ₃")
+    nodx = Ferrite.getnodeset(dh.grid,"Γ₃")
     nody = Ferrite.getnodeset(dh.grid,"Γ₄")
 
-    #for inod in nodx
-    #   append!(free_d,register[inod,2]*2-1)
-    #end
+    for inod in nodx
+       append!(free_d,register[inod,2]*2-1)
+    end
 
     for jnod in nody
        append!(free_d,register[jnod,2]*2)
     end
     #Γ4 = getnodeset(grid, "Γ₄")
-    xmin[free_d] .= -0.25
-    xmax[free_d] .=  0.25
+    xmin[free_d] .= -0.5
+    xmax[free_d] .=  0.5
     d[free_d]    .=  0.1
 
     global low    = xmin;
@@ -136,7 +136,7 @@ end
     addfaceset!(dh.grid, "Γ₃", x -> norm(x[1]) == 0.5)
     addfaceset!(dh.grid, "Γ₄", x -> norm(x[2]) == 0.5)
     Γt = union(
-            #getfaceset(grid, "Γ₃"),
+            getfaceset(grid, "Γ₃"),
             getfaceset(grid, "Γ₄"),
         )
     #Γt = getfaceset(grid,"Γₜ")
