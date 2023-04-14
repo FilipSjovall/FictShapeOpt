@@ -58,10 +58,10 @@ end
     global xval     = d[:];
     global xold1    = xval;
     global xold2    = xval;
-    global xmin     = -ones(n)/20;
-    global xmax     = ones(n)/20;
-    #global xmin     = zeros(n);
-    #global xmax     = zeros(n);
+    #global xmin     = -ones(n)/20;
+    #global xmax     = ones(n)/20;
+    global xmin     = -ones(n);
+    global xmax     =  ones(n);
     
     global C        = 1000*ones(m);
     global d2       = zeros(m);
@@ -127,7 +127,7 @@ end
     #Γ4 = getnodeset(grid, "Γ₄")
     xmin[free_d] .= -0.5
     xmax[free_d] .=  0.5
-    d[free_d]    .=  0.1
+    d[free_d]    .=  0.0
 
     global low    = xmin;
     global upp    = xmax;
@@ -140,3 +140,11 @@ end
             getfaceset(grid, "Γ₄"),
         )
     #Γt = getfaceset(grid,"Γₜ")
+
+    function postprocess_opt(Ψ, dh, str)
+        begin
+            vtk_grid(str, dh) do vtkfile
+                vtk_point_data(vtkfile, dh, Ψ)
+            end
+        end
+    end

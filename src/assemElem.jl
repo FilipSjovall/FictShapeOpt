@@ -287,7 +287,6 @@ function dr_GP(coord,ed,gp,mp,t)
         eff[1,1] = A_temp[1] + 1.0
         eff[1,2] = A_temp[2]
         eff[2,1] = A_temp[3]
-        eff[2,2] = A_temp[4] + 1.0
 
         ef = [eff[1,1] eff[1,2] eff[2,1] eff[2,2]]
 
@@ -310,9 +309,6 @@ function dr_GP(coord,ed,gp,mp,t)
     return dre
 end
 
-
-
-
 function Robin(coorde,ue,de,λ)
     L1 = norm(coorde[1,:] - coorde[3,:])
     L2 = norm(coorde[1,:] - coorde[2,:])
@@ -324,16 +320,13 @@ function Robin(coorde,ue,de,λ)
     #N2N2 = L2^5/(30*L1^2*(L1 - L2)^2)
     #N2N3 =  - (L2^3*(5*L1 - 3*L2))/(60*L1*(L1 - L2)^2)
     #N3N3 = L2/3 + ((L1*L2^2)/6 - (2*L2^3)/15)/(L1 - L2)^2
-    
 
     #Kc[1,1:2:5] = [N1N1 N1N2 N1N3]
     #Kc[2,2:2:6] = [N1N1 N1N2 N1N3]
-   # 
-    #Kc[5,1:2:5] = [N1N3 N2N3 N3N3]
-    #Kc[6,2:2:6] = [N1N3 N2N3 N3N3]#
-
-    #Kc[3,1:2:5] = [N1N2 N2N2 N2N3]
-    #Kc[4,2:2:6] = [N1N2 N2N2 N2N3]
+    #Kc[3,1:2:5] = [N1N3 N2N3 N3N3]
+    #Kc[4,2:2:6] = [N1N3 N2N3 N3N3]#
+    #Kc[5,1:2:5] = [N1N2 N2N2 N2N3]
+    #Kc[6,2:2:6] = [N1N2 N2N2 N2N3]
 
     N1N1 = L2/3 - ((L1*L2^2)/6 - L2^3/30)/L1^2
     N1N3 = - (L2^3*(5*L1 - 2*L2))/(60*L1^2*(L1 - L2))
@@ -344,17 +337,52 @@ function Robin(coorde,ue,de,λ)
 
     Kc[1,1:2:5] = [N1N1 N1N2 N1N3]
     Kc[2,2:2:6] = [N1N1 N1N2 N1N3]
-
     Kc[3,1:2:5] = [N1N2 N2N2 N2N3]
     Kc[4,2:2:6] = [N1N2 N2N2 N2N3]
-
     Kc[5,1:2:5] = [N1N3 N2N3 N3N3]
     Kc[6,2:2:6] = [N1N3 N2N3 N3N3]
 
     #∫N1         = L2/2 - L2^2/(6*L1)
     #∫N2         = -L2^3/(6*L1*(L1 - L2))
     #∫N3         = L2/2 + L2^2/(6*(L1 - L2)) 
-    
-return  Kc, Kc*(ue-λ*de) # [0;∫N1;0;∫N2;0;∫N3]*0.5
+    #println(∫N1,∫N2,∫N3)
 
+return  Kc, Kc*(ue-λ*de) # [0;∫N1;0;∫N2;0;∫N3]*0.5
+end
+
+function dΩ(X)
+    dVol = 0.0
+    for gp ∈ 1 : 3
+        Jᵀ[:,2:3]   = transpose(dNᵣ[:,index[gp,:]]) * X
+        detJ        = det(Jᵀ)
+        dVol       += detJ * w[gp]*t/2
+    end
+    return dVol
+end
+
+function ∂dΩ∂x(X)
+    dVole = zeros(12)
+    for gp ∈ 1 : 3
+        @inbounds Jᵀ[:,2:3]     = transpose(dNᵣ[:,index[gp,:]]) * X
+        detJ                    = det(Jᵀ)
+        J⁻                      = inv(Jᵀ)
+        dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
+        dX = init_∂X();
+        for dof in 1:12
+            dVole[dof] += detJ * tr(dNₓ*dX[dof,:,:]) * w[gp]*t/2
+        end
+    end
+    return dVole
+end
+
+function volume_sens(dh,coord)
+    dVol= zeros(length(coord))
+    ie  = 0
+    for cell in CellIterator(dh)
+        ie     += 1
+        cell_dofs = celldofs(cell)
+        #println(∂dΩ∂x(coord[enod[ie][2:7],:]))
+        dVol[cell_dofs]   += ∂dΩ∂x(coord[enod[ie][2:7],:])
+    end
+    return dVol
 end

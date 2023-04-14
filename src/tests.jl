@@ -286,14 +286,17 @@ fv = FaceVectorValues(qr_face, ip)
     ∂rᵤ_∂x = similar(K)
     dr_dd = similar(K)
     ∂rψ_∂d = similar(K)
-    
-    
+    λᵤ = similar(a)
+    λψ = similar(a)
+
     mp     = [175 80.769230769230759]
     t      = 1.0 
 
-    indexet = 296
+    indexet = 465
     ϵ       = 1e-6
 
+
+    test = zeros(2)
     for pert in 1:2
         if pert == 1
             # perturbera d
@@ -315,7 +318,7 @@ fv = FaceVectorValues(qr_face, ip)
         coord = getCoord(getX(dh),dh)
 
         a, _, _, Fᵢₙₜ, K          = solver(dh);
-        C[pert]                   = -a[pdofs]'*Fᵢₙₜ[pdofs];
+        test[pert]                   = -a[pdofs]'*Fᵢₙₜ[pdofs];
     end
 
     ∂g_∂u = zeros(size(d))
@@ -335,7 +338,71 @@ fv = FaceVectorValues(qr_face, ip)
 
     ∂g_∂d   = -transpose(λψ)*dr_dd;
 
-    numsens = (C[1]-C[2])/ϵ
+    numsens = (test[1] - test[2])/ϵ
     asens   = ∂g_∂d[indexet]
+
+    numsens/asens
+
+
+    ## Volume constraint direct sensitivity w.r.t. x
+    indexet = 6
+    test    = zeros(2)
+    X       = getX(dh)
+    ϵ       = 1e-6
+    for pert in 1:2
+        if pert == 1
+            X[indexet]   +=   ϵ
+        else
+            X[indexet]   -=   ϵ
+        end
+        coord = getCoord(X,dh) # borde flyttas in i solver..
+        test[pert] = volume(dh)
+    end
+    numsens = (test[1] - test[2]) / ϵ
+    asens   = volume_sens(dh,coord)
+
+    kvot    = numsens / asens[2]
+
+    ## Volume constraint - sensitivity w.r.t d via adjoint sensitivity analysis
+    indexet = 296
+    test    = zeros(2)
+    X       = getX(dh)
+    ϵ       = 1e-6
+    for pert in 1:2
+        if pert == 1
+            # perturbera d
+            #dh = dh0
+            dh.grid.nodes = deepcopy(dh0.grid.nodes)
+            d[indexet] = d[indexet] + ϵ 
+        else
+            # perturbera d och resetta dh
+            #dh = dh0
+            dh.grid.nodes = deepcopy(dh0.grid.nodes)
+            d[indexet] = d[indexet] - ϵ 
+        end
+
+        # Check that grid is updated correctly
+        coord = getCoord(getX(dh0),dh0)
+        Ψ, _, Kψ, _, λ               = fictitious_solver(d,dh0,coord); # 
+        # Update coords
+        updateCoords!(dh,Ψ)
+        coord = getCoord(getX(dh),dh)
+
+        a, _, _, Fᵢₙₜ, K          = solver(dh,coord);
+        test[pert] = volume(dh)
+    end
+
+    dr_dd = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
+
+    ∂Ω_∂x = volume_sens(dh,coord)
+    
+    λᵥₒₗ    = similar(a)
+
+    solveq!(λᵥₒₗ, Kψ,∂Ω_∂x, bcdof, bcval.*0);
+
+    ∂Ω∂d   = -transpose(λψ)*dr_dd;
+
+    numsens = (test[1] - test[2])/ϵ
+    asens   = ∂Ω∂d[indexet]
 
     numsens/asens

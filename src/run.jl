@@ -3,8 +3,6 @@ using FerriteMeshParser,Ferrite, IterativeSolvers, AlgebraicMultigrid, Incomplet
 ##using Gmsh, FerriteGmsh, Plots, Gr # Behöver byggas om....
 
 function load_files()
-
-    
     include("mesh_reader.jl")
 
     include("material.jl")
@@ -24,7 +22,7 @@ end
 #filename = "mesh2.txt"
 #coord, enod, edof = readAscii(filename);
 
-function solver(dh)
+function solver(dh,coord)
     imax     = 25
     TOL      = 1e-6
     residual = 0.0
@@ -107,15 +105,16 @@ function solver(dh)
             residual   = norm(res,2)
             println("Iteration: ", iter, " Residual: ", residual)
         end
+
     end
 
     Fₑₓₜ = res - Fᵢₙₜ
-
+    #println("Norm coord ", norm(coord))
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K
 end
 
 
-function fictitious_solver(d,dh0)
+function fictitious_solver(d,dh0,coord)
     imax     = 25
     TOL      = 1e-10
     residual = 0.0
