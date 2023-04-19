@@ -2,21 +2,7 @@ using LinearSolve, LinearSolvePardiso, SparseArrays,  StaticArrays
 using FerriteMeshParser,Ferrite, IterativeSolvers, AlgebraicMultigrid, IncompleteLU
 ##using Gmsh, FerriteGmsh, Plots, Gr # Behöver byggas om....
 
-function load_files()
-    include("mesh_reader.jl")
 
-    include("material.jl")
-
-    include("element_routines.jl")
-
-    include("fem.jl")
-
-    include("assemElem.jl")
-
-    include("assem.jl")
-
-    include("sensitivities.jl")
-end
 
 #load_files()
 #filename = "mesh2.txt"
@@ -114,7 +100,7 @@ function solver(dh,coord)
 end
 
 
-function fictitious_solver(d,dh0,coord)
+function fictitious_solver(d,dh0,coord₀)
     imax     = 25
     TOL      = 1e-10
     residual = 0.0
@@ -151,8 +137,7 @@ function fictitious_solver(d,dh0,coord)
     ΔΨ       = zeros(ndof)
     res      = zeros(ndof)
     bcdof,bcval = setBC(0,dh0)
-    #bcdof = [19; 1; 23; 24]
-    #bcval = [0.0; 0.0; 0.0; 0.0]
+
     pdofs       = bcdof
     fdofs       = setdiff(1:ndof,pdofs)
     # ---------- #
@@ -177,7 +162,7 @@ function fictitious_solver(d,dh0,coord)
         while (iter < imax && residual > TOL ) || iter < 2
             iter += 1
             Ψ += ΔΨ
-            assemGlobal!(Kψ,Fᵢₙₜ,dh0,mp₀,t,Ψ,coord,enod,fv,λ,d,ΓN)
+            assemGlobal!(Kψ,Fᵢₙₜ,dh0,mp₀,t,Ψ,coord₀,enod,fv,λ,d,ΓN)
             solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof, bcval)
             bcval      = bcval.*0
             res        = Fᵢₙₜ #- Fₑₓₜ
@@ -186,21 +171,14 @@ function fictitious_solver(d,dh0,coord)
             Ψ[bcdof]   = bcval;
             println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
         end
+        #φ = deepcopy(Ψ)
+        #φ[locked_d] .= 0.0
+        #φ[free_d] .= 0.1
+        #postprocess(φ,dh0)
     end
     return Ψ, dh0, Kψ, Fᵢₙₜ, λ
 end
 
-function postprocess(a,dh)
-        begin
-        vtk_grid("hyperelasticity", dh) do vtkfile
-            vtk_point_data(vtkfile, dh, a)
-        end
-    end
-end
-
-### 
-#dh0 = dh
-#updateCoords!(dh,a)
 
 
 

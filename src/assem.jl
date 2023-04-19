@@ -43,11 +43,12 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,fv,λ,d,ΓN)
     end            
 end
 
-function volume(dh)
+function volume(dh,coord)
     Ω   = 0.0
     ie  = 0
     for cell in CellIterator(dh)
         ie  += 1
+        #println(cellid(cell))
         Ω   += dΩ(coord[enod[ie][2:7],:])
     end
     return Ω

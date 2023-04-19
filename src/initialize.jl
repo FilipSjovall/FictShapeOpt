@@ -58,10 +58,10 @@ end
     global xval     = d[:];
     global xold1    = xval;
     global xold2    = xval;
-    #global xmin     = -ones(n)/20;
-    #global xmax     = ones(n)/20;
-    global xmin     = -ones(n);
-    global xmax     =  ones(n);
+    global xmin     = -ones(n)/20;
+    global xmax     = ones(n)/20;
+    #global xmin     = zeros(n);
+    #global xmax     = zeros(n);
     
     global C        = 1000*ones(m);
     global d2       = zeros(m);
@@ -125,8 +125,8 @@ end
        append!(free_d,register[jnod,2]*2)
     end
     #Γ4 = getnodeset(grid, "Γ₄")
-    xmin[free_d] .= -0.5
-    xmax[free_d] .=  0.5
+    global xmin[free_d] .= -0.8
+    global xmax[free_d] .=  0.8
     d[free_d]    .=  0.0
 
     global low    = xmin;
@@ -148,3 +148,11 @@ end
             end
         end
     end
+
+function postprocess(a,dh)
+        begin
+        vtk_grid("hyperelasticity_2", dh) do vtkfile
+            vtk_point_data(vtkfile, dh, a)
+        end
+    end
+end

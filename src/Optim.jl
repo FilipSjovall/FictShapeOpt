@@ -1,5 +1,24 @@
-using LinearSolve, LinearSolvePardiso, SparseArrays, StaticArrays
-using FerriteMeshParser, Ferrite, IterativeSolvers, AlgebraicMultigrid, IncompleteLU
+using LinearSolve, LinearSolvePardiso, SparseArrays, 
+      StaticArrays,FerriteMeshParser, Ferrite, 
+      IterativeSolvers, AlgebraicMultigrid, IncompleteLU    
+
+
+
+function load_files()
+    include("mesh_reader.jl")
+
+    include("material.jl")
+
+    include("element_routines.jl")
+
+    include("fem.jl")
+
+    include("assemElem.jl")
+
+    include("assem.jl")
+
+    include("sensitivities.jl")
+end
 
 include("initialize.jl")
 include("mma.jl")
@@ -10,20 +29,24 @@ dh0 = deepcopy(dh);
 
 function Optimize(dh)
     dh0 = deepcopy(dh)
-    #init_MMA();
     # Flytta allt nedan till init_opt?
     λψ   = similar(a)
     λᵤ   = similar(a)
     λᵥₒₗ = similar(a)
-    Vₘₐₓ = 0.6
+    Vₘₐₓ = 0.65
     l    = similar(a)
     l   .= 0.5
-    tol  = 1e-4
+    tol  = 1e-6
     OptIter = 0
     coord₀  = coord
+    global g_hist = zeros(200)
+    global v_hist = zeros(200)
     #
-    while kktnorm > tol || OptIter < 3 #&& OptIter < 5
-
+    while kktnorm > tol || OptIter < 3 #&& OptIter < 50
+        
+        # # # # # # # # # # # # # #
+        #       Definitions       #
+        # # # # # # # # # # # # # #
         global d
         global Ψ
         global a
@@ -57,19 +80,18 @@ function Optimize(dh)
         global outit
         global change
         global λ
-
-
-        OptIter += 1
         global g_ini
-        global g_hist = []
-        global v_hist = []
+
         #A() = A(Float64[],[]).
         global pdofs = bcdof
         global fdofs = setdiff(1:length(a), pdofs)
+        global locked_d = setdiff(1:898,free_d)
+        # # # # # # # # # # # # # #
+        OptIter += 1
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
-        coord = getCoord(getX(dh0), dh0) # x₀ 
+        coord₀ = getCoord(getX(dh0), dh0) # x₀ 
         Ψ, _, Kψ, _, λ = fictitious_solver(d, dh0, coord₀) # Döp om till "~coord0"
 
         # # # # # # 
@@ -90,22 +112,17 @@ function Optimize(dh)
         # # # # # # # 
         # Objective #
         # # # # # # #
-        #g       =  compliance(l,a);
         g = -a[pdofs]' * Fᵢₙₜ[pdofs]
 
         # # # # # # # # # 
         # Sensitivities #
         # # # # # # # # # 
-        ∂g_∂x = zeros(size(a))
-        ∂g_∂u = zeros(size(d))
-
+        ∂g_∂x = zeros(size(a)) # Flytta
+        ∂g_∂u = zeros(size(d)) # Flytta
 
         ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
-        #println("norm coord outside ", norm(coord) )
-        ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x, dh, mp, t, a, coord, enod)
-        dr_dd = drψ(dr_dd, dh0, Ψ, fv, λ, d, ΓN)
-        #∂g_∂d   = -transpose(λψ)*dr_dd; # gör till funktion?
-
+        ∂rᵤ_∂x       = drᵤ_dx(∂rᵤ_∂x, dh, mp, t, a, coord, enod)
+        dr_dd        = drψ(dr_dd, dh0, Ψ, fv, λ, d, ΓN)
 
         # # # # # # #
         # Adjoints  #
@@ -118,43 +135,53 @@ function Optimize(dh)
         # Full sensitivity  #
         # # # # # # # # # # #
         ∂g_∂d = (-transpose(λψ) * dr_dd)'
+        ∂g_∂d[locked_d] .= 0.0 # fulfix?
 
-
-        #
-        # Volume constraint
-        #
-        g₁    = volume(dh) / Vₘₐₓ - 1
+        # # # # # # # # # # #
+        # Volume constraint #
+        # # # # # # # # # # #
+        g₁    = volume(dh,coord) / Vₘₐₓ - 1
         ∂Ω_∂x = volume_sens(dh,coord)
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdof, bcval.*0);
         ∂Ω∂d  = -transpose(λᵥₒₗ)*dr_dd ./ Vₘₐₓ; 
+        ∂Ω∂d[locked_d] .= 0.0
 
-        # # # # 
-        # MMA # 
-        # # # #  
+        # # # # #
+        # M M A # 
+        # # # # # 
         X, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n, OptIter, d, xmin, xmax, xold1, xold2, 10 * g, 10 * ∂g_∂d, g₁, ∂Ω∂d', low, upp, a0, am, C, d2)
         xold2 = xold1
         xold1 = d
         d = X
-        #display(d[free_d])
-        #Xg=lower_bound+(upper_bound-lower_bound).*X;
         change = norm(d .- xold1)
-        if OptIter == 1
-            g_ini = g
-        end
 
-        append!(v_hist, g₁)
-        append!(g_hist, g / g_ini)
+        # # # # # # # # # #
+        # Postprocessing  #
+        # # # # # # # # # #
+        #if OptIter == 1
+        #    g_ini = g
+        #end
+        global v_hist[OptIter] = g₁
+        global g_hist[OptIter] = g
+        #append!(v_hist, g₁)
+        #append!(g_hist, g / g_ini)
+
         #The residual vector of the KKT conditions is calculated:
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
         kktnorm = change
         println("Iter: ", OptIter, " Norm of change: ", kktnorm, " Objective: ", g)
-        coord = getCoord(getX(dh0), dh0)
-        postprocess_opt(Ψ, dh0, "results/Shape" * string(OptIter))
-        coord = getCoord(getX(dh), dh)
-        postprocess_opt(a, dh, "results/Deformation" * string(OptIter))
+        if mod(OptIter,5) == 0
+            coord = getCoord(getX(dh0), dh0)
+            postprocess_opt(Ψ, dh0, "results/Shape" * string(OptIter))
+            coord = getCoord(getX(dh), dh)
+            postprocess_opt(a, dh, "results/Deformation" * string(OptIter))
+        end 
         println("Objective: ", g_hist, " Constraint: ", g₁)
+        if OptIter == 50
+            break
+        end
     end
-    return g_hist, v_hist
+    return g_hist, v_hist, OptIter
 end
 
 
