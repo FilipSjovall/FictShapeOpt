@@ -30,64 +30,62 @@ dh0 = deepcopy(dh);
 function Optimize(dh)
     dh0 = deepcopy(dh)
     # Flytta allt nedan till init_opt?
-    λψ   = similar(a)
-    λᵤ   = similar(a)
-    λᵥₒₗ = similar(a)
-    Vₘₐₓ = 0.65
-    l    = similar(a)
-    l   .= 0.5
-    tol  = 1e-6
-    OptIter = 0
-    coord₀  = coord
-    global g_hist = zeros(200)
-    global v_hist = zeros(200)
+        λψ   = similar(a)
+        λᵤ   = similar(a)
+        λᵥₒₗ = similar(a)
+        Vₘₐₓ = 0.65
+        l    = similar(a)
+        l   .= 0.5
+        tol  = 1e-6
+        OptIter = 0
+        coord₀  = coord
+        global g_hist = zeros(200)
+        global v_hist = zeros(200)
     #
     while kktnorm > tol || OptIter < 3 #&& OptIter < 50
-        
+
         # # # # # # # # # # # # # #
         #       Definitions       #
         # # # # # # # # # # # # # #
-        global d
-        global Ψ
-        global a
-        global Fₑₓₜ
-        global K
-        global Kψ
-        global ∂rᵤ_∂x
-        global dr_dd
-        global ∂rψ_∂d
-        global mp
-        global mp₀
-        global t
-        global m
-        global n
-        global epsimin
-        global xval
-        global xold1
-        global xold2
-        global xmin
-        global xmax
-        global low
-        global upp
-        global C
-        global d2
-        global a0
-        global outeriter
-        global am
-        global kkttol
-        global changetol
-        global kktnorm
-        global outit
-        global change
-        global λ
-        global g_ini
-
-        #A() = A(Float64[],[]).
-        global pdofs = bcdof
-        global fdofs = setdiff(1:length(a), pdofs)
-        global locked_d = setdiff(1:898,free_d)
+            global d
+            global Ψ
+            global a
+            global Fₑₓₜ
+            global K
+            global Kψ
+            global ∂rᵤ_∂x
+            global dr_dd
+            global ∂rψ_∂d
+            global mp
+            global mp₀
+            global t
+            global m
+            global n
+            global epsimin
+            global xval
+            global xold1
+            global xold2
+            global xmin
+            global xmax
+            global low#A() = A(Float64[],[]).
+            global C
+            global d2
+            global a0
+            global outeriter
+            global am
+            global kkttol
+            global changetol
+            global kktnorm
+            global outit
+            global change
+            global λ
+            global g_ini
+            global pdofs = bcdof
+            global fdofs = setdiff(1:length(a), pdofs)
+            global locked_d = setdiff(1:898,free_d)
         # # # # # # # # # # # # # #
         OptIter += 1
+        
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
