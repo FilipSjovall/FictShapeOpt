@@ -305,8 +305,12 @@ function merge_grids(grid1::Grid{dim,CellType}, grid2::Grid{dim,CellType}; tol=0
 end
 
 function getTopology(dh)
-    enod = 
+    enod = [] 
+    coord = []#
     for cell in CellIterator(dh)
-
+        push!(enod,cell.nodes)
+    end
+    for node in dh.grid.nodes
+        push!(coord,node)
     end
 end
