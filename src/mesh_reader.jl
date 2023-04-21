@@ -2,11 +2,11 @@
 # Read mesh data from file
 #
 
-using BenchmarkTools
+using BenchmarkTools, Ferrite, FerriteGmsh, FerriteMeshParser
 #file = open(mesh_path,"r") 
 function getMesh_ASCII(filename)
 
-    mesh_path = "data//"*filename
+    mesh_path = "data//Quadratic//"*filename
     n    = 0
     file    = open(mesh_path,"r") 
     n       = 0
@@ -223,4 +223,90 @@ function getCoord(X,dh)
     coord[:,1] = X[1:2:end-1]
     coord[:,2] = X[2:2:end]
     return coord
+end
+
+
+function createBoxMesh(filename,x₀,y₀,Δx,Δy,h)
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+
+    # Add the points
+    p1 = gmsh.model.geo.add_point(x₀,    y₀,    0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀+Δx, y₀,    0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀+Δx, y₀+Δy, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀,    y₀+Δy, 0.0, h)
+    #p4 = gmsh.model.geo.add_point(0.0, 0.5, 0.0, h)
+
+    # Add the lines
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    l3 = gmsh.model.geo.add_line(p3, p4)
+    l4 = gmsh.model.geo.add_line(p4, p1)
+
+    # Create the closed curve loop and the surface
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4])
+    surf = gmsh.model.geo.add_plane_surface([loop])
+
+    # Synchronize the model
+    gmsh.model.geo.synchronize()
+
+    # Create the physical domains
+    gmsh.model.add_physical_group(1, [l1], -1, "Γ")
+    gmsh.model.add_physical_group(1, [l2], -1, "Γ2")
+    gmsh.model.add_physical_group(1, [l3], -1, "Γ3")
+    gmsh.model.add_physical_group(1, [l4], -1, "Γ4")
+    gmsh.model.add_physical_group(2, [surf])
+
+    gmsh.model.mesh.generate(2)
+
+    # Save the mesh, and read back in as a Ferrite Grid
+    grid = mktempdir() do dir
+        path = joinpath(dir, filename*".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+
+    # Finalize the Gmsh library
+    Gmsh.finalize()
+
+    return grid
+end
+
+function merge_grids(grid1::Grid{dim,CellType}, grid2::Grid{dim,CellType}; tol=0.01) where {N, dim, CellType <: Cell{<:Any, N}}
+    cells′ = copy(grid1.cells)
+    nodes′ = copy(grid1.nodes)
+    nodemap = Dict{Int,Int}()
+    next = getnnodes(grid1) + 1
+    for (i2, n2) in enumerate(grid2.nodes)
+        found = false
+        for (i1, n1) in enumerate(grid1.nodes)
+            if norm(n1.x - n2.x) < tol
+                nodemap[i2] = i1
+                found = true
+                break
+            end
+        end
+        if !found
+            push!(nodes′, n2)
+            nodemap[i2] = next
+            next += 1
+        end
+    end
+    for c in grid2.cells
+        t = ntuple(N) do i
+            return nodemap[c.nodes[i]]
+        end
+        cell′ = CellType(t)
+        push!(cells′, cell′)
+    end
+    return Grid(cells′, nodes′)
+end
+
+function getTopology(dh)
+    enod = 
+    for cell in CellIterator(dh)
+
+    end
 end

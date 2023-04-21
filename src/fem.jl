@@ -15,7 +15,6 @@ function solveq!(a,K,f,bcdof,bcval)
     #    MKLPardisoIterate(),
     #    UMFPACKFactorization(),
     #    KLUFactorization())
-#    a[fdofs] = solve(prob, MKLPardisoFactorize()).u
     a[fdofs] = solve(prob, MKLPardisoIterate()).u
     
     # Algebraic multigrid

@@ -33,10 +33,6 @@ Np[:,6]   = 4.0.*ξ[1,:].*ξ[3,:]
 
 
 N = Np
-#N = SMatrix{3,6,Float64}(Np)
-
-#SdNᵣ      = Matrix{Float64}(undef,6,9)
-#SdNᵣ      = Matrix{Float64}(undef,6,12)
 dNᵣ      = @SMatrix zeros(6,9)
 SdNᵣ[:,1] = [4.0*ξ[1,1]-1.0 0.0 0.0 4.0*ξ[1,2] 0.0 4.0*ξ[1,3]]
 SdNᵣ[:,2] = [0.0 4.0*ξ[1,2]-1.0 0.0 4.0*ξ[1,1] 4.0*ξ[1,3] 0.0]
@@ -50,13 +46,7 @@ SdNᵣ[:,7] = [4.0*ξ[3,1]-1.0 0.0 0.0 4.0*ξ[3,2] 0.0 4.0*ξ[3,3]]
 SdNᵣ[:,8] = [0.0 4.0*ξ[3,2]-1.0 0.0 4.0*ξ[3,1] 4.0*ξ[3,3] 0.0]
 SdNᵣ[:,9] = [0.0 0.0 4.0*ξ[3,3]-1.0 0.0 4.0*ξ[3,2] 4.0*ξ[3,1]]
 
-#SdNᵣ[:,10] = [4.0*ξ[4,1]-1.0 0.0 0.0 4.0*ξ[4,2] 0.0 4.0*ξ[4,3]]
-#SdNᵣ[:,11] = [0.0 4.0*ξ[4,2]-1.0 0.0 4.0*ξ[4,1] 4.0*ξ[4,3] 0.0]
-#SdNᵣ[:,12] = [0.0 0.0 4.0*ξ[4,3]-1.0 0.0 4.0*ξ[4,2] 4.0*ξ[4,1]]
 dNᵣ = SMatrix{6,9,Float64}(SdNᵣ)
-#dNᵣ = SMatrix{6,12,Float64}(SdNᵣ)
-#dNᵣ = SdNᵣ
-
 
 Jᵀ      = zeros(3,3)
 Jᵀ[:,1] = [1.0 1.0 1.0]
@@ -122,11 +112,8 @@ function assemGP(coord,ed,gp,mp,t)
     # Stress and material tangent
     es = neohooke1(ef,mp)
     D  = dneohooke1(ef,mp)
-    #es = StVenantS(ef,mp)
-    #D  = dStVenant(ef,mp)
 
     S                       = [es[1]; es[2]; es[4]]
-    #println("Gauss Point " ,gp, " Stress: ", es[2])
     @inbounds Stress[1,:]   = [S[1] S[3]]
     @inbounds Stress[2,:]   = [S[3] S[2]]
     

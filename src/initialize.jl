@@ -14,7 +14,7 @@ end
     load_files()
     filename = "mesh2.txt"
     coord, enod, edof = readAscii(filename);
-    grid = get_ferrite_grid("data/mesh2.inp")
+    grid = get_ferrite_grid("data/Quadratic/mesh2.inp")
     dh = DofHandler(grid)
     add!(dh, :u, 2)
     close!(dh)
