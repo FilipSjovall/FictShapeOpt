@@ -36,7 +36,7 @@ dNᵣ[:,7] = [ξ[3,1] 0.0 0.0 ]
 dNᵣ[:,8] = [0.0 ξ[3,2] 0.0 ]
 dNᵣ[:,9] = [0.0 0.0 ξ[3,3] ]
 
-dNr      = reinterpret(Vec{3,Float64},vec(dNᵣ))
+#dNr      = reinterpret(Vec{3,Float64},vec(dNᵣ))
 
 Jᵀ      = zeros(3,3)
 Jᵀ[:,1] = [1.0 1.0 1.0]
@@ -64,10 +64,12 @@ S       = zeros(3)
 
 dre      = zeros(6,6)
 
-function assemGP(coord,ed,gp,mp,t)
-    
-    Jᵀ[:,2:3]               = transpose(dNᵣ[:,index[gp,:]]) * coord
+#H₀       = zero(Tensor{4,6})
 
+function assemGP(coord,ed,gp,mp,t)
+    #println( typeof( transpose(dNᵣ[:,index[gp,:]]) ) ," ",  typeof(coord) )
+    #println(coord)
+    Jᵀ[:,2:3]               = transpose(dNᵣ[:,index[gp,:]]) * coord # ??
     J⁻                      = inv(Jᵀ)
     detJ                    = det(Jᵀ)
     dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
@@ -83,23 +85,26 @@ function assemGP(coord,ed,gp,mp,t)
     Bₗ₀[3,1:2:5] = dNₓ[2,:]
     Bₗ₀[3,2:2:6] = dNₓ[1,:]
 
-    A_temp = H₀*ed
+    # ∇u = ∇ₓN u
+    A_temp       = H₀*ed
 
-    A[1,:]        = [A_temp[1] 0.0 A_temp[3] 0.0]
-    A[2,:]        = [0.0 A_temp[2] 0.0 A_temp[4]]
-    A[3,:]        = [A_temp[2] A_temp[1] A_temp[4] A_temp[3]]
+    A[1,:]       = [A_temp[1] 0.0 A_temp[3] 0.0]
+    A[2,:]       = [0.0 A_temp[2] 0.0 A_temp[4]]
+    A[3,:]       = [A_temp[2] A_temp[1] A_temp[4] A_temp[3]]
 
-    B₀            = Bₗ₀ + A*H₀
+    # 
+    B₀           = Bₗ₀ + A*H₀
 
-    # Deformation gradient
-    eff[1,1] = A_temp[1] + 1.0
-    eff[1,2] = A_temp[2]
-    eff[2,1] = A_temp[3]
-    eff[2,2] = A_temp[4] + 1.0
+    # Deformation gradient F = I + ∇u
+    eff[1,1]     = A_temp[1] + 1.0
+    eff[1,2]     = A_temp[2]
+    eff[2,1]     = A_temp[3]
+    eff[2,2]     = A_temp[4] + 1.0
 
     ef = [eff[1,1] eff[1,2] eff[2,1] eff[2,2]]
 
     # Stress and material tangent
+    # S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²    
     es = neohooke1(ef,mp)
     D  = dneohooke1(ef,mp)
 
@@ -286,6 +291,13 @@ function Robin(coorde,ue,de,λ)
     #println(∫N1,∫N2,∫N3)
 
 return  Kc, Kc*(ue-λ*de) # [0;∫N1;0;∫N2;0;∫N3]*0.5
+end
+
+function tractionLoad(coorde,τ)
+    L = norm(coorde[1,:] - coorde[2,:]) 
+    ∫Nᵀ = (1/L) * [1.0 0.0 1.0 0.0; 0.0 1.0 0.0 1.0] * 0.5 ## 0.5?
+
+    return ∫Nᵀ' * τ
 end
 
 function dΩ(X)

@@ -2,7 +2,10 @@
 # Read mesh data from file
 #
 
-using BenchmarkTools, Ferrite, FerriteGmsh, FerriteMeshParser
+using  Ferrite
+using  FerriteGmsh
+using  FerriteMeshParser
+using  Gmsh
 #file = open(mesh_path,"r") 
 function getMesh_ASCII(filename)
 
@@ -98,7 +101,7 @@ function setBC(bc_load,dh)
     bc_val = Vector{Float64}()
     for cell in CellIterator(dh)
         c = getcoordinates(cell)
-        for i in 1:6
+        for i in 1:3
             x = c[i][1]
             y = c[i][2]
             if y == 0.0 
@@ -305,12 +308,45 @@ function merge_grids(grid1::Grid{dim,CellType}, grid2::Grid{dim,CellType}; tol=0
 end
 
 function getTopology(dh)
-    enod = [] 
-    coord = []#
+    coord   = zeros( length(dh.grid.nodes), 2)
+    enod    = Array{Int64}[]
     for cell in CellIterator(dh)
-        push!(enod,cell.nodes)
+        #println(cellid(cell))
+        #println(cell.nodes)  
+        push!(enod,[ [cellid(cell)]; cell.nodes])
     end
+    nod_nr = 0
     for node in dh.grid.nodes
-        push!(coord,node)
+        nod_nr += 1
+        coord[nod_nr,:] = node.x
     end
+    return coord, enod
+end
+
+function setBCLin(bc_load,dh)
+    ## Find bc cell_dofs
+    bc_dof = Vector{Int64}()
+    bc_val = Vector{Float64}()
+    for cell in CellIterator(dh)
+        c = getcoordinates(cell)
+        for i in 1:3
+            x = c[i][1]
+            y = c[i][2]
+            if x == 0.0
+                idx = celldofs(cell)[2*i-1] 
+                if idx ∉ bc_dof
+                    push!(bc_dof,idx)
+                    push!(bc_val,bc_load)
+                end
+                if y == 0.0
+                    idx = celldofs(cell)[2*i] 
+                    if idx ∉ bc_dof
+                        push!(bc_dof,idx)
+                        push!(bc_val,bc_load)
+                    end 
+                end
+            end
+        end
+    end
+    return bc_dof, bc_val
 end
