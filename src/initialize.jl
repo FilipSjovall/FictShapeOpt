@@ -37,10 +37,10 @@ end
 
 #function init_mats()
     #global d  = zeros(dh.ndofs.x)
-    global d  = zeros(dh.ndofs.x)
-    global Ψ  = similar(d)
-    global a  = similar(d)
-    global Fₑₓₜ= similar(d)
+    global d      = zeros(dh.ndofs.x)
+    global Ψ      = similar(d)
+    global a      = similar(d)
+    global Fₑₓₜ   = similar(d)
     global K      = create_sparsity_pattern(dh) 
     global Kψ     = similar(K)
     global ∂rᵤ_∂x = similar(K)
@@ -96,21 +96,6 @@ end
 
     free_d = []
     
-    #for cell in CellIterator(dh)
-    #    for face in 1:nfaces(cell)
-    #        if (cellid(cell), face) in ΓN
-    #            face_nod = Ferrite.faces(dh.grid.cells[cellid(cell)])[1]
-    #            println(face_nod)
-    #            # Detta är fel dofs
-    #            doftemp  = [register[face_nod[1],2]*2-1 register[face_nod[1],2]*2 ]
-    #            append!(free_d,doftemp)
-    #            doftemp  = [register[face_nod[2],2]*2-1 register[face_nod[2],2]*2 ]
-    #            append!(free_d,doftemp)
-    #            #append!(free_d,[face_nod[1]*2-1 face_nod[1]*2 face_nod[2]*2-1 face_nod[2]*2])
-    #        end
-    #    end
-    #end
-    
     addnodeset!(dh.grid, "Γ₃", x -> norm(x[1]) == 0.5)
     addnodeset!(dh.grid, "Γ₄", x -> norm(x[2]) == 0.5)
 
@@ -141,13 +126,13 @@ end
         )
     #Γt = getfaceset(grid,"Γₜ")
 
-    function postprocess_opt(Ψ, dh, str)
-        begin
-            vtk_grid(str, dh) do vtkfile
-                vtk_point_data(vtkfile, dh, Ψ)
-            end
+function postprocess_opt(Ψ, dh, str)
+    begin
+        vtk_grid(str, dh) do vtkfile
+            vtk_point_data(vtkfile, dh, Ψ)
         end
     end
+end
 
 function postprocess(a,dh)
         begin

@@ -4,12 +4,13 @@ using LinearSolve, LinearSolvePardiso, SparseArrays,
 
 #ENV["PATH"]
 
-include("..//mesh_reader.jl")
+
 
 #grid1 = createBoxMesh("box_1",0.0,0.0,1.0,1.0,0.1)
 
 function load_files()
-  
+      include("..//mesh_reader.jl")
+
       include("..//material.jl")
   
       include("..//fem.jl")
@@ -20,7 +21,7 @@ function load_files()
   
       include("..//sensitivities.jl")
 
-      include("..//run.jl")
+      
 
       include("..//mma.jl")
 
@@ -70,7 +71,7 @@ function solver(dh,coord)
   
       for n ∈ 1 : 10
 
-          τ     = [1;0].*n
+          τ     = [0.1;0].*n
 
           res   = res.*0
           bcval = bcval₀
@@ -108,19 +109,65 @@ function solver(dh,coord)
       return a, dh, Fₑₓₜ, Fᵢₙₜ, K
 end
    
-ie = 0
-τ = [1.0 ; 0]
-for cell in CellIterator(dh)
-      kₑ = zeros(6,6)
-      fₑ = zeros(6)
-      ie = cellid(cell)
-      for face in 1:nfaces(cell)
-          if (cellid(cell), face) in Γt
-              face_nods = [ Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2] ]
-              face_dofs = [ face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2 ]
-              X = coord[ enod[ie][face_nods.+1] ,: ]
-              fₑ[face_dofs] += tractionLoad( X, τ )
-          end    
+function fictitious_solver(d,dh0,coord₀)
+      # allt överflödigt bör vid tillfälle flyttas utanför 
+      # lösare till ett "init-liknande script så att huvudsaklig kod hålls ren
+      imax     = 25
+      TOL      = 1e-10
+      residual = 0.0
+      iter     = 1
+      global λ
+      ndof     = size(coord₀,1)*2 
+      nelm     = size(enod,1)
+  
+      Kψ       = create_sparsity_pattern(dh0)
+  
+      #  ----- #
+      # Init   #
+      #  ----- #
+      Fᵢₙₜ        = zeros(ndof)
+      Fₑₓₜ        = zeros(ndof)
+      Ψ           = zeros(ndof)
+      ΔΨ          = zeros(ndof)
+      res         = zeros(ndof)
+      bcdof,bcval = setBCLin(0.0,dh0) # Ha bc som argument?
+  
+      # Struct - problem {dh,bcs,mp}
+
+      pdofs       = bcdof
+      fdofs       = setdiff(1:ndof,pdofs)
+      # ---------- #
+      # Set params # // Kanske som input till solver???
+      # ---------- #
+  
+      bcval₀   = bcval
+  
+      for n ∈ 1 : 10
+          res   = res.*0
+          bcval = bcval₀
+          residual = 0*residual
+          iter  = 0
+          λ     = 0.1 * n
+          fill!(ΔΨ,0.0)
+          
+          println("Starting equillibrium iteration at loadstep: ",n)
+  
+          # # # # # # # # # #
+          # Newton solve.  #
+          # # # # # # # # # #
+          while (iter < imax && residual > TOL ) || iter < 2
+              iter += 1
+              Ψ += ΔΨ
+              assemGlobal!(Kψ,Fᵢₙₜ,dh0,mp₀,t,Ψ,coord₀,enod,λ,d,Γ_robin)
+              solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof, bcval)
+              bcval      = bcval.*0
+              res        = Fᵢₙₜ #- Fₑₓₜ
+              res[bcdof] = res[bcdof].*0
+              residual   = norm(res,2)
+              Ψ[bcdof]   = bcval;
+              println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
+          end
       end
-end
+      return Ψ, dh0, Kψ, Fᵢₙₜ, λ
+  end
 

@@ -311,8 +311,6 @@ function getTopology(dh)
     coord   = zeros( length(dh.grid.nodes), 2)
     enod    = Array{Int64}[]
     for cell in CellIterator(dh)
-        #println(cellid(cell))
-        #println(cell.nodes)  
         push!(enod,[ [cellid(cell)]; cell.nodes])
     end
     nod_nr = 0
@@ -339,6 +337,11 @@ function setBCLin(bc_load,dh)
                     push!(bc_val,bc_load)
                 end
                 if y == 0.0
+                    #idx = celldofs(cell)[2*i-1] 
+                    #if idx ∉ bc_dof
+                    #    push!(bc_dof,idx)
+                    #    push!(bc_val,bc_load)
+                    #end
                     idx = celldofs(cell)[2*i] 
                     if idx ∉ bc_dof
                         push!(bc_dof,idx)

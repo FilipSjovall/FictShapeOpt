@@ -1,5 +1,4 @@
-f1dofs = [1,2,3,4] # ????
-f1  = [1,2] # ???
+
 
 function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod)
     assembler = start_assemble(K,Fᵢₙₜ)
@@ -39,20 +38,24 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γt,τ)
     end            
 end
 
-function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,fv,λ,d,ΓN)
+function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,Ψ,coord,enod,λ,d,Γ_robin)
     assembler = start_assemble(K,Fᵢₙₜ)
     ie = 0
     for cell in CellIterator(dh)
         ie += 1
-        cell_dofs= celldofs(cell)
-        kₑ = zeros(6,6)
-        fₑ = zeros(6)
-        kₑ, fₑ    = assemElem(coord[enod[ie][2:end],:],a[cell_dofs],mp,t)
-        ke = zeros(6,6)
-        fe = zeros(6)
+        cell_dofs = celldofs(cell)
+        kₑ        = zeros(6,6)
+        fₑ        = zeros(6)
+        kₑ, fₑ    = assemElem(coord[enod[ie][2:end],:],Ψ[cell_dofs],mp,t)
+        ke        = zeros(6,6)
+        fe        = zeros(6)
         for face in 1:nfaces(cell)
-            if (cellid(cell), face) in Γt  #|| (cellid(cell), face) in Γ1
-                ke[f1dofs,f1dofs],fe[f1dofs]   = Robin(coord[enod[ie][f1.+1],:],a[cell_dofs[f1dofs]],d[cell_dofs[f1dofs]],λ)
+            if (cellid(cell), face) in Γ_robin 
+                face_nods = [ Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2] ]
+                face_dofs = [ face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2 ]
+
+                X         = coord[ enod[ie][face_nods.+1] ,: ]
+                ke[face_dofs,face_dofs],fe[face_dofs]   = Robin(X,Ψ[cell_dofs[face_dofs]],d[cell_dofs[face_dofs]],λ)
             end
         end
         assemble!(assembler, cell_dofs, kₑ+ke, fₑ+fe)
