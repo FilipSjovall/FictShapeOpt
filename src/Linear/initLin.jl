@@ -22,12 +22,12 @@ addfaceset!(dh.grid,"Γₜ", x -> x[1] ≈ 1.0)
 Γt = getfaceset(dh.grid, "Γₜ")
 
 ## Robin faces
-addfaceset!(dh.grid,"Γ1", x -> x[1] ≈ 1.0)
-addfaceset!(dh.grid,"Γ2", x -> x[2] ≈ 1.0)
+addfaceset!(dh.grid,"Γ_1", x -> x[1] ≈ 1.0)
+addfaceset!(dh.grid,"Γ_2", x -> x[2] ≈ 1.0)
 #addfaceset!(dh.grid,"Γ3", x -> x[2] ≈ 0.0)
 Γ_robin =union(
-    getfaceset(dh.grid, "Γ1"),
-    getfaceset(dh.grid, "Γ2"),
+    getfaceset(dh.grid, "Γ_1"),
+    getfaceset(dh.grid, "Γ_2"),
 #    getfaceset(dh.grid, "Γ3"),
 )
 # Robin nodes

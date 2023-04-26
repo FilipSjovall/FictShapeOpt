@@ -11,7 +11,7 @@ function drψ(dr_dd,dh,a,λ,d,Γ_robin)
                 face_nods = [ Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2] ]
                 face_dofs = [ face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2 ]
                 X         = coord[ enod[ie][face_nods.+1] ,: ]
-                ke[face_dofs,face_dofs],_ = Robin(X,a[cell_dofs[face_dofs]],d[cell_dofs[face_dofs]],λ)
+                dfe[face_dofs,face_dofs],_ = Robin(X,a[cell_dofs[face_dofs]],d[cell_dofs[face_dofs]],λ)
             end
         end
         assemble!(assembler, cell_dofs, -dfe)

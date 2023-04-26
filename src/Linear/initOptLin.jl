@@ -1,5 +1,7 @@
 # Solution vector
-a = zeros(size(coord,1)*2)
+ndof = size(coord,1)*2
+a    = zeros(ndof)
+K    = create_sparsity_pattern(dh)
 # Optimization norm
 kktnorm = 1.0
 # Boundary values and associated dofs

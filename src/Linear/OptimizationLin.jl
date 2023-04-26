@@ -1,5 +1,5 @@
 using LinearSolve, LinearSolvePardiso, SparseArrays, 
-      StaticArrays, CairoMakie
+      StaticArrays, CairoMakie,
       IterativeSolvers, AlgebraicMultigrid, IncompleteLU    
 
 #ENV["PATH"]
@@ -19,7 +19,7 @@ function load_files()
   
       include("assemLin.jl")
   
-      include("..//sensitivities.jl")
+      include("sensitivitiesLin.jl")
 
       include("run_linear.jl")
 
@@ -29,7 +29,7 @@ function load_files()
 
       include("initOptLin.jl")
 end
-  
+
 load_files()
 
 

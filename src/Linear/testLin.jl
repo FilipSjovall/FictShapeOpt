@@ -1,62 +1,44 @@
-ϵ  = 1e-8
+ϵ  = 1e-6
 load_files()
-a,dh = solver();
-mp = [1.0 1.0]
-t  = 1.0
-gp = 1
+Ψ, _, Kψ, Fψ, λ = fictitious_solver(d, dh0, coord₀) # Döp om till "~coord0"
+a, _, Fₑₓₜ, Fᵢₙₜ, K = solver(dh,coord)
 
-dofs = Ferrite.celldofs(dh,2)
-nods = enod[2][2:end]
+
+dofs = Ferrite.celldofs(dh,1)
+nods = enod[1][2:end]
 
 
 x_glob = reshape(coord,(length(dh0.grid.nodes)*2))
 ed = a[dofs]
 xe = x_glob[dofs]
-addfaceset!(dh.grid, "Γ₁", x -> norm(x[1]) ≈ 0.5)
-addfaceset!(dh.grid, "Γ₂", x -> norm(x[2]) ≈ 0.5)
-#addfaceset!(dh.grid, "Γ₃", x -> norm(x[2]) ≈ 1.0)
-
-ΓN = union(
-    getfaceset(dh.grid, "Γ₁"),
-    getfaceset(dh.grid, "Γ₂"),
-    #getfaceset(grid, "Γ₃"),
-)
-
-ip = Lagrange{2, RefTetrahedron, 1}()
-qr = QuadratureRule{2, RefTetrahedron}(1)
-qr_face = QuadratureRule{1, RefTetrahedron}(1)
-
-cv = CellVectorValues(qr, ip)
-fv = FaceVectorValues(qr_face, ip)
 ######
 ##### Test drᵤ_dx
 ######
     dX = init_∂X();
     #dr = dr_GP(coord[nods,:],ed,gp,mp,t)
     dr = assem_dr(coord[nods,:],ed,mp,t)
-
-    
     ke = zeros(6,6)
     fe = zeros(6,2)
 
-    index1,index2 = [1,2]
+    #index1,index2 = [1,2]
+    ia = 1
+    indexet = nods[ia]
     for pert in 1:2
-        coord[nods[index1],index2] = coord[nods[index1],index2] + ϵ * (-real(1*im^(pert)))
+        coord[indexet,1] = coord[indexet,1] + ϵ * (-real(1*im^(pert)))
         #ke,fe[:,pert] = assemGP(coord[nods,:],ed,gp,mp,t)
         
         ke, fe[:,pert] = assemElem(coord[nods,:],ed,mp,t)
     end
     numsens = (fe[:,2] - fe[:,1])/ϵ
-    asens   = dr[:,2]
+    asens   = dr[:,ia]
     numsens./asens
 ######
 ##### Test f_int vs K
-    indexet = 7
-    
-
+    indexet = 3
     ke = zeros(6,6)
-    fe = zeros(6,6
-    for pert in 1:2
+    fe = zeros(6,6)
+    for pert in 1:2 
+        println(" vad är fel ? ")
         if pert == 1
             ed[indexet] = ed[indexet] + ϵ 
         else
@@ -81,9 +63,11 @@ fv = FaceVectorValues(qr_face, ip)
     cell = CellIterator(dh.grid)
     dofs = Ferrite.celldofs(dh,elnum)
     nods = enod[elnum][2:end]
-    cΕll    = Ferrite.reinit!(cell.cc,elnum)
+    cΕll = Ferrite.reinit!(cell.cc,elnum)
     λ    = 0.5
-
+    hej  = CellCache(dh.grid)
+    ie   = 103
+    Ferrite.reinit!(hej,ie)
     indexet = 2
     for pert in 1:2
         fe[:,pert] .= 0.0
@@ -96,14 +80,21 @@ fv = FaceVectorValues(qr_face, ip)
         # * (-real(1*im^(pert)))
         #ke, fe[:,pert]  = assemElem(coord[nods,:],ed,mp,t)
         #ke,fe[:,pert] = RobinIntegral(ke,fe[:,pert],cΕll,ΓN,fv,ed,λ,de,coord[nods,:])
-        ke[f1dofs,f1dofs],fe[f1dofs,pert]   = Robin(coord[nods[f1],:],ed[f1dofs],de[f1dofs],λ)
+        for face in 1:nfaces(hej)
+            if (cellid(hej), face) in Γ_robin
+                face_nods      = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
+                face_dofs      = [face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2]
+                X              = coord[enod[ie][face_nods.+1] ,:]
+                ke[face_dofs,face_dofs],fe[face_dofs,pert]   = Robin(X,ed[face_dofs],de[face_dofs],λ)
+            end    
+        end
     end
     numsens = (fe[:,1] - fe[:,2])/ϵ
     asens   = ke[:,indexet] 
     numsens./asens
 ####
 ## Test r_fictitious w.r.t. d
-    elnum = 35
+    ie = 103
 
     ke = zeros(6,6)
     fe = zeros(6,2)
@@ -111,9 +102,13 @@ fv = FaceVectorValues(qr_face, ip)
     de = 0.5*ones(6)
 
     cell = CellIterator(dh.grid)
-    dofs = Ferrite.celldofs(dh,elnum)
-    nods = enod[elnum][2:end]
-    cΕll = Ferrite.reinit!(cell.cc,elnum)
+    dofs = Ferrite.celldofs(dh,ie)
+    nods = enod[ie][2:end]
+    cΕll = Ferrite.reinit!(cell.cc,ie)
+    λ    = 0.5
+    hej  = CellCache(dh.grid)
+    Ferrite.reinit!(hej,ie)
+
     λ    = 1
 
     indexet = 2
@@ -126,7 +121,14 @@ fv = FaceVectorValues(qr_face, ip)
         else
             de[indexet] = de[indexet] - ϵ 
         end
-        dfe[f1dofs,f1dofs],fe[f1dofs,pert]   = Robin(coord[nods[f1],:],ed[f1dofs],de[f1dofs],λ)
+        for face in 1:nfaces(hej)
+            if (cellid(hej), face) in Γ_robin
+                face_nods      = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
+                face_dofs      = [face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2]
+                X              = coord[enod[ie][face_nods.+1] ,:]
+                dfe[face_dofs,face_dofs],fe[face_dofs,pert]   = Robin(X,ed[face_dofs],de[face_dofs],λ)
+            end    
+        end
         dfe = -dfe
     end
     numsens = (fe[:,1] - fe[:,2])/ϵ
@@ -134,22 +136,28 @@ fv = FaceVectorValues(qr_face, ip)
     numsens./asens
 #####
 ## Test objective function and sensitivity
-    a, dh, Fₑₓₜ, Fᵢₙₜ, K = solver(dh);
+    a, _, Fₑₓₜ, _, K = solver(dh,coord)
     C = zeros(2)
-    indexet = 3
+    indexet = 227
     for pert in 1:2
+        Fₑₓₜ .=0
         if pert == 1
             a[indexet] = a[indexet] + ϵ 
         else
             a[indexet] = a[indexet] - ϵ 
         end
-        assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod)
-        C[pert] = -a[pdofs]'*Fᵢₙₜ[pdofs]
+        
+        τ        = [0.1;0.1].*n
+        assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γt,τ)
+        assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
+        #Fₑₓₜ[bcdof] = - Fᵢₙₜ[bcdof]
+        C[pert]    = a'*Fₑₓₜ
     end
     numsens = ( C[1] - C[2] ) / ϵ;
     ∂g_∂u = zeros(size(a));
-    ∂g_∂u[fdofs]  = -a[pdofs]'*K[pdofs,fdofs];
-    ∂g_∂u[pdofs]  = -I(length(pdofs))'*Fᵢₙₜ[pdofs]  - (a[pdofs]'*K[pdofs,pdofs])';
+    ∂g_∂u = Fₑₓₜ
+    #∂g_∂u[fdofs]  = -a[pdofs]'*K[pdofs,fdofs];
+    #∂g_∂u[pdofs]  = -I(length(pdofs))'*Fᵢₙₜ[pdofs]  - (a[pdofs]'*K[pdofs,pdofs])';
     asens = ∂g_∂u[indexet];
     numsens./asens
 #####
@@ -157,8 +165,8 @@ fv = FaceVectorValues(qr_face, ip)
     ## bla bla
     Fψ = similar(Fᵢₙₜ)
     C = zeros(284,2)
-    indexet = 6
-    dr_dd = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
+    indexet = 227
+    dr_dd = drψ(dr_dd,dh0,Ψ,fv,λ,d,Γ_robin);
     ϵ = 1e-6
     for pert in 1:2
         if pert == 1
@@ -167,7 +175,8 @@ fv = FaceVectorValues(qr_face, ip)
             d[indexet] = d[indexet] - ϵ 
         end
         coord = getCoord(getX(dh0),dh0)
-        assemGlobal!(Kψ,Fψ,dh0,mp,t,Ψ,coord,enod,fv,λ,d,ΓN)
+        assemGlobal!(Kψ,Fψ,dh0,mp,t,Ψ,coord,enod,λ,d,Γ_robin)
+        #assemGlobal!(Kψ,Fᵢₙₜ,dh0,mp₀,t,Ψ,coord₀,enod,λ,d,Γ_robin)
         C[:,pert]                   = Fψ;
     end
     numsens = (C[:,1] - C[:,2])/ϵ
@@ -179,29 +188,29 @@ fv = FaceVectorValues(qr_face, ip)
     X = getX(dh)
     incr = zeros(284)
     C = zeros(284,2)
-    indexet = 6
+    ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
+    indexet = 72
     for pert in 1:2
         if pert == 1
-            X[indexet]   +=   ϵ
+            coord[indexet,1] += ϵ 
+            #X[indexet]   +=   ϵ
             #incr[indexet] =   ϵ 
             #updateCoords!(dh,incr)
         else
-            X[indexet]   -=   ϵ
+            coord[indexet,1] -= ϵ 
+           # X[indexet]   -=   ϵ
             #incr[indexet] = - ϵ 
             #updateCoords!(dh,incr)
         end
-        coord = getCoord(X,dh) # borde flyttas in i solver..
+        #coord = getCoord(X,dh) # borde flyttas in i solver..
         Fᵢₙₜ .=0
-        assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod)
-        #a, _, Fₑₓₜ, Fᵢₙₜ, K       = solver(dh);
-        #C[pert]                   = compliance(Fₑₓₜ,a)
+        τ        = [0.1;0.1].*10
+        assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γt,τ)
         C[:,pert]                   = Fᵢₙₜ;
-        #C[pert] = -a[pdofs]'*Fᵢₙₜ[pdofs]
     end
-    ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
+    
     numsens = (C[:,1]-C[:,2])./ϵ   
-    asens   = ∂rᵤ_∂x[:,indexet]
-    asens   = ∂rᵤ_∂x[:,2]; ## dof 6 motsvarar nod 2
+    asens   = ∂rᵤ_∂x[:,1]; ## dof 6 motsvarar nod 2
     kvot    = numsens./asens
     filter_kvot = filter(x-> abs(x)<10,kvot)
 
@@ -254,28 +263,10 @@ fv = FaceVectorValues(qr_face, ip)
 
 ## Test global sensitivity with adjoint
     load_files()
-    filename = "mesh2.txt"
-    coord, enod, edof = readAscii(filename);
-    grid = get_ferrite_grid("data/mesh2.inp")
-    dh = DofHandler(grid)
-    add!(dh, :u, 2)
-    close!(dh)
-    addfaceset!(dh.grid, "Γ₁", x -> norm(x[1]) ≈ 0.5)
-    addfaceset!(dh.grid, "Γ₂", x -> norm(x[2]) ≈ 0.5)
-    ΓN = union(
-            getfaceset(grid, "Γ₁"),
-            getfaceset(grid, "Γ₂"),
-        )
-    ip = Lagrange{2, RefTetrahedron, 1}()
-    qr = QuadratureRule{2, RefTetrahedron}(1)
-    qr_face = QuadratureRule{1, RefTetrahedron}(1)
-    cv = CellVectorValues(qr, ip)
-    fv = FaceVectorValues(qr_face, ip)
-
     bcdof,bcval = setBC(0.0,dh)
 
     dh0 = deepcopy(dh)
-    d  = ones(242)*0.5
+    d  = ones(284)*0.5
 
     Ψ  = similar(d)
     a  = similar(d)
@@ -289,14 +280,10 @@ fv = FaceVectorValues(qr_face, ip)
     λᵤ = similar(a)
     λψ = similar(a)
 
-    mp     = [175 80.769230769230759]
-    t      = 1.0 
-
-    indexet = 7
+    indexet = 227
     ϵ       = 1e-6
-
-
     test = zeros(2)
+    coord₀ = getCoord(getX(dh0), dh0)
     for pert in 1:2
         if pert == 1
             # perturbera d
@@ -311,30 +298,32 @@ fv = FaceVectorValues(qr_face, ip)
         end
 
         # Check that grid is updated correctly
+        coord₀ = getCoord(getX(dh0),dh0)
         coord = getCoord(getX(dh0),dh0)
-        Ψ, _, Kψ, _, λ               = fictitious_solver(d,dh0); # 
+        Ψ, _, Kψ, _, λ = fictitious_solver(d, dh0, coord₀)
         # Update coords
         updateCoords!(dh,Ψ)
         coord = getCoord(getX(dh),dh)
 
-        a, _, _, Fᵢₙₜ, K          = solver(dh);
-        test[pert]                   = -a[pdofs]'*Fᵢₙₜ[pdofs];
+        a, _, Fₑₓₜ, _, K = solver(dh,coord)
+        test[pert]                   = a'*Fₑₓₜ;
     end
 
     ∂g_∂u = zeros(size(d))
-    ∂g_∂u[fdofs]  = -a[pdofs]'*K[pdofs,fdofs];
+    ∂g_∂u = Fₑₓₜ
+    #∂g_∂u[fdofs]  = -a[pdofs]'*K[pdofs,fdofs];
     #∂g_∂u[pdofs]  = -I(length(pdofs))'*Fᵢₙₜ[pdofs]  - (a[pdofs]'*K[pdofs,pdofs])';
 
     ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
 
-    dr_dd = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
+    dr_dd =drψ(dr_dd,dh0,Ψ,λ,d,Γ_robin)
 
     ∂g_∂x = zeros(size(d))
-    ∂g_∂x[fdofs]  = -a[pdofs]'*∂rᵤ_∂x[pdofs,fdofs]
-    #∂g_∂x[pdofs]  = -a[pdofs]'*∂rᵤ_∂x[pdofs,pdofs]
+    ∂g_∂x  = -a'*∂rᵤ_∂x
+    
 
     solveq!(λᵤ, K, ∂g_∂u, bcdof, bcval.*0);  # var Fₑₓₜ;
-    solveq!(λψ, Kψ,∂g_∂x - ∂rᵤ_∂x'*λᵤ, bcdof, bcval.*0);
+    solveq!(λψ, Kψ,∂g_∂x' - ∂rᵤ_∂x'*λᵤ, bcdof, bcval.*0);
 
     ∂g_∂d   = -transpose(λψ)*dr_dd;
 
@@ -344,7 +333,7 @@ fv = FaceVectorValues(qr_face, ip)
     numsens/asens
 
 
-    ## Volume constraint direct sensitivity w.r.t. x
+## Volume constraint direct sensitivity w.r.t. x
     indexet = 6
     test    = zeros(2)
     X       = getX(dh)

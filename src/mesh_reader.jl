@@ -198,11 +198,11 @@ function setup_grid(h)
 end
 
 function updateCoords!(dh,Ψ)
-    c       = similar(dh.grid.nodes)
+    c        = similar(dh.grid.nodes)
     Ψ_sorted = sortNodalDisplacements(dh,Ψ)
-    x_new = Vec{2,Float64}
+    x_new    = Ferrite.Vec{2,Float64}
     for i in 1:length(c)
-        x_new = Vec{2}(dh.grid.nodes[i].x + Ψ_sorted[:,i])
+        x_new = Ferrite.Vec{2}(dh.grid.nodes[i].x + Ψ_sorted[:,i])
         c[i] = Node(x_new)
     end
     copyto!(dh.grid.nodes, c)
