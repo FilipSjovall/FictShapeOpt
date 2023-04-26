@@ -79,7 +79,7 @@ for jnod in nody
 end
 
 d         = 0*ones(size(coord,1)*2) 
-d[free_d].= 0.001
+d[free_d].= 0.1
 
 function postprocess_opt(Ψ, dh, str)
     begin

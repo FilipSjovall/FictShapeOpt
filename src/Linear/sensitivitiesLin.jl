@@ -1,8 +1,3 @@
-# Funktion "assemGlobal"
-f1dofs = [1,2,3,4,7,8]
-f1  = [1,2,4]
-
-
 function drψ(dr_dd,dh,a,λ,d,Γ_robin)
     assembler = start_assemble(dr_dd)
     ie = 0
@@ -31,9 +26,7 @@ function drᵤ_dx(dr,dh,mp,t,a,coord,enod)
     for cell in CellIterator(dh)
         ie += 1
         cell_dofs= celldofs(cell)
-        
         drₑ = assem_dr(coord[enod[ie][2:end],:],a[cell_dofs],mp,t)
-
         assemble!(assembler, cell_dofs, drₑ)
     end 
     return dr

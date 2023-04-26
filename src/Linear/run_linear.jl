@@ -1,58 +1,21 @@
-using LinearSolve, LinearSolvePardiso, SparseArrays, 
-      StaticArrays, 
-      IterativeSolvers, AlgebraicMultigrid, IncompleteLU    
 
-#ENV["PATH"]
-
-
-
-#grid1 = createBoxMesh("box_1",0.0,0.0,1.0,1.0,0.1)
-
-function load_files()
-      include("..//mesh_reader.jl")
-
-      include("..//material.jl")
-  
-      include("..//fem.jl")
-  
-      include("assemElemLin.jl")
-  
-      include("assemLin.jl")
-  
-      include("..//sensitivities.jl")
-
-      
-
-      include("..//mma.jl")
-
-      include("initLin.jl")
-end
-  
-load_files()
 
 function solver(dh,coord)
+      # ------------- #
+      # Init-stuff    #
+      # ------------- #
       imax     = 25
       TOL      = 1e-6
       residual = 0.0
       iter     = 1
-  
       ndof     = size(coord,1)*2 
-      nelm     = size(enod,1)
-
-      # ----------- #
-      # Read "grid" #
-      # ----------- #
+      # ------------- #
+      # Assem pattern #
+      # ------------- #
       K  = create_sparsity_pattern(dh)
-  
-      #  -------- #
-      # Convert   #
-      #  -------- #
-      # coord <-- dh.grid.nodes 
-      # enod  <-- dh.grid.cells
-  
-      #  ----- #
-      # Init   #
-      #  ----- #
+      # ------ #
+      #  Init  #
+      # ------ #
       Fᵢₙₜ        = zeros(ndof)
       Fₑₓₜ        = zeros(ndof)
       a           = zeros(ndof)
@@ -64,48 +27,35 @@ function solver(dh,coord)
       # ---------- #
       # Set params # // Kanske som input till solver???
       # ---------- #
-      mp       = [175 80.769230769230759]
       t        = 1.0
-  
       bcval₀   = bcval
-  
       for n ∈ 1 : 10
-
-          τ     = [0.1;0].*n
-
-          res   = res.*0
-          bcval = bcval₀
+          τ        = [0.1;0.1].*n
+          res      = res.*0
+          bcval    = bcval₀
           residual = 0*residual
-          iter  = 0
-  
+          iter     = 0
           fill!(Δa,0.0)
-          
           println("Starting equillibrium iteration at loadstep: ",n)
-  
           # # # # # # # # # #
           # Newton solve.  #
           # # # # # # # # # #
           while (iter < imax && residual > TOL ) || iter < 2
-  
-              iter += 1
-              
-              a += Δa
-  
+              iter      += 1
+              a         += Δa
               assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γt,τ)
-          
               solveq!(Δa, K, -Fᵢₙₜ, bcdof, bcval)
-  
               bcval      = 0*bcval
               res        = Fᵢₙₜ - Fₑₓₜ
               res[bcdof] = 0*res[bcdof]
               residual   = norm(res,2)
               println("Iteration: ", iter, " Residual: ", residual)
           end
-  
       end
-  
-      Fₑₓₜ = res - Fᵢₙₜ
-      #println("Norm coord ", norm(coord))
+      fill!(Fₑₓₜ,0.0)
+      τ        = [0.1;0.1].*n
+      assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
+      Fₑₓₜ[bcdof] = - Fᵢₙₜ[bcdof]
       return a, dh, Fₑₓₜ, Fᵢₙₜ, K
 end
    

@@ -3,9 +3,9 @@
 # # # # # # # # # # # # # #
 g_hist,v_hist,OptIter = Optimize(dh)
 
-
-OptIter = 44
-
+# # # # # # # # # 
+# Plot history  #
+# # # # # # # # # 
 using CairoMakie
 fig = Figure()
 ax1, l1 = lines(fig[1, 1], 1..OptIter, g_hist[1:OptIter], color = :red)

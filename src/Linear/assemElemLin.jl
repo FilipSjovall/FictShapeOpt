@@ -20,22 +20,19 @@ N[:,1]   = ξ[1,:]
 N[:,2]   = ξ[2,:]
 N[:,3]   = ξ[3,:]
 
-M        = reinterpret(Vec{3,Float64},vec(N))
-
-
+#M        = reinterpret(Vec{3,Float64},vec(N))
 dNᵣ      = Matrix{Float64}(undef,3,9)
-dNᵣ[:,1] = [ξ[1,1] 0.0 0.0 ]
-dNᵣ[:,2] = [0.0 ξ[1,2] 0.0 ]
-dNᵣ[:,3] = [0.0 0.0 ξ[1,3] ]
-
-dNᵣ[:,4] = [ξ[2,1] 0.0 0.0 ]
-dNᵣ[:,5] = [0.0 ξ[2,2] 0.0 ]
-dNᵣ[:,6] = [0.0 0.0 ξ[2,3] ]
-
-dNᵣ[:,7] = [ξ[3,1] 0.0 0.0 ]
-dNᵣ[:,8] = [0.0 ξ[3,2] 0.0 ]
-dNᵣ[:,9] = [0.0 0.0 ξ[3,3] ]
-
+dNᵣ[:,1] = [1.0 0.0 0.0]
+dNᵣ[:,2] = [0.0 1.0 0.0]
+dNᵣ[:,3] = [0.0 0.0 1.0]
+#
+dNᵣ[:,4] = [1.0 0.0 0.0]
+dNᵣ[:,5] = [0.0 1.0 0.0]
+dNᵣ[:,6] = [0.0 0.0 1.0]
+#
+dNᵣ[:,7] = [1.0 0.0 0.0]
+dNᵣ[:,8] = [0.0 1.0 0.0]
+dNᵣ[:,9] = [0.0 0.0 1.0]
 #dNr      = reinterpret(Vec{3,Float64},vec(dNᵣ))
 
 Jᵀ      = zeros(3,3)
@@ -46,35 +43,25 @@ Bₗ₀     = zeros(3,6)
 H₀      = zeros(4,6)
 A       = zeros(3,4)
 B₀      = zeros(3,6)
-
 dBₗ₀    = zeros(3,6)
 dH₀     = zeros(4,6)
 dA      = zeros(3,4)
 dB₀     = zeros(3,6)
-
 R       = zeros(4,4)
 eff     = zeros(2,2)
-
-
-
-#S       = zeros(2,2)
 S       = zeros(3)
 ∂S_∂x   = zeros(3)
-
-
 dre      = zeros(6,6)
 
-#H₀       = zero(Tensor{4,6})
 
 function assemGP(coord,ed,gp,mp,t)
-    #println( typeof( transpose(dNᵣ[:,index[gp,:]]) ) ," ",  typeof(coord) )
-    #println(coord)
+    # Jacobian N x = Jᵀ N ξ
     Jᵀ[:,2:3]               = transpose(dNᵣ[:,index[gp,:]]) * coord # ??
     J⁻                      = inv(Jᵀ)
     detJ                    = det(Jᵀ)
     dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
 
-    # Gradient matrices  
+    # Gradient matrices " ∇N " 
     H₀[1,1:2:5]  = dNₓ[1,:]
     H₀[2,1:2:5]  = dNₓ[2,:]
     H₀[3,2:2:6]  = dNₓ[1,:]
@@ -87,12 +74,11 @@ function assemGP(coord,ed,gp,mp,t)
 
     # ∇u = ∇ₓN u
     A_temp       = H₀*ed
-
     A[1,:]       = [A_temp[1] 0.0 A_temp[3] 0.0]
     A[2,:]       = [0.0 A_temp[2] 0.0 A_temp[4]]
     A[3,:]       = [A_temp[2] A_temp[1] A_temp[4] A_temp[3]]
 
-    # 
+    # ∇N + ∂N∂x ⋅ ∇u 
     B₀           = Bₗ₀ + A*H₀
 
     # Deformation gradient F = I + ∇u
@@ -100,61 +86,23 @@ function assemGP(coord,ed,gp,mp,t)
     eff[1,2]     = A_temp[2]
     eff[2,1]     = A_temp[3]
     eff[2,2]     = A_temp[4] + 1.0
-
+    # Vec(F)
     ef = [eff[1,1] eff[1,2] eff[2,1] eff[2,2]]
 
-    # Stress and material tangent
-    # S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²    
+    # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²    
     es = neohooke1(ef,mp)
     D  = dneohooke1(ef,mp)
-
+    # Reformulate as matrix
     S                       = [es[1]; es[2]; es[4]]
-    @inbounds Stress[1,:]   = [S[1] S[3]]
-    @inbounds Stress[2,:]   = [S[3] S[2]]
-    
-    @inbounds R[1:2,1:2]    = Stress
-    @inbounds R[3:4,3:4]    = Stress
-    
+    Stress[1,:]   = [S[1] S[3]]
+    Stress[2,:]   = [S[3] S[2]]
+    R[1:2,1:2]    = Stress
+    R[3:4,3:4]    = Stress
+    # Internal force vector ∫ δE : S dΩ or ∫ ∇ₓδuᵢ : P dΩ
     fₑ            = transpose(B₀)*S*detJ*t*w[gp]/2
-
     # ∫ δEᵀ D ΔE + ∇δuᵀ S ∇Δu dΩ 
     kₑ            = ( transpose(B₀)*D*B₀ + transpose(H₀)*R*H₀ )*detJ*t*w[gp]/2 
     return kₑ, fₑ
-end
-
-function RobinIntegral(ke,ge,cell,ΓN,fv,uₑ,λ,dₑ,coorde)
-    for face in 1:nfaces(cell)
-        if (cellid(cell), face) in ΓN
-            Ferrite.reinit!(fv, cell, face)
-            for q_point in 1:getnquadpoints(fv)
-                dΓ = getdetJdV(fv, q_point)
-                u_n = function_value(fv,q_point,uₑ)
-                d_n = function_value(fv,q_point,dₑ)
-                if (cellid(cell), face) in Γ1
-                    for i in 1:2:11
-                        Ni  = shape_value(fv, q_point, i)
-                        #ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ 
-                        ge[i]   += Ni ⋅ [1;1] 
-                        for j in 1:2:11
-                            Nj = shape_value(fv, q_point, j)
-                            ke[i,j] += Ni ⋅ Nj * dΓ 
-                        end
-                    end
-                elseif (cellid(cell), face) in Γ2
-                    for i in 2:2:12
-                        Ni  = shape_value(fv, q_point, i)
-                        #ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ 
-                        ge[i]   += Ni ⋅ [1;1]  
-                        for j in 2:2:12
-                            Nj = shape_value(fv, q_point, j)
-                            ke[i,j] += Ni ⋅ Nj * dΓ 
-                        end
-                    end
-                end 
-            end
-        end
-    end
-    return ke,ge
 end
 
 function assemElem(coord,ed,mp,t)
@@ -265,8 +213,8 @@ function dr_GP(coord,ed,gp,mp,t)
 end
 
 function Robin(coorde,Ψe,de,λ)
-    L = norm(coorde[1,:] - coorde[2,:])
-    Kc   = zeros(4,4)
+    L           = norm(coorde[1,:] - coorde[2,:])
+    Kc          = zeros(4,4)
 
     # Byt mot 4x4
     N1N1        =  L/3
@@ -276,15 +224,14 @@ function Robin(coorde,Ψe,de,λ)
     Kc[2,2:2:4] = [N1N1 N1N2]
     Kc[3,1:2:3] = [N1N2 N2N2]
     Kc[4,2:2:4] = [N1N2 N2N2]
-    #Kc = L/6 *  [2 0 1 0; 0 2 0 1; 1 0 2 0; 0 1 0 2] 
-return  Kc, Kc * (Ψe - λ*de) # [0;∫N1;0;∫N2;0;∫N3]*0.5
+    #Kc = L/6 *  [2 0 1 0; 0 2 0 1; 1 0 2 0; 0 1 0 2] # - snabbast implementering? inga allokeringar vid sidan...
+    return  Kc, Kc * (Ψe - λ*de) # [0;∫N1;0;∫N2;0;∫N3]*0.5
 end
 
 function tractionLoad(coorde,τ)
     L = norm(coorde[1,:] - coorde[2,:]) 
     ∫Nᵀ = (L/2) * [1.0 0.0 1.0 0.0; 0.0 1.0 0.0 1.0]  ## 0.5?
     return -∫Nᵀ' * τ
-    #return -[L/2;0;L/2;0]*τ[1]
 end
 
 function dΩ(X)

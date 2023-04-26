@@ -1,6 +1,6 @@
 # Funktion "assemGlobal"
-f1dofs = [1,2,3,4,7,8]
-f1  = [1,2,4]
+#f1dofs = [1,2,3,4]
+#f1  = [1,2]
 
 function compliance(F_ext,u)
     C = transpose(F_ext)*u
@@ -13,10 +13,13 @@ function drψ(dr_dd,dh,a,fv,λ,d,ΓN)
     for cell in CellIterator(dh)
         ie += 1
         cell_dofs= celldofs(cell)
-        dfe = zeros(12,12) ## 12x1 eller 12x12 ?? 
+        dfe = zeros(6,6) ## 12x1 eller 12x12 ?? 
         for face in 1:nfaces(cell)
             if (cellid(cell), face) in Γt
-                dfe[f1dofs,f1dofs],_ = Robin(coord[enod[ie][f1.+1],:],a[cell_dofs[f1dofs]],d[cell_dofs[f1dofs]],λ)
+                face_nods = [ Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2] ]
+                face_dofs = [ face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2 ]
+                X         = coord[ enod[ie][face_nods.+1] ,: ]
+                dfe[face_dofs,face_dofs],_ = Robin(X,a[cell_dofs[face_dofs]],d[cell_dofs[face_dofs]],λ)
             end
         end
         assemble!(assembler, cell_dofs, -dfe)
@@ -72,9 +75,7 @@ function drᵤ_dx(dr,dh,mp,t,a,coord,enod)
     for cell in CellIterator(dh)
         ie += 1
         cell_dofs= celldofs(cell)
-        
-        drₑ = assem_dr(coord[enod[ie][2:7],:],a[cell_dofs],mp,t)
-
+        drₑ = assem_dr(coord[enod[ie][2:end],:],a[cell_dofs],mp,t)
         assemble!(assembler, cell_dofs, drₑ)
     end 
     return dr

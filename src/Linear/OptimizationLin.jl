@@ -1,39 +1,46 @@
 using LinearSolve, LinearSolvePardiso, SparseArrays, 
-      StaticArrays,FerriteMeshParser, Ferrite, 
+      StaticArrays, CairoMakie
       IterativeSolvers, AlgebraicMultigrid, IncompleteLU    
 
+#ENV["PATH"]
 
+
+
+#grid1 = createBoxMesh("box_1",0.0,0.0,1.0,1.0,0.1)
 
 function load_files()
-    include("mesh_reader.jl")
+      include("..//mesh_reader.jl")
 
-    include("material.jl")
+      include("..//material.jl")
+  
+      include("..//fem.jl")
+  
+      include("assemElemLin.jl")
+  
+      include("assemLin.jl")
+  
+      include("..//sensitivities.jl")
 
-    include("element_routines.jl")
+      include("run_linear.jl")
 
-    include("fem.jl")
+      include("..//mma.jl")
 
-    include("assemElem.jl")
+      include("initLin.jl")
 
-    include("assem.jl")
-
-    include("sensitivities.jl")
+      include("initOptLin.jl")
 end
-
-include("initialize.jl")
-include("mma.jl")
-init_hyper()
-
-dh0 = deepcopy(dh);
+  
+load_files()
 
 
 function Optimize(dh)
-    dh0 = deepcopy(dh)
+    
     # Flytta allt nedan till init_opt?
+        dh0 = deepcopy(dh)
         λψ   = similar(a)
         λᵤ   = similar(a)
         λᵥₒₗ = similar(a)
-        Vₘₐₓ = 0.65
+        Vₘₐₓ = 1.2
         l    = similar(a)
         l   .= 0.5
         tol  = 1e-6
@@ -82,7 +89,9 @@ function Optimize(dh)
             global g_ini
             global pdofs = bcdof
             global fdofs = setdiff(1:length(a), pdofs)
-            global locked_d = setdiff(1:898,free_d)
+            global locked_d = setdiff(1:length(a),free_d)
+            global low
+            global upp
         # # # # # # # # # # # # # #
         OptIter += 1
         
@@ -99,34 +108,30 @@ function Optimize(dh)
         updateCoords!(dh, Ψ) # x₀ + Ψ = x
         coord = getCoord(getX(dh), dh)
 
-        # **TEST**
-        #updateCoords!(dh0,Ψ); # x₀ + Ψ = x
-
         # # # # # # # # #
         # Equillibrium  #
         # # # # # # # # #
-        a, _, _, Fᵢₙₜ, K = solver(dh,coord)
-
+        a, _, Fₑₓₜ, _, K = solver(dh,coord)
+        
         # # # # # # # 
         # Objective #
         # # # # # # #
-        g = -a[pdofs]' * Fᵢₙₜ[pdofs]
+        #g = -a[pdofs]' * Fᵢₙₜ[pdofs]
+        g = a' * Fₑₓₜ
 
         # # # # # # # # # 
         # Sensitivities #
         # # # # # # # # # 
-        ∂g_∂x = zeros(size(a)) # Flytta
-        ∂g_∂u = zeros(size(d)) # Flytta
-
-        ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
+        # ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
+        ∂g_∂u        = Fₑₓₜ
         ∂rᵤ_∂x       = drᵤ_dx(∂rᵤ_∂x, dh, mp, t, a, coord, enod)
-        dr_dd        = drψ(dr_dd, dh0, Ψ, fv, λ, d, ΓN)
+        dr_dd        = drψ(dr_dd, dh0, Ψ, fv, λ, d, Γ_robin)
 
         # # # # # # #
         # Adjoints  #
         # # # # # # #
         solveq!(λᵤ, K', ∂g_∂u, bcdof, bcval * 0)  # var Fₑₓₜ;
-        ∂g_∂x[fdofs] = a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
+        ∂g_∂x[fdofs] = a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs] # ???
         solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof, bcval * 0)
 
         # # # # # # # # # # #
@@ -156,13 +161,8 @@ function Optimize(dh)
         # # # # # # # # # #
         # Postprocessing  #
         # # # # # # # # # #
-        #if OptIter == 1
-        #    g_ini = g
-        #end
         global v_hist[OptIter] = g₁
         global g_hist[OptIter] = g
-        #append!(v_hist, g₁)
-        #append!(g_hist, g / g_ini)
 
         #The residual vector of the KKT conditions is calculated:
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
@@ -179,7 +179,21 @@ function Optimize(dh)
             break
         end
     end
+
+    # # # # # # # # #
+    # Plot history  #
+    # # # # # # # # #
+    fig = Figure()
+    ax1, l1 = lines(fig[1, 1], 1..OptIter, g_hist[1:OptIter], color = :red)
+    ax2, l2 = lines(fig[2, 1], 1..OptIter, v_hist[1:OptIter], color = :blue)
+    Legend(fig[1:2, 2], [l1, l2], ["Objective", "Constraint"])
+    fig
     return g_hist, v_hist, OptIter
 end
 
-
+OptIter=37
+fig = Figure()
+ax1, l1 = lines(fig[1, 1], 1..OptIter, g_hist[1:OptIter], color = :red)
+ax2, l2 = lines(fig[2, 1], 1..OptIter, v_hist[1:OptIter], color = :blue)
+Legend(fig[1:2, 2], [l1, l2], ["Objective", "Constraint"])
+fig
