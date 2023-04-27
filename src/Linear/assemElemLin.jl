@@ -190,8 +190,9 @@ function dr_GP(coord,ed,gp,mp,t)
         # Deformation gradient
         eff[1,1] = A_temp[1] + 1.0
         eff[1,2] = A_temp[2]
-        eff[2,1] = A_temp[3]
-
+        eff[2,1] = A_temp[3] 
+        eff[2,2] = A_temp[4] + 1.0
+ 
         ef = [eff[1,1] eff[1,2] eff[2,1] eff[2,2]]
 
         # Stress and material tangent
@@ -229,10 +230,22 @@ function Robin(coorde,Ψe,de,λ)
 end
 
 function tractionLoad(coorde,τ)
-    L = norm(coorde[1,:] - coorde[2,:]) 
-    ∫Nᵀ = (L/2) * [1.0 0.0 1.0 0.0; 0.0 1.0 0.0 1.0]  ## 0.5?
-    return -∫Nᵀ' * τ
+    L = sqrt((coorde[1,1] - coorde[2,1])^2 + (coorde[1,2] - coorde[2,2])^2) 
+    ∫Nᵀ = (L/2) * [1.0 0.0 1.0 0.0; 0.0 1.0 0.0 1.0]  
+    return -∫Nᵀ' * τ 
 end
+
+function dTractionLoad(coorde,τ)
+    L  = sqrt((coorde[1,1] - coorde[2,1])^2 + (coorde[1,2] - coorde[2,2])^2) 
+    Δx = ( coorde[1,1] - coorde[2,1] ) / (2L) 
+    Δy = ( coorde[1,2] - coorde[2,2] ) / (2L) 
+
+    return -[ Δx*τ[1]  Δx*τ[2]  Δx*τ[1]  Δx*τ[2];
+              Δy*τ[1]  Δy*τ[2]  Δy*τ[1]  Δy*τ[2];
+             -Δx*τ[1] -Δx*τ[2] -Δx*τ[1] -Δx*τ[2];
+             -Δy*τ[1] -Δy*τ[2] -Δy*τ[1] -Δy*τ[2]]'
+end
+
 
 function dΩ(X)
     dVol = 0.0

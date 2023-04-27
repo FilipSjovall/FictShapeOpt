@@ -10,7 +10,7 @@ function neohooke1(eff,mp)
     Gₘ = mp[2]
 
     #D₁ = 2/Kₘ
-
+    C   = zeros(3,3)
     Fₚ  = zeros(3,3)
 
     Fₚ[1,:] = [eff[1] eff[2] 0.0]
