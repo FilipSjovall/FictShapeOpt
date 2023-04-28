@@ -1,12 +1,11 @@
 using LinearSolve, LinearSolvePardiso, SparseArrays, 
-      StaticArrays, CairoMakie,
+      #StaticArrays, CairoMakie,
       IterativeSolvers, AlgebraicMultigrid, IncompleteLU    
 
 #ENV["PATH"]
 
 
 
-#grid1 = createBoxMesh("box_1",0.0,0.0,1.0,1.0,0.1)
 
 function load_files()
       include("..//mesh_reader.jl")
@@ -191,6 +190,8 @@ function Optimize(dh)
     return g_hist, v_hist, OptIter
 end
 
+
+using Makie
 OptIter=37
 fig = Figure()
 ax1, l1 = lines(fig[1, 1], 1..OptIter, g_hist[1:OptIter], color = :red)

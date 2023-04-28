@@ -22,20 +22,20 @@ addfaceset!(dh.grid,"Γₜ", x -> x[1] ≈ 1.0)
 Γt = getfaceset(dh.grid, "Γₜ")
 
 ## Robin faces
-addfaceset!(dh.grid,"Γ_1", x -> x[1] ≈ 1.0)
+#addfaceset!(dh.grid,"Γ_1", x -> x[1] ≈ 1.0)
 addfaceset!(dh.grid,"Γ_2", x -> x[2] ≈ 1.0)
 #addfaceset!(dh.grid,"Γ3", x -> x[2] ≈ 0.0)
 Γ_robin =union(
-    getfaceset(dh.grid, "Γ_1"),
+#    getfaceset(dh.grid, "Γ_1"),
     getfaceset(dh.grid, "Γ_2"),
 #    getfaceset(dh.grid, "Γ3"),
 )
 # Robin nodes
-addnodeset!(dh.grid,"n1", x -> x[1] ≈ 1.0)
+#addnodeset!(dh.grid,"n1", x -> x[1] ≈ 1.0)
 addnodeset!(dh.grid,"n2", x -> x[2] ≈ 1.0)
 #addnodeset!(dh.grid,"n3", x -> x[2] ≈ 0.0)
 n_robin =union(
-    getnodeset(dh.grid, "n1"),
+#    getnodeset(dh.grid, "n1"),
     getnodeset(dh.grid, "n2"),
 #    getnodeset(dh.grid, "n3"),
 )
@@ -67,12 +67,12 @@ register = index_nod_to_grid(dh,coord)
 
 free_d   = [] # borde vara Vector{Int64}[] men då funkar inte append....
 
-nodx = Ferrite.getnodeset(dh.grid,"n1")
+#nodx = Ferrite.getnodeset(dh.grid,"n1")
 nody = Ferrite.getnodeset(dh.grid,"n2")
 
-for inod in nodx
-   append!(free_d,register[inod,2]*2-1)
-end
+#for inod in nodx
+#   append!(free_d,register[inod,2]*2-1)
+#end
 
 for jnod in nody
    append!(free_d,register[jnod,2]*2)

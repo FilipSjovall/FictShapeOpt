@@ -233,6 +233,7 @@ function tractionLoad(coorde,τ)
     L = sqrt((coorde[1,1] - coorde[2,1])^2 + (coorde[1,2] - coorde[2,2])^2) 
     ∫Nᵀ = (L/2) * [1.0 0.0 1.0 0.0; 0.0 1.0 0.0 1.0]  
     return -∫Nᵀ' * τ 
+    #return -[τ[1];τ[1];τ[1];τ[1]]
 end
 
 function dTractionLoad(coorde,τ)
@@ -246,10 +247,9 @@ function dTractionLoad(coorde,τ)
              -Δy*τ[1] -Δy*τ[2] -Δy*τ[1] -Δy*τ[2]]'
 end
 
-
 function dΩ(X)
     dVol = 0.0
-    for gp ∈ 1 : 3
+    for gp ∈ 1 : ngp
         Jᵀ[:,2:3]   = transpose(dNᵣ[:,index[gp,:]]) * X
         detJ        = det(Jᵀ)
         dVol       += detJ * w[gp]*t/2
@@ -259,7 +259,7 @@ end
 
 function ∂dΩ∂x(X)
     dVole = zeros(6)
-    for gp ∈ 1 : 3
+    for gp ∈ 1 : ngp
         @inbounds Jᵀ[:,2:3]     = transpose(dNᵣ[:,index[gp,:]]) * X
         detJ                    = det(Jᵀ)
         J⁻                      = inv(Jᵀ)

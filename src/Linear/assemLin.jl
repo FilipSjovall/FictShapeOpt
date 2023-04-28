@@ -63,17 +63,6 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,Ψ,coord,enod,λ,d,Γ_robin)
     end            
 end
 
-function volume(dh,coord)
-    Ω   = 0.0
-    ie  = 0
-    for cell in CellIterator(dh)
-        ie  += 1
-        #println(cellid(cell))
-        Ω   += dΩ(coord[enod[ie][2:end],:])
-    end
-    return Ω
-end
-
 function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
     #assembler = start_assemble(Fₑₓₜ)
     #Fₑₓₜ      = zeros(size(coord,1)*2)
@@ -89,10 +78,21 @@ function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
                 face_nods      = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
                 face_dofs      = [face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2]
                 X              = coord[enod[ie][face_nods.+1] ,:]
-                fₑ[face_dofs] += tractionLoad(X,τ)
+                fₑ[face_dofs]  = tractionLoad(X,τ)
             end    
         end
         #assemble!(assembler, cell_dofs, fₑ)
-        Fₑₓₜ[cell_dofs] += fₑ
+        Fₑₓₜ[cell_dofs] -= fₑ
     end            
+end
+
+function volume(dh,coord,enod)
+    Ω   = 0.0
+    ie  = 0
+    for cell in CellIterator(dh)
+        ie  += 1
+        #println(cellid(cell))
+        Ω   += dΩ(coord[enod[ie][2:end],:])
+    end
+    return Ω
 end

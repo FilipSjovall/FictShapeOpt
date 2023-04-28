@@ -228,7 +228,6 @@ function getCoord(X,dh)
     return coord
 end
 
-
 function createBoxMesh(filename,x₀,y₀,Δx,Δy,h)
     # Initialize gmsh
     Gmsh.initialize()

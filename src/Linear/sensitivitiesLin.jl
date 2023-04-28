@@ -41,4 +41,24 @@ function drᵤ_dx(dr,dh,mp,t,a,coord,enod,τ, Γt)
 end
 
 
+function dFext_dx(dF,dh,mp,t,a,coord,enod,τ, Γt)
+    assembler = start_assemble(dF)
+    ie = 0
+    for cell in CellIterator(dh)
+        ie += 1
+        cell_dofs= celldofs(cell)
+        dre      = zeros(6,6) 
+        for face in 1:nfaces(cell)
+            if (cellid(cell), face) in Γt
+                face_nods                 = [ Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2] ]
+                face_dofs                 = [ face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2 ]
+                X                         = coord[ enod[ie][face_nods.+1] ,: ]
+                dre[face_dofs,face_dofs]  = dTractionLoad(X,τ)
+            end
+        end
+        assemble!(assembler, cell_dofs, -dre)
+    end 
+    return dF
+end
+
 

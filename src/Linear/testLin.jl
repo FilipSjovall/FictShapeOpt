@@ -136,7 +136,7 @@ xe = x_glob[dofs]
     numsens./asens
 #####
 ## Test objective function and sensitivity
-    a, _, Fₑₓₜ, _, K = solver(dh,coord)
+    a, _, Fₑₓₜ, Fᵢₙₜ, K = solver(dh,coord)
     C = zeros(2)
     indexet = 227
     for pert in 1:2
@@ -168,8 +168,8 @@ xe = x_glob[dofs]
     λ       = 1.0
     Fψ      = similar(Fᵢₙₜ)
     test    = zeros(284,2)
-    indexet = 268
-    dr_dd   = drψ(dr_dd,dh0,Ψ,λ,d,Γ_robin);
+    indexet = 147
+    dr_dd   = drψ(dr_dd,dh0,Ψ,λ,d,Γ_robin,coord₀);
     ϵ       = 1e-6
     for pert in 1:2
         if pert == 1
@@ -186,6 +186,7 @@ xe = x_glob[dofs]
     asens   = dr_dd[:,indexet]
     kvot = numsens./asens
     filter_kvot = filter(x-> abs(x)<10,kvot)
+#######
 ## Test global dr_dx
     Fᵢₙₜ = zeros(ndof)
     dr = similar(K)
@@ -219,35 +220,41 @@ xe = x_glob[dofs]
     asens   = ∂rᵤ_∂x[:,173];#∂rᵤ_∂x[:,1]; ## dof 6 motsvarar nod 2
     kvot    = numsens./asens;
     filter_kvot = filter(x-> abs(x)<1000,kvot)
-
-
-
+#####
 ## Test dg_dx
-    indexet = 6
-    C = zeros(2)
+    ϵ  = 1e-6
+    indexet = 18
+    test = zeros(2)
     for pert in 1:2
         if pert == 1
-            X[indexet]   +=   ϵ
+            coord[indexet,2] += ϵ 
+            #X[indexet]   +=   ϵ
             #incr[indexet] =   ϵ 
             #updateCoords!(dh,incr)
         else
-            X[indexet]   -=   ϵ
+            coord[indexet,2] -= ϵ 
+            #X[indexet]   -=   ϵ
             #incr[indexet] = - ϵ 
             #updateCoords!(dh,incr)
         end
-        coord = getCoord(X,dh) # borde flyttas in i solver..
-        Fᵢₙₜ .=0
-        assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod)
-        #a, _, Fₑₓₜ, Fᵢₙₜ, K       = solver(dh);
-        #C[pert]                   = compliance(Fₑₓₜ,a)
-        #C[:,pert]                   = Fᵢₙₜ;
-        C[pert] = -a[pdofs]'*Fᵢₙₜ[pdofs]
+        #coord = getCoord(X,dh) # borde flyttas in i solver..
+        Fᵢₙₜ = zeros(ndof)
+        Fₑₓₜ .=0
+        τ        = [0.1;0.1].*n
+
+        assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γt,τ)
+        assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
+
+        #Fₑₓₜ[bcdof] = - Fᵢₙₜ[bcdof]
+        test[pert]  =   a'*Fₑₓₜ
     end
-    ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
-    numsens = (C[1]-C[2])./ϵ   
-    asens   = -a[pdofs]'*∂rᵤ_∂x[pdofs,2]
-    #asens   = ∂rᵤ_∂x[:,2]; ## dof 6 motsvarar nod 2
-    kvot    = numsens./asens
+    #∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
+    dFₑₓₜ_dx  = dFext_dx(dFₑₓₜ_dx,dh,mp,t,a,coord,enod,τ,Γt);
+    numsens   = (test[1]-test[2])./ϵ   
+    dF[fdofs] = a[fdofs]'*dFₑₓₜ_dx[fdofs,fdofs]
+    asens     = dF[134]
+    #asens    = ∂rᵤ_∂x[:,2]; ## dof 6 motsvarar nod 2
+    kvot      = numsens./asens
     
 
 
@@ -267,80 +274,89 @@ xe = x_glob[dofs]
         end
         return index_register
     end
-
+#####
 ## Test global sensitivity with adjoint
     load_files()
+
     #bcdof,bcval = setBCLin(0.0,dh)
 
     dh0        = deepcopy(dh)
     d          = zeros(284)
     d[free_d] .= 0.1
 
-    Ψ  = similar(d)
-    a  = similar(d)
-    Fₑₓₜ= similar(d)
-    K  = create_sparsity_pattern(dh) 
-    Kψ = similar(K)
-    C  = zeros(2)
-    ∂rᵤ_∂x = similar(K)
-    dr_dd = similar(K)
-    ∂rψ_∂d = similar(K)
-    λᵤ = similar(a)
-    λψ = similar(a)
+    locked_d = setdiff(1:ndof,free_d)
 
-    fdofs = setdiff(1:ndof,bcdof)
-
-
-    indexet = 268
-    ϵ       = 1e-6
-    test = zeros(2)
-    coord₀ = getCoord(getX(dh0), dh0)
+    Ψ        = similar(d)
+    a        = similar(d)
+    Fₑₓₜ     = similar(d)
+    K        = create_sparsity_pattern(dh) 
+    Kψ       = similar(K)
+    dFₑₓₜ_dx = similar(K)
+    C        = zeros(2)
+    ∂rᵤ_∂x   = similar(K)
+    dr_dd    = similar(K)
+    ∂rψ_∂d   = similar(K)
+    λᵤ       = similar(a)
+    λψ       = similar(a)
+    fdofs    = setdiff(1:ndof,bcdof)
+    indexet  = 264
+    ϵ        = 1e-6
+    test     = zeros(2)
     for pert in 1:2
         if pert == 1
             # perturbera d
-            #dh = dh0
-            dh.grid.nodes = deepcopy(dh0.grid.nodes)
+            dh = deepcopy(dh0)
+            #dh.grid.nodes = deepcopy(dh0.grid.nodes)
             d[indexet] = d[indexet] + ϵ 
         else
             # perturbera d och resetta dh
-            #dh = dh0
-            dh.grid.nodes = deepcopy(dh0.grid.nodes)
+            dh = deepcopy(dh0)
+            #dh.grid.nodes = deepcopy(dh0.grid.nodes)
             d[indexet] = d[indexet] - ϵ 
         end
 
         # Check that grid is updated correctly
-        coord₀ = getCoord(getX(dh0),dh0)
+
         Ψ, _, Kψ, _, λ = fictitious_solver(d, dh0, coord₀)
-        # Update coords
-        coord = getCoord(getX(dh0),dh0)
         updateCoords!(dh,Ψ)
         coord = getCoord(getX(dh),dh)
-
-        a, _, Fₑₓₜ, _, K             = solver(dh,coord)
-        test[pert]                   = a'*Fₑₓₜ;
+        
+        a, _, Fₑₓₜ, Fᵢₙₜ, K             = solver(dh,coord)
+        test[pert]                      = a'*Fₑₓₜ;
     end
+    if 1 == 1
+        ∂g_∂u         = zeros(size(d));
 
-    ∂g_∂u = zeros(size(d))
-    ∂g_∂u = Fₑₓₜ
-    #∂g_∂u[fdofs]  = -a[pdofs]'*K[pdofs,fdofs];
-    #∂g_∂u[pdofs]  = -I(length(pdofs))'*Fᵢₙₜ[pdofs]  - (a[pdofs]'*K[pdofs,pdofs])';
-    τ = [1;1]
-    ∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod,τ, Γt);
-    dr_dd  = drψ(dr_dd,dh0,Ψ,λ,d,Γ_robin,coord₀)
-    ∂g_∂x  = zeros(size(d))
-    #∂g_∂x  = -a[fdofs]'*∂rᵤ_∂x[fdofs,:]
-    solveq!(λᵤ, K, ∂g_∂u, bcdof, bcval.*0);  # var Fₑₓₜ;
-    solveq!(λψ, Kψ,∂g_∂x'- ∂rᵤ_∂x'*λᵤ, bcdof, bcval.*0);
+        ∂g_∂u         = Fₑₓₜ;
 
-    ∂g_∂d   = -transpose(λψ)*dr_dd;
-    asens   = ∂g_∂d[indexet]
 
-    numsens = (test[1] - test[2])/ϵ
-    numsens/asens
+        dFₑₓₜ_dx      = dFext_dx(dFₑₓₜ_dx,dh,mp,t,a,coord,enod,τ, Γt);
 
+        ∂rᵤ_∂x        = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod,τ, Γt);
+
+        dr_dd         = drψ(dr_dd,dh0,Ψ,λ,d,Γ_robin,coord₀);
+        #dr_dd[locked_d,:] .=0
+        #dr_dd[:,locked_d] .=0 
+        ∂g_∂x         = zeros(size(d));
+
+        ∂g_∂x[fdofs]  = a[fdofs]'*dFₑₓₜ_dx[fdofs,fdofs];
+
+        solveq!(λᵤ, K',  ∂g_∂u, bcdof, bcval.*0);  # var Fₑₓₜ;
+
+        solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x'*λᵤ, bcdof, bcval.*0);
+
+        ∂g_∂d         = -transpose(λψ)*dr_dd;
+
+        asens         =  ∂g_∂d[indexet]
+
+        numsens = (test[1] - test[2])/ϵ
+
+        numsens/asens
+    end
+    
 
 ## Volume constraint direct sensitivity w.r.t. x
-    indexet = 6
+    indexet = 14
     test    = zeros(2)
     X       = getX(dh)
     ϵ       = 1e-6
@@ -350,52 +366,52 @@ xe = x_glob[dofs]
         else
             X[indexet]   -=   ϵ
         end
-        coord = getCoord(X,dh) # borde flyttas in i solver..
-        test[pert] = volume(dh)
+        coord      = getCoord(X,dh) # borde flyttas in i solver..
+        test[pert] = volume(dh,coord,enod)
     end
     numsens = (test[1] - test[2]) / ϵ
     asens   = volume_sens(dh,coord)
 
-    kvot    = numsens / asens[2]
+    kvot    = numsens / asens[114]
 
 ## Volume constraint - sensitivity w.r.t d via adjoint sensitivity analysis
-    indexet = 296
+    load_files()
+    indexet = 264
     test    = zeros(2)
     X       = getX(dh)
     ϵ       = 1e-6
     for pert in 1:2
         if pert == 1
             # perturbera d
-            #dh = dh0
-            dh.grid.nodes = deepcopy(dh0.grid.nodes)
+            dh = deepcopy(dh0)
+            #dh.grid.nodes = deepcopy(dh0.grid.nodes)
             d[indexet] = d[indexet] + ϵ 
         else
             # perturbera d och resetta dh
-            #dh = dh0
-            dh.grid.nodes = deepcopy(dh0.grid.nodes)
+            dh = deepcopy(dh0)
+            #dh.grid.nodes = deepcopy(dh0.grid.nodes)
             d[indexet] = d[indexet] - ϵ 
         end
 
         # Check that grid is updated correctly
-        coord = getCoord(getX(dh0),dh0)
-        Ψ, _, Kψ, _, λ               = fictitious_solver(d,dh0,coord); # 
+        #coord = getCoord(getX(dh0),dh0)
+        Ψ, _, Kψ, _, λ               = fictitious_solver(d,dh0,coord₀); # 
         # Update coords
         updateCoords!(dh,Ψ)
         coord = getCoord(getX(dh),dh)
 
         a, _, _, Fᵢₙₜ, K          = solver(dh,coord);
-        test[pert] = volume(dh)
+        test[pert] = volume(dh,coord,enod)
     end
+    dr_dd         = drψ(dr_dd,dh0,Ψ,λ,d,Γ_robin,coord₀);
 
-    dr_dd = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
-
-    ∂Ω_∂x = volume_sens(dh,coord)
+    ∂Ω_∂x         = volume_sens(dh,coord);
     
-    λᵥₒₗ    = similar(a)
+    λᵥₒₗ          = similar(a);
 
     solveq!(λᵥₒₗ, Kψ,∂Ω_∂x, bcdof, bcval.*0);
 
-    ∂Ω∂d   = -transpose(λψ)*dr_dd;
+    ∂Ω∂d   = -transpose(λᵥₒₗ)*dr_dd;
 
     numsens = (test[1] - test[2])/ϵ
     asens   = ∂Ω∂d[indexet]

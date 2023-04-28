@@ -5,7 +5,7 @@ function solver(dh,coord)
       # Init-stuff    #
       # ------------- #
       imax     = 25
-      TOL      = 1e-6
+      TOL      = 1e-8
       residual = 0.0
       iter     = 1
       ndof     = size(coord,1)*2 
