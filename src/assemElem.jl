@@ -328,6 +328,8 @@ function Robin(coorde,ue,de,λ)
     Kc[5,1:2:5] = [N1N3 N2N3 N3N3]
     Kc[6,2:2:6] = [N1N3 N2N3 N3N3]
 
+
+    println("Stämmer detta om randen är krokig????")
     #∫N1         = L2/2 - L2^2/(6*L1)
     #∫N2         = -L2^3/(6*L1*(L1 - L2))
     #∫N3         = L2/2 + L2^2/(6*(L1 - L2)) 

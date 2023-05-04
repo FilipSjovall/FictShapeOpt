@@ -236,6 +236,8 @@ function tractionLoad(coorde,τ)
     #return -[τ[1];τ[1];τ[1];τ[1]]
 end
 
+
+
 function dTractionLoad(coorde,τ)
     L  = sqrt((coorde[1,1] - coorde[2,1])^2 + (coorde[1,2] - coorde[2,2])^2) 
     Δx = ( coorde[1,1] - coorde[2,1] ) / (2L) 
