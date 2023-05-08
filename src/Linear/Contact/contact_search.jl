@@ -128,11 +128,11 @@ for (j,A) in (enumerate(s))
 
 end
 
-g_vec = zeros(length(s))
+gap = zeros(length(s))
 
-# g_vec måste skalas med 1/n_AD
+# gap måste skalas med 1/n_AD
 for (j,A) in (enumerate(s))
-   g_vec[j] = g[j,:]' * normals[A]
+   gap[j] = g[j,:]' * normals[A]
 end
 
 function penalty(g,penalty)
@@ -145,7 +145,7 @@ using ForwardDiff
 function contact_residual()
    rc = zeros(length(s)*2)
    for (j,A) in enumerate(s)
-      λ = penalty(g_vec[j],1)*normal[A]
+      λ = penalty(gap[j],1)*normal[A]
       λ*M[A,:]
       λ*D[A,:]
    end
