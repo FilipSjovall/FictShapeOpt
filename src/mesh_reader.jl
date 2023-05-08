@@ -221,7 +221,18 @@ function getX(dh)
     return x
 end
 
-function getCoord(X,dh)
+function getXordered(dh)
+    # Size dh.ndofs.x
+    x = Float64[]
+    y = Float64[]
+    for node in dh.grid.nodes
+        append!(x,node.x[1])
+        append!(y,node.x[2])
+    end
+    return [x;y]
+end
+
+function getCoord(X::AbstractVector{T},dh) where T
     coord = zeros(length(dh.grid.nodes),2)
     coord[:,1] = X[1:2:end-1]
     coord[:,2] = X[2:2:end]
