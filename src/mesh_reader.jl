@@ -232,12 +232,28 @@ function getXordered(dh)
     return [x;y]
 end
 
+function getXorderedDict(xDictionary)
+    x = Float64[]
+    y = Float64[]
+    for (key,value) in xDictionary
+        append!(x,value[1])
+        append!(y,value[2])
+    end
+    return [x;y]
+end
+
 function getCoord(X::AbstractVector{T},dh) where T
     coord = zeros(length(dh.grid.nodes),2)
     coord[:,1] = X[1:2:end-1]
     coord[:,2] = X[2:2:end]
     return coord
 end
+
+function getCoordVector(X::AbstractVector{T}) where T<:Number
+    n = length(X)
+    coord0 = reshape(X, (Int(n/2), 2))
+    return coord0
+ end
 
 function createBoxMesh(filename,x₀,y₀,Δx,Δy,h)
     # Initialize gmsh
