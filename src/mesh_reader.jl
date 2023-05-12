@@ -232,6 +232,21 @@ function getXordered(dh)
     return [x;y]
 end
 
+function getDisplacementsOrdered(dh,a)
+    # Size dh.ndofs.x
+    ax = Real[]
+    ay = Real[]
+    register = getNodeDofs
+    for node in dh.grid.nodes
+        xdof,ydof = register[node,:]
+        axn       = a[xdof]
+        ayn       = a[ydof]
+        append!(ax,axn) # fel - append ligger till i slutet, vi vill väl att a matchas mot rätt nod enligt dof-vektor?
+        append!(ay,ayn) # fel - append ligger till i slutet, vi vill väl att a matchas mot rätt nod enligt dof-vektor?
+    end
+    return [ax;ay]
+end
+
 function getXorderedDict(xDictionary)
     x = Float64[]
     y = Float64[]
@@ -253,7 +268,7 @@ function getCoordVector(X::AbstractVector{T}) where T<:Number
     n = length(X)
     coord0 = reshape(X, (Int(n/2), 2))
     return coord0
- end
+end
 
 function createBoxMesh(filename,x₀,y₀,Δx,Δy,h)
     # Initialize gmsh
@@ -378,4 +393,15 @@ function setBCLin(bc_load,dh)
         end
     end
     return bc_dof, bc_val
+end
+
+function getNodeDofs(dh)
+    node_dofs = Matrix{Int64}(undef,length(dh.grid.nodes),2)
+    for cell in CellIterator(dh)
+        element_dofs = celldofs(cell)
+        for (i,node) in enumerate(cell.nodes)
+            node_dofs[node,:] = [element_dofs[2i-1] element_dofs[2i]]
+        end
+    end
+    return node_dofs
 end
