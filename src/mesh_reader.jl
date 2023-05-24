@@ -232,17 +232,16 @@ function getXordered(dh)
     return [x;y]
 end
 
-function getDisplacementsOrdered(dh,a)
-    # Size dh.ndofs.x
+function getDisplacementsOrdered(dh,a::AbstractVector{T}) where T
+    # This orders a as [ux;uy]
     ax = Real[]
     ay = Real[]
-    register = getNodeDofs
-    for node in dh.grid.nodes
-        xdof,ydof = register[node,:]
+    for (idx,node) in enumerate(dh.grid.nodes)
+        xdof,ydof = [2idx-1 2idx]#register[idx,:]
         axn       = a[xdof]
         ayn       = a[ydof]
-        append!(ax,axn) # fel - append ligger till i slutet, vi vill väl att a matchas mot rätt nod enligt dof-vektor?
-        append!(ay,ayn) # fel - append ligger till i slutet, vi vill väl att a matchas mot rätt nod enligt dof-vektor?
+        append!(ax,axn) 
+        append!(ay,ayn) 
     end
     return [ax;ay]
 end
@@ -395,6 +394,21 @@ function setBCLin(bc_load,dh)
     return bc_dof, bc_val
 end
 
+function setBC(bc_load,dh,nodes)
+    ## Find bc cell_dofs
+    bc_dof   = Vector{Int64}()
+    bc_val   = Vector{Float64}()
+    nodeDofs = getNodeDofs(dh)
+    for node in nodes
+        idx1 = nodeDofs[node,1] 
+        idx2 = nodeDofs[node,2] 
+        #append!(bc_dof,idx1)
+        append!(bc_dof,idx2)
+        append!(bc_val,bc_load)
+    end
+    return bc_dof, bc_val
+end
+
 function getNodeDofs(dh)
     node_dofs = Matrix{Int64}(undef,length(dh.grid.nodes),2)
     for cell in CellIterator(dh)
@@ -404,4 +418,22 @@ function getNodeDofs(dh)
         end
     end
     return node_dofs
+end
+
+function getXfromCoord(coord::AbstractVector{T}) where T<:Number
+    X = Real[]
+    for row ∈ 1:size(coord,1) # eachindex(coord)
+        append!(X,coord[row,1])
+        append!(X,coord[row,2])
+    end
+    return X
+end
+
+function getCoordfromX(X::AbstractVector{T}) where T<:Number
+    #coord = zeros(length(dh.grid.nodes),2)
+    coord = Array{Real,2}(undef,length(dh.grid.nodes),2)
+    for incr in 2:2:size(coord,1)*2
+        coord[Int(incr/2),:] = [X[incr-1] X[incr]] 
+    end
+    return coord
 end

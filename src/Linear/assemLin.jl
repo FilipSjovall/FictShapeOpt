@@ -86,6 +86,34 @@ function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
     end            
 end
 
+function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γₘ,Γₛ,ϵ)
+    assembler = start_assemble(K,Fᵢₙₜ)
+    ie        = 0
+    kₑ        = zeros(6,6)
+    fₑ        = zeros(6)
+    for cell in CellIterator(dh)
+        fill!(kₑ,0.0)
+        fill!(fₑ,0.0)
+        ie       += 1
+        cell_dofs = celldofs(cell)
+        kₑ, fₑ    = assemElem(coord[enod[ie][2:end],:],a[cell_dofs],mp,t)
+        # assemble into global
+        assemble!(assembler, cell_dofs, kₑ, fₑ)
+    end
+
+    # Contact
+    #X_ordered    = getXordered(dh)
+    X_ordered    = getXfromCoord(coord)
+    rc           = contact_residual(X_ordered,a,ϵ)
+    Kc           = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,1.0), a)
+    K           += Kc
+    Fᵢₙₜ        += rc
+    println("Kc", size(Kc) )
+    println("K ", size(K)  )
+    #contact_dofs = 1:dh.ndofs.x
+    #assemble!(assembler, contact_dofs, Kc, rc)
+end
+
 function volume(dh,coord,enod)
     Ω   = 0.0
     ie  = 0
@@ -95,4 +123,13 @@ function volume(dh,coord,enod)
         Ω   += dΩ(coord[enod[ie][2:end],:])
     end
     return Ω
+end
+
+function StressExtract(dh,a,mp)
+    σ = zeros(dh.ndofs.x)
+    for cell in CellIterator(dh)
+        # Compute stresses in gauss points - convert to Cauchy
+        # Extract GP-stresses to nodes
+        # 
+    end
 end
