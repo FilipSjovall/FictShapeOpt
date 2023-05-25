@@ -100,18 +100,16 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γₘ,Γₛ,ϵ)
         # assemble into global
         assemble!(assembler, cell_dofs, kₑ, fₑ)
     end
-
+    
     # Contact
-    #X_ordered    = getXordered(dh)
-    X_ordered    = getXfromCoord(coord)
-    rc           = contact_residual(X_ordered,a,ϵ)
-    Kc           = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,1.0), a)
-    K           += Kc
-    Fᵢₙₜ        += rc
-    println("Kc", size(Kc) )
-    println("K ", size(K)  )
-    #contact_dofs = 1:dh.ndofs.x
-    #assemble!(assembler, contact_dofs, Kc, rc)
+    X_ordered                      = getXfromCoord(coord)
+    rc                             = contact_residual(X_ordered,a,ϵ)
+    Kc                             = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ϵ), a)
+    K[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
+
+    Fᵢₙₜ[contact_dofs]            -= rc[contact_dofs]
+    #assemble!(assembler, contact_dofs, Kc[contact_dofs, contact_dofs], rc[contact_dofs])
+  
 end
 
 function volume(dh,coord,enod)
@@ -131,5 +129,7 @@ function StressExtract(dh,a,mp)
         # Compute stresses in gauss points - convert to Cauchy
         # Extract GP-stresses to nodes
         # 
+        eff    = 
+        stress = mises(eff,mp)
     end
 end
