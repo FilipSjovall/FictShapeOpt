@@ -271,5 +271,7 @@ function create_contact_list(dh,Γs,Γm, coord_dual)
    return elements,element_types, slave_elements, slave_element_ids, master_element_ids, coords
 end
 
-
+function contact_traction()
+   # ...
+end
 

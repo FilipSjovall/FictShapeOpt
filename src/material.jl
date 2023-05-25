@@ -150,3 +150,16 @@ function dStVenant(eff,mp)
     D = E/((1+v)*(1-2*v)) .* [1-v v 0;v 1-v 0; 0 0 0.5*(1-2*v)];
 
 end
+
+function mises(eff,mp)
+    ngp = size(eff, 2)
+    for gp ∈ 1:ngp
+        Sₑ[:, gp] = neohooke1(eff[:, gp], mp)
+        F[1, :] = [eff[1,gp] eff[2,gp] 0.0]
+        F[2, :] = [eff[3,gp] eff[4,gp] 0.0]
+        F[3, :] = [0.0 0.0 1.0]
+        J       = det(F)
+        σ_temp  = 1/J * F * Sₑ * F'
+        σ[:, gp] = [σ_temp[1, 1] σ_temp[2, 2] σ_temp[3, 3] σ_temp[1, 2]]
+    end
+end

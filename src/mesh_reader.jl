@@ -270,6 +270,7 @@ function getCoordVector(X::AbstractVector{T}) where T<:Number
 end
 
 function createBoxMesh(filename,x₀,y₀,Δx,Δy,h)
+
     # Initialize gmsh
     Gmsh.initialize()
     gmsh.option.set_number("General.Verbosity", 2)
@@ -280,7 +281,6 @@ function createBoxMesh(filename,x₀,y₀,Δx,Δy,h)
     p2 = gmsh.model.geo.add_point(x₀+Δx, y₀,    0.0, h)
     p3 = gmsh.model.geo.add_point(x₀+Δx, y₀+Δy, 0.0, h)
     p4 = gmsh.model.geo.add_point(x₀,    y₀+Δy, 0.0, h)
-    #p4 = gmsh.model.geo.add_point(0.0, 0.5, 0.0, h)
 
     # Add the lines
     l1 = gmsh.model.geo.add_line(p1, p2)
@@ -409,6 +409,22 @@ function setBC(bc_load,dh,nodes)
     return bc_dof, bc_val
 end
 
+function setBCXY(bc_load, dh, nodes)
+    ## Find bc cell_dofs
+    bc_dof = Vector{Int64}()
+    bc_val = Vector{Float64}()
+    nodeDofs = getNodeDofs(dh)
+    for node in nodes
+        xdof = nodeDofs[node, 1]
+        ydof = nodeDofs[node, 2]
+        append!(bc_dof,xdof)
+        append!(bc_dof, ydof)
+        append!(bc_val, 0.0)
+        append!(bc_val, bc_load)
+    end
+    return bc_dof, bc_val
+end
+
 function getNodeDofs(dh)
     node_dofs = Matrix{Int64}(undef,length(dh.grid.nodes),2)
     for cell in CellIterator(dh)
@@ -420,7 +436,7 @@ function getNodeDofs(dh)
     return node_dofs
 end
 
-function getXfromCoord(coord::AbstractVector{T}) where T<:Number
+function getXfromCoord(coord::AbstractVector{T}) where T
     X = Real[]
     for row ∈ 1:size(coord,1) # eachindex(coord)
         append!(X,coord[row,1])
@@ -429,11 +445,11 @@ function getXfromCoord(coord::AbstractVector{T}) where T<:Number
     return X
 end
 
-function getCoordfromX(X::AbstractVector{T}) where T<:Number
+function getCoordfromX(X::AbstractVector{T}) where T
     #coord = zeros(length(dh.grid.nodes),2)
-    coord = Array{Real,2}(undef,length(dh.grid.nodes),2)
-    for incr in 2:2:size(coord,1)*2
-        coord[Int(incr/2),:] = [X[incr-1] X[incr]] 
+    coordz = Array{Real,2}(undef,length(dh.grid.nodes),2)
+    for incr in 2:2:size(coordz,1)*2
+        coordz[Int(incr/2),:] = [X[incr-1] X[incr]] 
     end
-    return coord
+    return coordz
 end
