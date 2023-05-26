@@ -369,3 +369,11 @@ function defgradGP(coord,ed,gp,mp,t)
     # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²    
 
 end
+
+function extrapolate_stress(s)
+    stress = zeros(3)
+    for nod in  1 : 3
+        stress[nod] = N[:,nod] ⋅ s
+    end
+    return stress
+end

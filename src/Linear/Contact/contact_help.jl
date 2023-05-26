@@ -59,7 +59,8 @@ function gap_function(X::AbstractVector{T}) where {T}
          slave += D[A, B] * coords[B]
       end
       master = [0; 0]
-      for C in master_dofs
+      #for C in master_dofs
+      for C in intersect(master_dofs,1:size(M,2))
          master += M[A, C] * coords[C]
       end
       # To compute the projected gap vector we multiply g[j,:] with the normal at node j
@@ -138,7 +139,8 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
    # ---------- #
 
    # Loop over master side dofs
-   for C in master_nods
+   #for C in master_nods
+   for C in intersect(master_dofs, 1:size(M, 2))
       for (i, A) in enumerate(slave_nods)
          C_dofs = register[C, :] # Extract nodal degrees of freedom
          r_c[C_dofs] += -M[A, C] * penalty(gₙ[i], ε) * normals[A] * (1 / κ[i]) #  ∫ N^s N^s λ n dγ

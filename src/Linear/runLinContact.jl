@@ -153,6 +153,12 @@ function solver(dh, coord)
 
             postprocess_opt(a, dh, "contact_mesh" * string(loadstep))
             #postprocess_opt(Fᵢₙₜ, dh, "contact_mesh" * string(loadstep))
+            σx,σy = StressExtract(dh,a,mp)
+            vtk_grid("contact"*string(loadstep), dh) do vtkfile
+            vtk_point_data(vtkfile, dh, a) # displacement field
+            vtk_point_data(vtkfile, σx, "σx")
+            vtk_point_data(vtkfile, σy, "σy")
+            end
         end
     end
     fill!(Fₑₓₜ, 0.0)
@@ -168,6 +174,8 @@ normals  = Mortar2D.calculate_normals(elements, element_types, coords)
 segments = Mortar2D.calculate_segments(slave_element_ids, master_element_ids, elements, element_types, coords, normals)
 # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
 slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
+
+
 g = gap_function(X)
 
 # Solve

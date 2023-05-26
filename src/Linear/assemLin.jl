@@ -129,8 +129,11 @@ function volume(dh,coord,enod)
 end
 
 function StressExtract(dh,a,mp)
-    σ = zeros(dh.ndofs.x)
-    ie = 0
+    σx     = zeros(Int(dh.ndofs.x/2))
+    σy     = zeros(Int(dh.ndofs.x/2))
+    ie     = 0
+    cauchy = zeros(3,3,3)
+    occurences = zeros(Int64(dh.ndofs.x/2))
     for cell in CellIterator(dh)
         # Compute stresses in gauss points - convert to Cauchy
         # Extract GP-stresses to nodes
@@ -140,5 +143,18 @@ function StressExtract(dh,a,mp)
         for gp in 1 : 3
             cauchy[gp,:,:] = assemS(coord[enod[ie][2:end], :], a[cell_dofs], mp, t, gp)
         end
+        σxe                     = [cauchy[1, 1, 1] cauchy[2, 1, 1] cauchy[3, 1, 1]]
+        σye                     = [cauchy[1, 2, 2] cauchy[2, 2, 2] cauchy[3, 2, 2]]
+        s_nodex                 = extrapolate_stress(σxe)
+        s_nodey                 = extrapolate_stress(σye)
+        σx[cell.nodes]         += s_nodex
+        σy[cell.nodes]         += s_nodey
+        occurences[cell.nodes].+= 1
     end
+
+    for i in 1 : length(dh.grid.nodes)
+        σx[i] = σx[i] / occurences[i] 
+        σy[i] = σy[i] / occurences[i]  
+    end
+    return σx,σy
 end
