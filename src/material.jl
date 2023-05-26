@@ -4,7 +4,7 @@
 #
 using LinearAlgebra
 
-function neohooke1(eff,mp)
+function neohooke1(defgrad,mp)
 
     Kₘ = mp[1]
     Gₘ = mp[2]
@@ -13,8 +13,8 @@ function neohooke1(eff,mp)
     C   = zeros(3,3)
     Fₚ  = zeros(3,3)
 
-    Fₚ[1,:] = [eff[1] eff[2] 0.0]
-    Fₚ[2,:] = [eff[3] eff[4] 0.0]
+    Fₚ[1,:] = [defgrad[1] defgrad[2] 0.0]
+    Fₚ[2,:] = [defgrad[3] defgrad[4] 0.0]
     Fₚ[3,:] = [0.0 0.0 1.0]
 
     C = transpose(Fₚ)*Fₚ
@@ -151,15 +151,13 @@ function dStVenant(eff,mp)
 
 end
 
-function mises(eff,mp)
-    ngp = size(eff, 2)
-    for gp ∈ 1:ngp
-        Sₑ[:, gp] = neohooke1(eff[:, gp], mp)
-        F[1, :] = [eff[1,gp] eff[2,gp] 0.0]
-        F[2, :] = [eff[3,gp] eff[4,gp] 0.0]
+function mises(eff,S)
+        F[1, :] = [eff[1] eff[2] 0.0]
+        F[2, :] = [eff[3] eff[4] 0.0]
         F[3, :] = [0.0 0.0 1.0]
+        Sₑ      = 
         J       = det(F)
         σ_temp  = 1/J * F * Sₑ * F'
-        σ[:, gp] = [σ_temp[1, 1] σ_temp[2, 2] σ_temp[3, 3] σ_temp[1, 2]]
-    end
+        σ_vm    = [σ_temp[1, 1] σ_temp[2, 2] σ_temp[3, 3] σ_temp[1, 2]]
+    return σ_vm
 end

@@ -86,7 +86,7 @@ function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
     end            
 end
 
-function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γₘ,Γₛ,ϵ)
+function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,ε)
     assembler = start_assemble(K,Fᵢₙₜ)
     ie        = 0
     kₑ        = zeros(6,6)
@@ -103,11 +103,16 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γₘ,Γₛ,ϵ)
     
     # Contact
     X_ordered                      = getXfromCoord(coord)
-    rc                             = contact_residual(X_ordered,a,ϵ)
-    Kc                             = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ϵ), a)
+    rc                             = contact_residual(X_ordered,a,ε)
+    Kc                             = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ε), a)
     K[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
-
     Fᵢₙₜ[contact_dofs]            -= rc[contact_dofs]
+
+    ##a_ordered = getDisplacementsOrdered(dh, a)
+    ##X_float = real.(X + a_ordered)
+    ##println(norm(X_float[contact_dofs]))
+    #g     = gap_function(X_float)
+    #@show g
     #assemble!(assembler, contact_dofs, Kc[contact_dofs, contact_dofs], rc[contact_dofs])
   
 end
@@ -125,11 +130,15 @@ end
 
 function StressExtract(dh,a,mp)
     σ = zeros(dh.ndofs.x)
+    ie = 0
     for cell in CellIterator(dh)
         # Compute stresses in gauss points - convert to Cauchy
         # Extract GP-stresses to nodes
         # 
-        eff    = 
-        stress = mises(eff,mp)
+        ie += 1
+        cell_dofs = celldofs(cell)
+        for gp in 1 : 3
+            cauchy[gp,:,:] = assemS(coord[enod[ie][2:end], :], a[cell_dofs], mp, t, gp)
+        end
     end
 end

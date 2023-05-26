@@ -233,17 +233,21 @@ function getXordered(dh)
 end
 
 function getDisplacementsOrdered(dh,a::AbstractVector{T}) where T
-    # This orders a as [ux;uy]
+    # This orders a as 
     ax = Real[]
     ay = Real[]
+    anew = Real[]
     for (idx,node) in enumerate(dh.grid.nodes)
-        xdof,ydof = [2idx-1 2idx]#register[idx,:]
+        xdof, ydof = register[idx, :]#[2idx-1 2idx]#
         axn       = a[xdof]
         ayn       = a[ydof]
         append!(ax,axn) 
         append!(ay,ayn) 
+        append!(anew,axn)
+        append!(anew,ayn)
     end
-    return [ax;ay]
+    return anew
+    #return [ax;ay]
 end
 
 function getXorderedDict(xDictionary)
@@ -452,4 +456,33 @@ function getCoordfromX(X::AbstractVector{T}) where T
         coordz[Int(incr/2),:] = [X[incr-1] X[incr]] 
     end
     return coordz
+end
+
+function getContactDofs(nₛ, nₘ)
+    contact_dofs = Int64[]
+    register = getNodeDofs(dh)
+    for node_nbr in nₛ
+        for dof in 1:2
+            append!(contact_dofs, register[node_nbr, dof])
+        end
+    end
+    for node_nbr in nₘ
+        for dof in 1:2
+            append!(contact_dofs, register[node_nbr, dof])
+        end
+    end
+    return contact_dofs
+end
+
+function getXfromCoord(coord) 
+    X = Real[]
+    for row ∈ 1:size(coord, 1) # eachindex(coord)
+        append!(X, coord[row, 1])
+        append!(X, coord[row, 2])
+    end
+    return X
+end
+
+function getX_dofOrder_fromCoord(coord)
+
 end

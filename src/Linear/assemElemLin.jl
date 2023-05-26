@@ -119,6 +119,52 @@ function assemElem(coord,ed,mp,t)
     return kₑ, fₑ
 end
 
+function assemS(coord, ed, mp, t, gp)
+    # Jacobian N x = Jᵀ N ξ
+    Jᵀ[:, 2:3] = transpose(dNᵣ[:, index[gp, :]]) * coord # ??
+    J⁻ = inv(Jᵀ)
+    dNₓ = P₀ * J⁻ * transpose(dNᵣ[:, index[gp, :]])
+
+    # Gradient matrices " ∇N " 
+    H₀[1, 1:2:5] = dNₓ[1, :]
+    H₀[2, 1:2:5] = dNₓ[2, :]
+    H₀[3, 2:2:6] = dNₓ[1, :]
+    H₀[4, 2:2:6] = dNₓ[2, :]
+
+    Bₗ₀[1, 1:2:5] = dNₓ[1, :]
+    Bₗ₀[2, 2:2:6] = dNₓ[2, :]
+    Bₗ₀[3, 1:2:5] = dNₓ[2, :]
+    Bₗ₀[3, 2:2:6] = dNₓ[1, :]
+
+    # ∇u = ∇ₓN u
+    A_temp = H₀ * ed
+    A[1, :] = [A_temp[1] 0.0 A_temp[3] 0.0]
+    A[2, :] = [0.0 A_temp[2] 0.0 A_temp[4]]
+    A[3, :] = [A_temp[2] A_temp[1] A_temp[4] A_temp[3]]
+
+    # Deformation gradient F = I + ∇u
+    eff[1, 1] = A_temp[1] + 1.0
+    eff[1, 2] = A_temp[2]
+    eff[2, 1] = A_temp[3]
+    eff[2, 2] = A_temp[4] + 1.0
+
+    # Vec(F)
+    ef = [eff[1, 1] eff[1, 2] eff[2, 1] eff[2, 2]]
+    # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²    
+    es = neohooke1(ef, mp)
+    F  = zeros(3,3)
+    Sₑ = zeros(3,3)
+    F[1, :] = [eff[1] eff[2] 0.0]
+    F[2, :] = [eff[3] eff[4] 0.0]
+    F[3, :] = [0.0 0.0 1.0]
+    Sₑ[1,:] = [es[1] es[4] 0.0  ]
+    Sₑ[2,:] = [es[4] es[2] 0.0  ]
+    Sₑ[3,:] = [0.0   0.0   es[3]]
+    J = det(F)
+    σ_temp = 1 / J * F * Sₑ * F'
+    return σ_temp
+end
+
 function assem_dr(coord,ed,mp,t)
     drₑ = zeros(6,6)
     for gp ∈ 1 : ngp
