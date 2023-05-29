@@ -483,6 +483,6 @@ function getXfromCoord(coord)
     return X
 end
 
-function getX_dofOrder_fromCoord(coord)
+function getXfromDofs(dh)
 
 end

@@ -84,7 +84,7 @@ function solver(dh, coord)
     t = 1.0
 
     # Penalty parameter
-    ε = 100.0
+    ε = 200.0
 
     # Define material parameters
     mp = [210 0.3] # [E ν]
@@ -166,22 +166,8 @@ function solver(dh, coord)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K
 end
 
-a = zeros(dh.ndofs.x)
-postprocess_opt(a, dh, "contact_mesh" * string(1))
-# Create dictionaries that are needed for the Mortar2D package
-elements, element_types, slave_elements, slave_element_ids, master_element_ids, coords = create_contact_list(dh, Γs, Γm, coord)
-normals  = Mortar2D.calculate_normals(elements, element_types, coords)
-segments = Mortar2D.calculate_segments(slave_element_ids, master_element_ids, elements, element_types, coords, normals)
-# Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
-slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
-
-
-g = gap_function(X)
-
 # Solve
 a, dh, Fₑₓₜ, Fᵢₙₜ, K = solver(dh, coord);
 
 # Visualize using e.g. paraview (import image) or FerriteViz
 # postprocess_opt(Fᵢₙₜ, dh, "contact_mesh");
-
-# function to extract stressfield..

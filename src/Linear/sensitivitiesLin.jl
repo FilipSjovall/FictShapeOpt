@@ -40,7 +40,6 @@ function drᵤ_dx(dr,dh,mp,t,a,coord,enod,τ, Γt)
     return dr
 end
 
-
 function dFext_dx(dF,dh,mp,t,a,coord,enod,τ, Γt)
     assembler = start_assemble(dF)
     ie = 0
@@ -59,6 +58,27 @@ function dFext_dx(dF,dh,mp,t,a,coord,enod,τ, Γt)
         assemble!(assembler, cell_dofs, -dre)
     end 
     return dF
+end
+
+function drᵤ_dx_c(dr, dh, mp, t, a, coord, enod, ε)
+    assembler = start_assemble(dr)
+    ie = 0
+    drₑ = zeros(6, 6)
+    for cell in CellIterator(dh)
+        ie += 1
+        cell_dofs = celldofs(cell)
+        drₑ = assem_dr(coord[enod[ie][2:end], :], a[cell_dofs], mp, t)
+        dre = zeros(6, 6)
+        assemble!(assembler, cell_dofs, drₑ + dre)
+    end
+
+    X_ordered = getXfromCoord(coord)
+    drc       = ForwardDiff.jacobian(z -> contact_residual_ordered(z, a, ε), X_ordered)
+
+    # dr[contact_dofs,contact_dofs] += drc[contact_dofs,contact_dofs]
+    dr -= drc
+
+    return dr
 end
 
 

@@ -91,6 +91,7 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,ε)
     ie        = 0
     kₑ        = zeros(6,6)
     fₑ        = zeros(6)
+    
     for cell in CellIterator(dh)
         fill!(kₑ,0.0)
         fill!(fₑ,0.0)
@@ -103,18 +104,12 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,ε)
     
     # Contact
     X_ordered                      = getXfromCoord(coord)
+    #println("Kontaktresidual")
     rc                             = contact_residual(X_ordered,a,ε)
+    #println("Tangent av kontaktresidual med AD")
     Kc                             = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ε), a)
     K[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
     Fᵢₙₜ[contact_dofs]            -= rc[contact_dofs]
-
-    ##a_ordered = getDisplacementsOrdered(dh, a)
-    ##X_float = real.(X + a_ordered)
-    ##println(norm(X_float[contact_dofs]))
-    #g     = gap_function(X_float)
-    #@show g
-    #assemble!(assembler, contact_dofs, Kc[contact_dofs, contact_dofs], rc[contact_dofs])
-  
 end
 
 function volume(dh,coord,enod)

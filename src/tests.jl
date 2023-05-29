@@ -330,7 +330,7 @@ fv = FaceVectorValues(qr_face, ip)
     dr_dd = drψ(dr_dd,dh0,Ψ,fv,λ,d,ΓN);
 
     ∂g_∂x = zeros(size(d))
-    ∂g_∂x[fdofs]  = -a[pdofs]'*∂rᵤ_∂x[pdofs,fdofs]
+    ∂g_∂x[fdofs]  = -a[pdofs]'*∂rᵤ_∂x[pdofs,fdofs];
     #∂g_∂x[pdofs]  = -a[pdofs]'*∂rᵤ_∂x[pdofs,pdofs]
 
     solveq!(λᵤ, K, ∂g_∂u, bcdof, bcval.*0);  # var Fₑₓₜ;
