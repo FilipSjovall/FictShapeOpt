@@ -101,11 +101,11 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,ε)
         # assemble into global
         assemble!(assembler, cell_dofs, kₑ, fₑ)
     end
-    
     # Contact
     X_ordered                      = getXfromCoord(coord)
     #println("Kontaktresidual")
     rc                             = contact_residual(X_ordered,a,ε)
+    
     #println("Tangent av kontaktresidual med AD")
     Kc                             = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ε), a)
     K[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]

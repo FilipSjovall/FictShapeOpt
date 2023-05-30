@@ -148,10 +148,10 @@ function solver_C(dh, coord)
     # ------ #
     global Fᵢₙₜ = zeros(dh.ndofs.x)
     global Fₑₓₜ = zeros(dh.ndofs.x)
-    global a = zeros(dh.ndofs.x)
-    global Δa = zeros(dh.ndofs.x)
-    global res = zeros(dh.ndofs.x)
-    global K = create_sparsity_pattern(dh)
+    global a    = zeros(dh.ndofs.x)
+    global Δa   = zeros(dh.ndofs.x)
+    global res  = zeros(dh.ndofs.x)
+    global K    = create_sparsity_pattern(dh)
     # ---------- #
     # Set BCS    # 
     # ---------- # 
@@ -186,7 +186,7 @@ function solver_C(dh, coord)
             iter += 1
             a += Δa
             assemGlobal!(K, Fᵢₙₜ, dh, mp, t, a, coord, enod, ε)
-
+            println("|| K || :", norm(K))
             solveq!(Δa, K, -Fᵢₙₜ, bcdof, bcval)
             bcval = 0 * bcval
             res = Fᵢₙₜ - Fₑₓₜ
@@ -254,7 +254,7 @@ function fictitious_solver_C(d, dh0, coord₀)
 
     bcval₀ = bcval
 
-    for n ∈ 1 : 5
+    for n ∈ 1 : 1
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual

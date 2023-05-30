@@ -483,6 +483,21 @@ function getXfromCoord(coord)
     return X
 end
 
-function getXfromDofs(dh)
-
+function getXinDofOrder(dh,X,coord)
+    X_ordered = similar(X)
+    for node ∈ eachindex(coord[:, 1])
+        dofs = register[node,:]
+        X_ordered[dofs] = coord[node,:]
+    end
+    return X_ordered
 end
+
+function getX_from_Dof_To_Node_order(dh,X::AbstractVector{T}) where T
+    X_ordered = similar(X) # Real[]
+    for (node, dofs) ∈ enumerate( eachrow(register) )
+        X_ordered[2node - 1] = X[dofs[1]]
+        X_ordered[2node]     = X[dofs[2]]
+    end
+    return X_ordered
+end
+

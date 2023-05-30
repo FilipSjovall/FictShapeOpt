@@ -116,7 +116,7 @@ global res      = zeros(dh.ndofs.x)
 dh0      = deepcopy(dh)
 d        = zeros(size(a))
 d       .= 0.0
-indexet  = 145
+testvar  = 114
 μ        = 1e-6
 mp       = [210 0.3] # [E ν]
 test     = zeros(2)
@@ -134,26 +134,29 @@ for pert in 1:2
         # perturbera d
         dh = deepcopy(dh0)
         #dh.grid.nodes = deepcopy(dh0.grid.nodes)
-        d[indexet] = d[indexet] - μ
+        d[testvar] = d[testvar] - μ
     else
         # perturbera d och resetta dh
         dh = deepcopy(dh0)
         #dh.grid.nodes = deepcopy(dh0.grid.nodes)
-        d[indexet] = d[indexet] + μ
+        d[testvar] = d[testvar] + μ
     end
 
     # Check that grid is updated correctly
-    Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀)
+    local Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀)
     updateCoords!(dh, Ψ)
 
     coord          = getCoord(getX(dh), dh)
-    #register       = getNodeDofs(dh)
-    #X              = getX(dh)
+    register       = getNodeDofs(dh)
+    X              = getXfromCoord(coord)
     #coord          = getCoordfromX(X)
-
+    vtk_grid("contact fictious", dh) do vtkfile
+        vtk_point_data(vtkfile, dh0, Ψ) # displacement field
+    end
     #
-    a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_C(dh, coord)
+    local a, _, Fₑₓₜ, Fᵢₙₜ,  K = solver_C(dh, coord) # behövs "local" här?
     #test[pert] = a' * Fₑₓₜ
+
     test[pert]          = -a[pdofs]' * Fᵢₙₜ[pdofs]
 end
 
@@ -176,7 +179,7 @@ solveq!(λᵤ, K', ∂g_∂u, bcdof_o, bcval_o)  # var Fₑₓₜ;
 solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o, bcval_o)
 
 ∂g_∂d = -transpose(λψ) * dr_dd
-asens = ∂g_∂d[indexet]
+asens = ∂g_∂d[testvar]
 
 numsens = (test[1] - test[2]) / μ
 numsens / asens

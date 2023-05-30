@@ -118,7 +118,6 @@ function StVenantS(eff,mp)
     F[2,:] = [eff[3] eff[4] 0.0]
     F[3,:] = [0.0 0.0 1.0]
 
-    display(F)
  
     C = transpose(F)*F
 
@@ -160,4 +159,10 @@ function mises(eff,S)
         σ_temp  = 1/J * F * Sₑ * F'
         σ_vm    = [σ_temp[1, 1] σ_temp[2, 2] σ_temp[3, 3] σ_temp[1, 2]]
     return σ_vm
+end
+
+function Wₐₙᵢₛₒ(C,M,cᴹ,a₄)
+    J₄ = tr(C*M)
+    Wᴹ = cᴹ * ( 1.0/(1.0+a₄) ) * ( 1.0 - J₄ )^( a₄ + 1.0)
+    return Wᴹ
 end
