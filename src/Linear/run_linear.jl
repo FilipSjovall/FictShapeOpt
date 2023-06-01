@@ -186,7 +186,6 @@ function solver_C(dh, coord)
             iter += 1
             a += Δa
             assemGlobal!(K, Fᵢₙₜ, dh, mp, t, a, coord, enod, ε)
-            println("|| K || :", norm(K))
             solveq!(Δa, K, -Fᵢₙₜ, bcdof, bcval)
             bcval = 0 * bcval
             res = Fᵢₙₜ - Fₑₓₜ
@@ -196,12 +195,12 @@ function solver_C(dh, coord)
 
             postprocess_opt(a, dh, "contact_mesh" * string(loadstep))
             #postprocess_opt(Fᵢₙₜ, dh, "contact_mesh" * string(loadstep))
-            σx, σy = StressExtract(dh, a, mp)
-            vtk_grid("contact" * string(loadstep), dh) do vtkfile
-                vtk_point_data(vtkfile, dh, a) # displacement field
-                vtk_point_data(vtkfile, σx, "σx")
-                vtk_point_data(vtkfile, σy, "σy")
-            end
+            #σx, σy = StressExtract(dh, a, mp)
+            #vtk_grid("contact" * string(loadstep), dh) do vtkfile
+            #    vtk_point_data(vtkfile, dh, a) # displacement field
+            #    vtk_point_data(vtkfile, σx, "σx")
+            #    vtk_point_data(vtkfile, σy, "σy")
+            #end
         end
     end
     fill!(Fₑₓₜ, 0.0)
@@ -254,7 +253,7 @@ function fictitious_solver_C(d, dh0, coord₀)
 
     bcval₀ = bcval
 
-    for n ∈ 1 : 1
+    for n ∈ 1 : 10
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual

@@ -73,7 +73,7 @@ function drᵤ_dx_c(dr, dh, mp, t, a, coord, enod, ε)
     end
 
     X_ordered = getXinDofOrder(dh, X, coord)
-    drc       = ForwardDiff.jacobian(z -> contact_residual_ordered(z, a, ε), X_ordered)
+    drc       = ForwardDiff.jacobian(x -> contact_residual_ordered(x, a, ε), X_ordered)
 
     # dr[contact_dofs,contact_dofs] += drc[contact_dofs,contact_dofs]
     dr -= drc

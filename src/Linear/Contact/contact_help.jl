@@ -48,7 +48,7 @@ function gap_function(X::AbstractVector{T}) where {T}
 
    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
-   println("mortar assembly ",slave_dofs,master_dofs,D,M)
+   
    # Loop over slave dofs to compute the nodal gap vector. 
    g0 = zeros(eltype(X_float), length(slave_dofs), 2)
 
