@@ -147,6 +147,7 @@ function solver_C(dh, coord)
     #  Init  #
     # ------ #
     global Fᵢₙₜ = zeros(dh.ndofs.x)
+    global rc   = zeros(dh.ndofs.x)
     global Fₑₓₜ = zeros(dh.ndofs.x)
     global a    = zeros(dh.ndofs.x)
     global Δa   = zeros(dh.ndofs.x)
@@ -161,7 +162,7 @@ function solver_C(dh, coord)
     bcdof = [bcdof_top; bcdof_bot]
     bcval = [bcval_top; bcval_bot]
 
-    ϵᵢⱼₖ = sortperm(bcdof)
+    ϵᵢⱼₖ  = sortperm(bcdof)
     bcdof = bcdof[ϵᵢⱼₖ]
     bcval = bcval[ϵᵢⱼₖ]
 
@@ -171,7 +172,7 @@ function solver_C(dh, coord)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 1
+    for loadstep ∈ 1 : 15
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
@@ -185,7 +186,7 @@ function solver_C(dh, coord)
         while (iter < imax && residual > TOL) || iter < 2
             iter += 1
             a += Δa
-            assemGlobal!(K, Fᵢₙₜ, dh, mp, t, a, coord, enod, ε)
+            assemGlobal!(K, Fᵢₙₜ,rc, dh, mp, t, a, coord, enod, ε)
             solveq!(Δa, K, -Fᵢₙₜ, bcdof, bcval)
             bcval = 0 * bcval
             res = Fᵢₙₜ - Fₑₓₜ
@@ -205,8 +206,8 @@ function solver_C(dh, coord)
     end
     fill!(Fₑₓₜ, 0.0)
     Fₑₓₜ[bcdof] = -Fᵢₙₜ[bcdof]
-
-    return a, dh, Fₑₓₜ, Fᵢₙₜ, K
+    τ_c         = ExtractContactTraction(a, ε, coord)
+    return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
     
 end
 

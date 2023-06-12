@@ -86,13 +86,14 @@ function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
     end            
 end
 
-function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,ε)
+function assemGlobal!(K,Fᵢₙₜ,rc,dh,mp,t,a,coord,enod,ε)
     assembler = start_assemble(K,Fᵢₙₜ)
     ie        = 0
     kₑ        = zeros(6,6)
     fₑ        = zeros(6)
     
-    for cell in CellIterator(dh)
+    println("standard assembly")
+    @time for cell in CellIterator(dh)
         fill!(kₑ,0.0)
         fill!(fₑ,0.0)
         ie       += 1
@@ -103,11 +104,11 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,ε)
     end
     # Contact
     X_ordered                      = getXfromCoord(coord)
-    #println("Kontaktresidual")
-    rc                             = contact_residual(X_ordered,a,ε)
-    
-    #println("Tangent av kontaktresidual med AD")
-    Kc                             = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ε), a)
+    println("Kontaktresidual")
+    @time rc                       = contact_residual(X_ordered,a,ε)
+    println("norm of contact forces ", norm(rc))
+    println("Tangent av kontaktresidual med AD")
+    @time Kc                       = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ε), a)
     K[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
     Fᵢₙₜ[contact_dofs]            -= rc[contact_dofs]
 end
@@ -152,4 +153,10 @@ function StressExtract(dh,a,mp)
         σy[i] = σy[i] / occurences[i]  
     end
     return σx,σy
+end
+
+function ExtractContactTraction(a,ε,coord)
+    X_ordered = getXfromCoord(coord)
+    τ_c       = contact_traction(X_ordered, a, ε)
+    return τ_c
 end

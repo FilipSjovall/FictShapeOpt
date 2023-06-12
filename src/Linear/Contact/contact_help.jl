@@ -109,7 +109,85 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
    # Extract the coordinate vector (nbr_nodes x 2 )
    coordu = getCoordfromX(X_float)
 
-   
+   # Create dictionaries that are needed for the Mortar2D package
+   elements, element_types, slave_elements, slave_element_ids, master_element_ids, coords = create_contact_list(dh, Γs, Γm, coordu)
+
+   # Compute nodal normals
+   normals = Mortar2D.calculate_normals(elements, element_types, coords)
+
+   # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
+   slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
+
+   # Compute the projected gap function
+   g = zeros(eltype(X_float), length(slave_dofs), 2)
+
+   # Loops are fast with the LLVM compiler 
+   for (j, A) in (enumerate(slave_dofs))
+      slave = [0; 0]
+      for B in slave_dofs
+         slave += D[A, B] * coords[B]
+      end
+      master = [0; 0]
+      #for C in master_dofs
+      for C in intersect(master_dofs, 1:size(M, 2))
+         master += M[A, C] * coords[C]
+      end
+      # To compute the projected gap vector we multiply g[j,:] with the normal at node j
+      g[j, :] = slave - master
+   end
+
+   # Initialize r_c
+   r_c = zeros(eltype(X_float), size(X)) # sparse...?
+
+   # ---------- #
+   # ∫ᵧ 𝛅g λ dγ  #
+   # ---------- #
+   for (i, A) in enumerate(slave_dofs)
+      λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
+      for B in slave_dofs
+         B_dofs = register[B, :]  # Extract nodal degrees of freedom
+         r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i]) #  ∫ N^s N^m λ n dγ
+      end
+      for C in intersect(master_dofs, 1:size(M, 2))
+         C_dofs = register[C, :] # Extract nodal degrees of freedom
+         r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i]) #  ∫ N^s N^s λ n dγ
+      end
+   end
+
+   # ---------------------------------- #
+   # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #  
+   # ---------------------------------- #
+   return r_c
+end
+
+function contact_residual_simple(a::AbstractVector{T}) where T
+   rc = contact_residual(X_ordered, a, ε)
+end
+
+function contact_residual_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) where {T1,T2}
+
+   # Order  X
+   X_ordered = getX_from_Dof_To_Node_order(dh, X)
+
+   r_c       = contact_residual(X_ordered, a, ε)
+
+   return r_c
+end
+
+function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) where {T1,T2}
+
+   # Order displacements according to nodes and not dofs
+   a_ordered = getDisplacementsOrdered(dh, a)
+
+   # Scaling
+   κ = gap_scaling(X)
+
+   # convert X to Real for compatibility with ForwardDiff 
+   #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!! 
+   X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!! 
+
+   # Extract the coordinate vector (nbr_nodes x 2 )
+   coordu = getCoordfromX(X_float)
 
    # Create dictionaries that are needed for the Mortar2D package
    elements, element_types, slave_elements, slave_element_ids, master_element_ids, coords = create_contact_list(dh, Γs, Γm, coordu)
@@ -133,7 +211,8 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
    end
 
    # Initialize r_c
-   r_c = zeros(eltype(X_float), size(X)) # sparse...?
+   #τ_c = zeros(eltype(X_float), size(X)) # sparse...?
+   τ_c = zeros(eltype(X_float), size(coordu,1)) # sparse...?
 
    # ---------- #
    # ∫ᵧ 𝛅g λ dγ  #
@@ -141,34 +220,16 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
 
    # Loop over master side dofs
    #for C in master_dofs
-   for C in intersect(master_dofs, 1:size(M, 2))
-      for (i, A) in enumerate(slave_dofs)
-         C_dofs = register[C, :] # Extract nodal degrees of freedom
-         r_c[C_dofs] += -M[A, C] * penalty(gₙ[i], ε) * normals[A] * (1 / κ[i]) #  ∫ N^s N^s λ n dγ
-      end
-   end
-
-   # Loop over slave side dofs
-   for B in slave_dofs
-      for (i, A) in enumerate(slave_dofs)
-         B_dofs = register[B, :]  # Extract nodal degrees of freedom
-         r_c[B_dofs] += D[A, B] * penalty(gₙ[i], ε) * normals[A] * (1 / κ[i]) #  ∫ N^s N^m λ n dγ
-      end
+   for (i, A) in enumerate(slave_dofs)
+      λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
+      A_dofs = register[A, :]  # Extract nodal degrees of freedom
+      #τ_c[A_dofs] += λ_A * normals[A] * (1 / κ[i]) #  ∫ N^s N^s λ n dγ
+      τ_c[A] += λ_A  * (1 / κ[i]) #  ∫ N^s N^s λ n dγ
    end
 
    # ---------------------------------- #
    # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #  
    # ---------------------------------- #
 
-   return r_c
-end
-
-function contact_residual_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) where {T1,T2}
-
-   # Order  X
-   X_ordered = getX_from_Dof_To_Node_order(dh, X)
-
-   r_c       = contact_residual(X_ordered, a, ε)
-
-   return r_c
+   return τ_c
 end

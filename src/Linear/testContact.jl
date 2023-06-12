@@ -3,6 +3,7 @@ using Mortar2D, ForwardDiff
 using Ferrite, FerriteGmsh, FerriteMeshParser
 using LinearSolve, SparseArrays # LinearSolvePardiso
 using IterativeSolvers, IncompleteLU    # AlgebraicMultigrid
+using SparseDiffTools, Symbolics
 
 include("..//mesh_reader.jl")
 include("initLin.jl") # initieras massa skit
@@ -16,8 +17,8 @@ include("run_linear.jl")
 include("sensitivitiesLin.jl")
 
 # Create two grids 
-grid1 = createBoxMesh("box_1", 0.0, 0.0, 1.0, 1.0, 0.1)
-grid2 = createBoxMesh("box_2", 0.33, 0.99, 0.33, 0.5, 0.05)
+grid1 = createBoxMesh("box_1", 0.0, 0.0, 1.0, 1.0, 0.05)
+grid2 = createBoxMesh("box_2", 0.4, 0.99, 0.2, 0.5, 0.05)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=0.01)
@@ -66,7 +67,7 @@ contact_dofs = getContactDofs(nₛ, nₘ)
 # Define top nodeset for displacement controlled loading
 addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.49)
 Γ_top = getnodeset(dh.grid, "Γ_top")
-
+ 
 
 # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
 addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
@@ -109,6 +110,7 @@ global Kψ       = create_sparsity_pattern(dh)
 global a        = zeros(dh.ndofs.x)
 global Ψ        = zeros(dh.ndofs.x)
 global Fᵢₙₜ     = zeros(dh.ndofs.x)
+global rc       = zeros(dh.ndofs.x)
 global Fₑₓₜ     = zeros(dh.ndofs.x)
 global a        = zeros(dh.ndofs.x)
 global Δa       = zeros(dh.ndofs.x)
@@ -116,8 +118,8 @@ global res      = zeros(dh.ndofs.x)
 dh0      = deepcopy(dh)
 d        = zeros(size(a))
 d       .= 0.0
-testvar  = 444
-perturbation        = 1e-10
+testvar  = 114
+perturbation        = 1e-6
 mp       = [210 0.3] # [E ν]
 test     = zeros(2)
 dFₑₓₜ_dx = similar(K)
@@ -127,6 +129,35 @@ dr_dd    = similar(K)
 ∂rψ_∂d   = similar(K)
 λᵤ       = similar(a)
 λψ       = similar(a)
+
+X_ordered = getXfromCoord(coord)
+
+# Skit i den här och generera sparse-struktur själv - kan använda Γ_m ∪ Γ_s
+sparsity_pattern = Symbolics.jacobian_sparsity(contact_residual_simple(a), rand(dh.ndofs.x) )
+
+
+Kc = Float64.(sparse(Kc2)) # Blir fel kontaktdofs ändras och sparse-strukturen ändras 
+                           # Initiera sparse-matris med alla möjliga nollskiljda element 
+
+colors = matrix_colors(Kc)
+    
+    #println("Kontaktresidual")
+    rc = contact_residual(X_ordered, a, ε)
+
+
+
+    @time forwarddiff_color_jacobian!(Kc, contact_residual_simple, a, colorvec=colors)
+
+    println("Tangent av kontaktresidual med AD")
+    @time Kc2                       = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ε), a)
+
+    
+    println("Skillnad: ", norm(Kc-Kc2))
+
+
+a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord) # behövs "local" här?
+
+#=
 
 # Test sensitivity
 for pert in 1:2
@@ -154,7 +185,7 @@ for pert in 1:2
         vtk_point_data(vtkfile, dh0, Ψ) # displacement field
     end
     #
-    a, _, Fₑₓₜ, Fᵢₙₜ,  K = solver_C(dh, coord) # behövs "local" här?
+    a, _, Fₑₓₜ, Fᵢₙₜ,  K, traction = solver_C(dh, coord) # behövs "local" här?
     #test[pert] = a' * Fₑₓₜ
 
     test[pert]          = -a[pdofs]' * Fᵢₙₜ[pdofs]
@@ -192,5 +223,24 @@ vtk_grid("contact fictious", dh) do vtkfile
 end
 
 
+
+if 1 == 1
+
+    using Plots
+
+    contact_dofs = findall(t -> t != 0, traction)
+
+    X_c   = coord[contact_dofs, 1]
+    tract = traction[contact_dofs]
+    ϵᵢⱼₖ  = sortperm(X_c)
+    X_c   = X_c[ϵᵢⱼₖ]
+    tract = tract[ϵᵢⱼₖ]
+
+    plot(X_c, tract,legend= false, marker= 4, lc= :tomato, mc=:tomato )
+
+end
+
+
+=#
 
 
