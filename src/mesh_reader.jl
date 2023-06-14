@@ -6,14 +6,14 @@ using  Ferrite
 using  FerriteGmsh
 using  FerriteMeshParser
 using  Gmsh
-#file = open(mesh_path,"r") 
+#file = open(mesh_path,"r")
 function getMesh_ASCII(filename)
 
     mesh_path = "data//Quadratic//"*filename
     n    = 0
-    file    = open(mesh_path,"r") 
+    file    = open(mesh_path,"r")
     n       = 0
-    nstart  = 0 
+    nstart  = 0
     nend    = 0
     elstart = 0
     eled    = 0
@@ -41,13 +41,13 @@ function getMesh_ASCII(filename)
 
 
     n = 0
-    while ! eof(file) 
+    while ! eof(file)
         n += 1
         line = readline(file)
         if n > nstart + 1 && n <= nend - 1
             numb = parse.(Float64,split(line," ")[2:3])
             push!(coord, numb)
-        elseif n > elstart + 1 && n < eled 
+        elseif n > elstart + 1 && n < eled
             println(line)
             numb = parse.(Int64, split(line, " ")[indices])
             push!(enod,numb)
@@ -57,7 +57,7 @@ function getMesh_ASCII(filename)
     end
 
     close(file)
-    
+
     return mapreduce(permutedims, vcat, coord), enod
 end
 
@@ -80,7 +80,7 @@ end
 function modify_msh(filename)
     mesh_path = "data//"*filename
     n    = 0
-    file    = open(mesh_path,"w") 
+    file    = open(mesh_path,"w")
 
     while ! eof(file) && (flag_1 == false )
         line = readline(file)
@@ -104,14 +104,14 @@ function setBC(bc_load,dh)
         for i in 1:3
             x = c[i][1]
             y = c[i][2]
-            if y == 0.0 
-                idx = celldofs(cell)[2*i] 
+            if y == 0.0
+                idx = celldofs(cell)[2*i]
                 if idx ∉ bc_dof
                     push!(bc_dof,idx)
                     push!(bc_val,0.0)
                 end
             end
-            if y == 1.0 
+            if y == 1.0
                 idx = celldofs(cell)[2*i]
                 if idx ∉ bc_dof
                 push!(bc_dof,idx)
@@ -119,21 +119,21 @@ function setBC(bc_load,dh)
                 end
             end
             if x == 0.0
-                idx = celldofs(cell)[2*i-1] 
+                idx = celldofs(cell)[2*i-1]
                 if idx ∉ bc_dof
                     push!(bc_dof,idx)
                     push!(bc_val,0.0)
                 end
             end
             #if x == 0.0
-            #    idx = celldofs(cell)[2*i] 
+            #    idx = celldofs(cell)[2*i]
             #    if idx ∉ bc_dof
             #        push!(bc_dof,idx)
             #        push!(bc_val,bc_load)
             #    end
             #end
             if x == 1.0
-                idx = celldofs(cell)[2*i-1] 
+                idx = celldofs(cell)[2*i-1]
                 if idx ∉ bc_dof
                     push!(bc_dof,idx)
                     push!(bc_val,bc_load)
@@ -233,7 +233,7 @@ function getXordered(dh)
 end
 
 function getDisplacementsOrdered(dh,a::AbstractVector{T}) where T
-    # This orders a as 
+    # This orders a as
     ax = Real[]
     ay = Real[]
     anew = Real[]
@@ -241,8 +241,8 @@ function getDisplacementsOrdered(dh,a::AbstractVector{T}) where T
         xdof, ydof = register[idx, :]#[2idx-1 2idx]#
         axn       = a[xdof]
         ayn       = a[ydof]
-        append!(ax,axn) 
-        append!(ay,ayn) 
+        append!(ax,axn)
+        append!(ay,ayn)
         append!(anew,axn)
         append!(anew,ayn)
     end
@@ -321,7 +321,7 @@ function createBoxMesh(filename,x₀,y₀,Δx,Δy,h)
     return grid
 end
 
-function merge_grids(grid1::Grid{dim,CellType}, grid2::Grid{dim,CellType}; tol=0.01) where {N, dim, CellType <: Cell{<:Any, N}}
+function merge_grids(grid1::Grid{dim,CellType}, grid2::Grid{dim,CellType}; tol=1e-6) where {N, dim, CellType <: Cell{<:Any, N}}
     cells′ = copy(grid1.cells)
     nodes′ = copy(grid1.nodes)
     nodemap = Dict{Int,Int}()
@@ -375,22 +375,22 @@ function setBCLin(bc_load,dh)
             x = c[i][1]
             y = c[i][2]
             if x == 0.0
-                idx = celldofs(cell)[2*i-1] 
+                idx = celldofs(cell)[2*i-1]
                 if idx ∉ bc_dof
                     push!(bc_dof,idx)
                     push!(bc_val,bc_load)
                 end
                 if y == 0.0
-                    #idx = celldofs(cell)[2*i-1] 
+                    #idx = celldofs(cell)[2*i-1]
                     #if idx ∉ bc_dof
                     #    push!(bc_dof,idx)
                     #    push!(bc_val,bc_load)
                     #end
-                    idx = celldofs(cell)[2*i] 
+                    idx = celldofs(cell)[2*i]
                     if idx ∉ bc_dof
                         push!(bc_dof,idx)
                         push!(bc_val,bc_load)
-                    end 
+                    end
                 end
             end
         end
@@ -404,8 +404,8 @@ function setBC(bc_load,dh,nodes)
     bc_val   = Vector{Float64}()
     nodeDofs = getNodeDofs(dh)
     for node in nodes
-        idx1 = nodeDofs[node,1] 
-        idx2 = nodeDofs[node,2] 
+        idx1 = nodeDofs[node,1]
+        idx2 = nodeDofs[node,2]
         #append!(bc_dof,idx1)
         append!(bc_dof,idx2)
         append!(bc_val,bc_load)
@@ -453,7 +453,7 @@ function getCoordfromX(X::AbstractVector{T}) where T
     #coord = zeros(length(dh.grid.nodes),2)
     coordz = Array{Real,2}(undef,length(dh.grid.nodes),2)
     for incr in 2:2:size(coordz,1)*2
-        coordz[Int(incr/2),:] = [X[incr-1] X[incr]] 
+        coordz[Int(incr/2),:] = [X[incr-1] X[incr]]
     end
     return coordz
 end
@@ -474,7 +474,18 @@ function getContactDofs(nₛ, nₘ)
     return contact_dofs
 end
 
-function getXfromCoord(coord) 
+function getContactNods(nₛ, nₘ)
+    contact_nods = Int64[]
+    for node_nbr in nₛ
+            append!(contact_nods, node_nbr)
+    end
+    for node_nbr in nₘ
+            append!(contact_nods, node_nbr)
+    end
+    return contact_nods
+end
+
+function getXfromCoord(coord)
     X = Real[]
     for row ∈ 1:size(coord, 1) # eachindex(coord)
         append!(X, coord[row, 1])
@@ -500,4 +511,3 @@ function getX_from_Dof_To_Node_order(dh,X::AbstractVector{T}) where T
     end
     return X_ordered
 end
-

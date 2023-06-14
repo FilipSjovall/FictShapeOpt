@@ -16,18 +16,20 @@ include("..//fem.jl")
 include("run_linear.jl")
 include("sensitivitiesLin.jl")
 
-# Create two grids 
+# Create two grids
 grid1 = createBoxMesh("box_1", 0.0, 0.0, 1.0, 1.0, 0.05)
-grid2 = createBoxMesh("box_2", 0.4, 0.99, 0.2, 0.5, 0.05)
+grid2 = createBoxMesh("box_2", 0.0, 0.99, 1.0, 1.0, 0.03)
 
 # Merge into one grid
-grid_tot = merge_grids(grid1, grid2; tol=0.01)
+grid_tot = merge_grids(grid1, grid2; tol=1e-6)
 
 # Create dofhandler with displacement field u
 dh = DofHandler(grid_tot)
+
+
+
 add!(dh, :u, 2)
 close!(dh)
-
 
 
 # Extract CALFEM-style matrices
@@ -62,12 +64,19 @@ addfaceset!(dh.grid, "Γ_slave", x -> x[2] ≈ 0.99)
 addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ 0.99)
 nₛ = getnodeset(dh.grid, "nₛ")
 
+# Extract all nbr nodes and dofs
 contact_dofs = getContactDofs(nₛ, nₘ)
+contact_nods = getContactNods(nₛ, nₘ)
+order = Dict{Int64,Int64}()
+for (i, nod) ∈ enumerate(contact_nods)
+    push!(order, nod => i)
+end
+free_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
 
 # Define top nodeset for displacement controlled loading
 addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.49)
 Γ_top = getnodeset(dh.grid, "Γ_top")
- 
+
 
 # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
 addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
@@ -132,32 +141,23 @@ dr_dd    = similar(K)
 
 X_ordered = getXfromCoord(coord)
 
-# Skit i den här och generera sparse-struktur själv - kan använda Γ_m ∪ Γ_s
-sparsity_pattern = Symbolics.jacobian_sparsity(contact_residual_simple(a), rand(dh.ndofs.x) )
+### "Vanlig"
+@time Kc2                       = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ε), a);
 
 
-Kc = Float64.(sparse(Kc2)) # Blir fel kontaktdofs ändras och sparse-strukturen ändras 
-                           # Initiera sparse-matris med alla möjliga nollskiljda element 
+println("nu kommer det roliga")
 
-colors = matrix_colors(Kc)
-    
-    #println("Kontaktresidual")
-    rc = contact_residual(X_ordered, a, ε)
+###
+rc  = contact_residual(X_ordered, a, ε)
+rcc = contact_residual_reduced(X_ordered, a[contact_dofs], a[free_dofs], ε)
 
-
-
-    @time forwarddiff_color_jacobian!(Kc, contact_residual_simple, a, colorvec=colors)
-
-    println("Tangent av kontaktresidual med AD")
-    @time Kc2                       = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ε), a)
-
-    
-    println("Skillnad: ", norm(Kc-Kc2))
-
+@time Kc = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, a[free_dofs], ε), a[contact_dofs]);
 
 a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord) # behövs "local" här?
 
-#=
+
+
+
 
 # Test sensitivity
 for pert in 1:2
@@ -192,18 +192,14 @@ for pert in 1:2
 end
 
 ∂g_∂u = zeros(size(d))
-#∂g_∂u = Fₑₓₜ
 ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
 
 #dFₑₓₜ_dx = dFext_dx(dFₑₓₜ_dx, dh, mp, t, a, coord, enod, τ, Γt)
 ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
 dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 
-#dr_dd[locked_d,:] .=0
-#dr_dd[:,locked_d] .=0 
 ∂g_∂x = zeros(size(d))
 
-#∂g_∂x[fdofs] = a[fdofs]' * dFₑₓₜ_dx[fdofs, fdofs]
 ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
 
 solveq!(λᵤ, K', ∂g_∂u, bcdof_o, bcval_o)  # var Fₑₓₜ;
@@ -239,8 +235,3 @@ if 1 == 1
     plot(X_c, tract,legend= false, marker= 4, lc= :tomato, mc=:tomato )
 
 end
-
-
-=#
-
-

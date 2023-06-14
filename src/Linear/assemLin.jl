@@ -1,4 +1,4 @@
-# ------------------------ # 
+# ------------------------ #
 # Assemble global matrices #
 # ------------------------ #
 
@@ -14,7 +14,7 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod)
         cell_dofs= celldofs(cell)
         kₑ, fₑ = assemElem(coord[enod[ie][2:end],:],a[cell_dofs],mp,t)
         assemble!(assembler, cell_dofs, kₑ, fₑ)
-    end            
+    end
 end
 
 function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γt,τ)
@@ -34,10 +34,10 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γt,τ)
                 face_dofs      = [face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2]
                 X              = coord[enod[ie][face_nods.+1] ,:]
                 fₑ[face_dofs] += tractionLoad(X,τ)
-            end    
+            end
         end
         assemble!(assembler, cell_dofs, kₑ, fₑ)
-    end            
+    end
 end
 
 function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,Ψ,coord,enod,λ,d,Γ_robin)
@@ -52,7 +52,7 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,Ψ,coord,enod,λ,d,Γ_robin)
         ke        = zeros(6,6)
         fe        = zeros(6)
         for face in 1:nfaces(cell)
-            if (cellid(cell), face) in Γ_robin 
+            if (cellid(cell), face) in Γ_robin
                 face_nods = [ Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2] ]
                 face_dofs = [ face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2 ]
                 X         = coord[ enod[ie][face_nods.+1] ,: ]
@@ -60,7 +60,7 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,Ψ,coord,enod,λ,d,Γ_robin)
             end
         end
         assemble!(assembler, cell_dofs, kₑ+ke, fₑ+fe)
-    end            
+    end
 end
 
 function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
@@ -79,11 +79,11 @@ function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
                 face_dofs      = [face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2]
                 X              = coord[enod[ie][face_nods.+1] ,:]
                 fₑ[face_dofs]  = tractionLoad(X,τ)
-            end    
+            end
         end
         #assemble!(assembler, cell_dofs, fₑ)
         Fₑₓₜ[cell_dofs] -= fₑ
-    end            
+    end
 end
 
 function assemGlobal!(K,Fᵢₙₜ,rc,dh,mp,t,a,coord,enod,ε)
@@ -91,9 +91,7 @@ function assemGlobal!(K,Fᵢₙₜ,rc,dh,mp,t,a,coord,enod,ε)
     ie        = 0
     kₑ        = zeros(6,6)
     fₑ        = zeros(6)
-    
-    println("standard assembly")
-    @time for cell in CellIterator(dh)
+    for cell in CellIterator(dh)
         fill!(kₑ,0.0)
         fill!(fₑ,0.0)
         ie       += 1
@@ -104,13 +102,15 @@ function assemGlobal!(K,Fᵢₙₜ,rc,dh,mp,t,a,coord,enod,ε)
     end
     # Contact
     X_ordered                      = getXfromCoord(coord)
-    println("Kontaktresidual")
-    @time rc                       = contact_residual(X_ordered,a,ε)
-    println("norm of contact forces ", norm(rc))
-    println("Tangent av kontaktresidual med AD")
-    @time Kc                       = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ε), a)
-    K[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
-    Fᵢₙₜ[contact_dofs]            -= rc[contact_dofs]
+    #rc                             = contact_residual(X_ordered,a,ε)
+    #Kc                             = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ε), a)
+    #K[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
+    #Fᵢₙₜ[contact_dofs]            -= rc[contact_dofs]
+
+    rc                             = contact_residual_reduced(X_ordered, a[contact_dofs], a[free_dofs], ε)
+    Kc                             = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, a[free_dofs], ε), a[contact_dofs])
+    K[contact_dofs, contact_dofs] -= Kc
+    Fᵢₙₜ[contact_dofs]            -= rc
 end
 
 function volume(dh,coord,enod)
@@ -133,7 +133,7 @@ function StressExtract(dh,a,mp)
     for cell in CellIterator(dh)
         # Compute stresses in gauss points - convert to Cauchy
         # Extract GP-stresses to nodes
-        # 
+        #
         ie += 1
         cell_dofs = celldofs(cell)
         for gp in 1 : 3
@@ -149,8 +149,8 @@ function StressExtract(dh,a,mp)
     end
 
     for i in 1 : length(dh.grid.nodes)
-        σx[i] = σx[i] / occurences[i] 
-        σy[i] = σy[i] / occurences[i]  
+        σx[i] = σx[i] / occurences[i]
+        σy[i] = σy[i] / occurences[i]
     end
     return σx,σy
 end

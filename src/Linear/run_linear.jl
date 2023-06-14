@@ -8,7 +8,7 @@ function solver(dh,coord)
       TOL      = 1e-8
       residual = 0.0
       iter     = 1
-      ndof     = size(coord,1)*2 
+      ndof     = size(coord,1)*2
       # ------------- #
       # Assem pattern #
       # ------------- #
@@ -58,20 +58,20 @@ function solver(dh,coord)
       Fₑₓₜ[bcdof] = - Fᵢₙₜ[bcdof]
       return a, dh, Fₑₓₜ, Fᵢₙₜ, K
 end
-   
+
 function fictitious_solver(d,dh0,coord₀)
-      # allt överflödigt bör vid tillfälle flyttas utanför 
+      # allt överflödigt bör vid tillfälle flyttas utanför
       # lösare till ett "init-liknande script så att huvudsaklig kod hålls ren
       imax     = 25
       TOL      = 1e-10
       residual = 0.0
       iter     = 1
       global λ
-      ndof     = size(coord₀,1)*2 
+      ndof     = size(coord₀,1)*2
       nelm     = size(enod,1)
-  
+
       Kψ       = create_sparsity_pattern(dh0)
-  
+
       #  ----- #
       # Init   #
       #  ----- #
@@ -81,7 +81,7 @@ function fictitious_solver(d,dh0,coord₀)
       ΔΨ          = zeros(ndof)
       res         = zeros(ndof)
       bcdof,bcval = setBCLin(0.0,dh0) # Ha bc som argument?
-  
+
       # Struct - problem {dh,bcs,mp}
 
       pdofs       = bcdof
@@ -89,9 +89,9 @@ function fictitious_solver(d,dh0,coord₀)
       # ---------- #
       # Set params # // Kanske som input till solver???
       # ---------- #
-  
+
       bcval₀   = bcval
-  
+
       for n ∈ 1 : 10
           res   = res.*0
           bcval = bcval₀
@@ -99,9 +99,9 @@ function fictitious_solver(d,dh0,coord₀)
           iter  = 0
           λ     = 0.1 * n
           fill!(ΔΨ,0.0)
-          
+
           println("Starting equillibrium iteration at loadstep: ",n)
-  
+
           # # # # # # # # # #
           # Newton solve.  #
           # # # # # # # # # #
@@ -126,7 +126,7 @@ function solver_C(dh, coord)
 
     # ---------- #
     # Set params # // Kanske som input till solver???
-    # ---------- # // definiera mp här? och kanske ε ? iofs snyggare utanför!  
+    # ---------- # // definiera mp här? och kanske ε ? iofs snyggare utanför!
     t = 1.0
 
     # Define material parameters
@@ -154,8 +154,8 @@ function solver_C(dh, coord)
     global res  = zeros(dh.ndofs.x)
     global K    = create_sparsity_pattern(dh)
     # ---------- #
-    # Set BCS    # 
-    # ---------- # 
+    # Set BCS    #
+    # ---------- #
     # Set bcs - should be moved outside this function
     bcdof_top, bcval_top = setBCXY(-0.01, dh, Γ_top)
     bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
@@ -195,24 +195,24 @@ function solver_C(dh, coord)
             println("Iteration: ", iter, " Residual: ", residual)
 
             postprocess_opt(a, dh, "contact_mesh" * string(loadstep))
-            #postprocess_opt(Fᵢₙₜ, dh, "contact_mesh" * string(loadstep))
-            #σx, σy = StressExtract(dh, a, mp)
-            #vtk_grid("contact" * string(loadstep), dh) do vtkfile
-            #    vtk_point_data(vtkfile, dh, a) # displacement field
-            #    vtk_point_data(vtkfile, σx, "σx")
-            #    vtk_point_data(vtkfile, σy, "σy")
-            #end
+
+            σx, σy = StressExtract(dh, a, mp)
+            vtk_grid("contact_reduced" * string(loadstep), dh) do vtkfile
+                vtk_point_data(vtkfile, dh, a) # displacement field
+                vtk_point_data(vtkfile, σx, "σx")
+                vtk_point_data(vtkfile, σy, "σy")
+            end
         end
     end
     fill!(Fₑₓₜ, 0.0)
     Fₑₓₜ[bcdof] = -Fᵢₙₜ[bcdof]
     τ_c         = ExtractContactTraction(a, ε, coord)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
-    
+
 end
 
 function fictitious_solver_C(d, dh0, coord₀)
-    # allt överflödigt bör vid tillfälle flyttas utanför 
+    # allt överflödigt bör vid tillfälle flyttas utanför
     # lösare till ett "init-liknande script så att huvudsaklig kod hålls ren
     imax = 25
     TOL = 1e-10

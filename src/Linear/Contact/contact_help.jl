@@ -1,12 +1,12 @@
 function create_contact_list(dh,Γs,Γm, coord_dual)
-    i                  = 0 
+    i                  = 0
     elements           = Dict{Int64, Vector{Int64}}()
     coords             = Dict{Int64, Vector{Real}}()
     slave_elements     = Dict{Int64, Vector{Int64}}()
     element_types      = Dict{Int64, Symbol}()
     slave_element_ids  = Vector{Int64}()
     master_element_ids = Vector{Int64}()
-    for face in  Γs 
+    for face in  Γs
        i        += 1
        face_el   = face[1]
        face_nods = Ferrite.faces(dh.grid.cells[face_el])[1]
@@ -17,7 +17,7 @@ function create_contact_list(dh,Γs,Γm, coord_dual)
        push!(slave_elements,face_el=>[face_nods[1],face_nods[2]])
        push!(element_types, face_el => :Seg2)
     end
-    
+
     for face in  Γm
        i        += 1
        face_el   = face[1]
@@ -29,14 +29,14 @@ function create_contact_list(dh,Γs,Γm, coord_dual)
        push!(element_types, face_el => :Seg2)
     end
     return elements,element_types, slave_elements, slave_element_ids, master_element_ids, coords
- end
+end
 
 function penalty(ε, g)
    return -ε * max(0, g)
 end
 
 function gap_function(X::AbstractVector{T}) where {T}
-   # convert X to Real for compatibility with ForwardDiff 
+   # convert X to Real for compatibility with ForwardDiff
    X_float = real.(X)
 
    # Extract the coordinate vector (nbr_nodes x 2 )
@@ -46,13 +46,14 @@ function gap_function(X::AbstractVector{T}) where {T}
    # Create dictionaries that are needed for the Mortar2D package
    elements, element_types, slave_elements, slave_element_ids, master_element_ids, coords = create_contact_list(dh, Γs, Γm, coordu)
 
+
    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
-   
-   # Loop over slave dofs to compute the nodal gap vector. 
+
+   # Loop over slave dofs to compute the nodal gap vector.
    g0 = zeros(eltype(X_float), length(slave_dofs), 2)
 
-   # Loops are fast with the LLVM compiler 
+   # Loops are fast with the LLVM compiler
    for (j, A) in (enumerate(slave_dofs))
       slave = [0; 0]
       for B in slave_dofs
@@ -66,12 +67,11 @@ function gap_function(X::AbstractVector{T}) where {T}
       # To compute the projected gap vector we multiply g[j,:] with the normal at node j
       g0[j, :] = slave - master
    end
-   #return reshape(g0,8,1)
    return g0
 end
 
 function gap_scaling(X::AbstractVector{T}) where {T}
-   # convert X to Real for compatibility with ForwardDiff 
+   # convert X to Real for compatibility with ForwardDiff
    X_float = real.(X)
 
    # Extract the coordinate vector (nbr_nodes x 2 )
@@ -94,7 +94,7 @@ function gap_scaling(X::AbstractVector{T}) where {T}
    return κ
 end
 
-function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) where {T1,T2}
+function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε::Number) where {T1,T2}
 
    # Order displacements according to nodes and not dofs
    a_ordered = getDisplacementsOrdered(dh, a)
@@ -102,10 +102,10 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
    # Scaling
    κ = gap_scaling(X)
 
-   # convert X to Real for compatibility with ForwardDiff 
-   #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!! 
-   X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!! 
-   
+   # convert X to Real for compatibility with ForwardDiff
+   #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+   X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+
    # Extract the coordinate vector (nbr_nodes x 2 )
    coordu = getCoordfromX(X_float)
 
@@ -121,7 +121,7 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
    # Compute the projected gap function
    g = zeros(eltype(X_float), length(slave_dofs), 2)
 
-   # Loops are fast with the LLVM compiler 
+   # Loops are fast with the LLVM compiler
    for (j, A) in (enumerate(slave_dofs))
       slave = [0; 0]
       for B in slave_dofs
@@ -155,13 +155,14 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
    end
 
    # ---------------------------------- #
-   # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #  
+   # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #
    # ---------------------------------- #
    return r_c
 end
 
-function contact_residual_simple(a::AbstractVector{T}) where T
+function contact_residual_simple(rc,a::AbstractVector{T}) where T
    rc = contact_residual(X_ordered, a, ε)
+   nothing
 end
 
 function contact_residual_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) where {T1,T2}
@@ -182,9 +183,9 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
    # Scaling
    κ = gap_scaling(X)
 
-   # convert X to Real for compatibility with ForwardDiff 
-   #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!! 
-   X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!! 
+   # convert X to Real for compatibility with ForwardDiff
+   #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+   X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
 
    # Extract the coordinate vector (nbr_nodes x 2 )
    coordu = getCoordfromX(X_float)
@@ -202,7 +203,7 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
 
-   # Initialize the nodal gap vector. 
+   # Initialize the nodal gap vector.
    gₙ = zeros(eltype(X_float), length(slave_dofs))
 
    # Loop to compute weigted gap at each node
@@ -228,8 +229,90 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
    end
 
    # ---------------------------------- #
-   # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #  
+   # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #
    # ---------------------------------- #
 
    return τ_c
+end
+
+function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}, a_f::AbstractVector{T3}, ε::Number) where {T1,T2,T3}
+
+    a_total  = similar(X)
+
+    a_total[contact_dofs] = a_c
+
+    a_total[free_dofs]    = a_f
+
+    # Order displacements according to nodes and not dofs
+    a_ordered = getDisplacementsOrdered(dh, a_total)
+
+    # Scaling
+    κ = gap_scaling(X)
+
+    # convert X to Real for compatibility with ForwardDiff
+    #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+    X_float = real.(X + a_ordered)
+
+    # Extract the coordinate vector (nbr_nodes x 2 )
+    coordu = getCoordfromX(X_float)
+
+    # Create dictionaries that are needed for the Mortar2D package
+    elements, element_types, slave_elements, slave_element_ids, master_element_ids, coords = create_contact_list(dh, Γs, Γm, coordu)
+
+    # Compute nodal normals
+    normals = Mortar2D.calculate_normals(elements, element_types, coords)
+
+    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
+    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
+
+    # Compute the projected gap function
+    g = zeros(eltype(X_float), length(slave_dofs), 2)
+
+    # Loops are fast with the LLVM compiler
+    for (j, A) in (enumerate(slave_dofs))
+        slave = [0; 0]
+        for B in slave_dofs
+            slave += D[A, B] * coords[B]
+        end
+        master = [0; 0]
+        #for C in master_dofs
+        for C in intersect(master_dofs, 1:size(M, 2))
+            master += M[A, C] * coords[C]
+        end
+        # To compute the projected gap vector we multiply g[j,:] with the normal at node j
+        g[j, :] = slave - master
+    end
+
+    # Initialize r_c
+    r_c = zeros(eltype(X_float), length(contact_dofs) ) # sparse...?
+
+    # ---------- #
+    # ∫ᵧ 𝛅g λ dγ  #
+    # ---------- #
+    for (i, A) in enumerate(slave_dofs)
+        λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
+        for (j,B) in enumerate(slave_dofs)
+            # Extract nodal degrees of freedom
+
+            #B_dofs = [2j-1, 2j]
+            #B_dofs = [2order_nod[j]-1, 2order_nod[j]]
+            nod = order[B]
+            B_dofs = [2nod - 1, 2nod]
+            r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i])
+        end
+        for (j,C) in enumerate(intersect(master_dofs, 1:size(M, 2)))
+            # Extract nodal degrees of freedom
+
+            #C_dofs = [2length(slave_dofs), 2length(slave_dofs)] + [2j-1, 2j]
+            #C_dofs = [length(slave_dofs), length(slave_dofs)] + [2order_nod[j] - 1, 2order_nod[j]]
+            nod = order[C]
+            C_dofs = [2nod - 1, 2nod]
+            r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i])
+        end
+    end
+
+    # ---------------------------------- #
+    # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #
+    # ---------------------------------- #
+    return r_c
 end
