@@ -31,8 +31,13 @@ function create_contact_list(dh,Γs,Γm, coord_dual)
     return elements,element_types, slave_elements, slave_element_ids, master_element_ids, coords
 end
 
-function penalty(ε, g)
-   return -ε * max(0, g)
+function penalty(g, ε)
+    if g < 0.0
+        p = 0.0
+    else
+        p = -ε * g # funkar utan minus
+    end
+   return p
 end
 
 function gap_function(X::AbstractVector{T}) where {T}
@@ -84,7 +89,7 @@ function gap_scaling(X::AbstractVector{T}) where {T}
    slave_nods, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
 
    #  # Define scaling
-   κ = zeros(eltype(X_float), length(slave_nods))
+   κ = ones(eltype(X_float), length(slave_nods))
 
    for (i, a) in enumerate(slave_nods)
       for (j, d) in enumerate(slave_nods)
@@ -118,13 +123,15 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε::Numb
    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
 
+
+
    # Compute the projected gap function
    g = zeros(eltype(X_float), length(slave_dofs), 2)
 
    # Loops are fast with the LLVM compiler
    for (j, A) in (enumerate(slave_dofs))
       slave = [0; 0]
-      for B in slave_dofs
+      for B in intersect(slave_dofs, 1:size(D, 2))
          slave += D[A, B] * coords[B]
       end
       master = [0; 0]
@@ -136,6 +143,7 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε::Numb
       g[j, :] = slave - master
    end
 
+
    # Initialize r_c
    r_c = zeros(eltype(X_float), size(X)) # sparse...?
 
@@ -144,13 +152,13 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε::Numb
    # ---------- #
    for (i, A) in enumerate(slave_dofs)
       λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-      for B in slave_dofs
+      for B in intersect(slave_dofs, 1:size(D, 2))
          B_dofs = register[B, :]  # Extract nodal degrees of freedom
-         r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i]) #  ∫ N^s N^m λ n dγ
+         r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i])
       end
       for C in intersect(master_dofs, 1:size(M, 2))
          C_dofs = register[C, :] # Extract nodal degrees of freedom
-         r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i]) #  ∫ N^s N^s λ n dγ
+         r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i])
       end
    end
 
@@ -223,11 +231,10 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
    #for C in master_dofs
    for (i, A) in enumerate(slave_dofs)
       λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-      A_dofs = register[A, :]  # Extract nodal degrees of freedom
-      #τ_c[A_dofs] += λ_A * normals[A] * (1 / κ[i]) #  ∫ N^s N^s λ n dγ
-      τ_c[A] += λ_A  * (1 / κ[i]) #  ∫ N^s N^s λ n dγ
+      τ_c[A] = λ_A  * (1 / κ[i]) #  ∫ N^s N^s λ n dγ
+        println("Traction | ", A, " ", λ_A, " normals | ", normals[slave_dofs[i]], " gap | ", gₙ[i])
    end
-
+   @show coords
    # ---------------------------------- #
    # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #
    # ---------------------------------- #
@@ -239,11 +246,12 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
 
     a_total  = similar(X)
 
-    a_total[contact_dofs] = a_c
+    a_total[contact_dofs]  = a_c
 
-    a_total[free_dofs]    = a_f
+    a_total[freec_dofs]    = a_f
 
     # Order displacements according to nodes and not dofs
+
     a_ordered = getDisplacementsOrdered(dh, a_total)
 
     # Scaling

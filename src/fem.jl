@@ -6,10 +6,10 @@ function solveq!(a,K,f,bcdof,bcval)
     nd       = size(K,1)
     pdofs    = bcdof
     fdofs    = setdiff(1:nd,pdofs)
-    
-    
+
+
     prob = LinearProblem(K[fdofs,fdofs], f[fdofs] - K[fdofs,pdofs]*bcval)
-    
+
     # Solvers
     #    MKLPardisoFactorize(),
     #    MKLPardisoIterate(),
@@ -22,7 +22,7 @@ function solveq!(a,K,f,bcdof,bcval)
     #ml = ruge_stuben(K[fdofs,fdofs]) # Construct a Ruge-Stuben solver
     #pl = aspreconditioner(ml)
     #@time a[fdofs] = solve(prob, KrylovJL_GMRES(), Pl = pl).u
-    
+
     # Incomplete LU
     #pl = ilu(K[fdofs,fdofs], τ = 0.01) # τ needs to be tuned per problem
     #@time a[fdofs] = solve(prob, KrylovJL_GMRES(), Pl = pl).u
@@ -32,7 +32,7 @@ function solveq!(a,K,f,bcdof,bcval)
 
     # Naive attempt
     a[pdofs] = bcval
-    
+
 end
 
 function externalForce!(F_ext,r,F_int,F)

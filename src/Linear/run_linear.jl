@@ -172,7 +172,7 @@ function solver_C(dh, coord)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 15
+    for loadstep ∈ 1 : 10
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
@@ -197,7 +197,7 @@ function solver_C(dh, coord)
             postprocess_opt(a, dh, "contact_mesh" * string(loadstep))
 
             σx, σy = StressExtract(dh, a, mp)
-            vtk_grid("contact_reduced" * string(loadstep), dh) do vtkfile
+            vtk_grid("contact" * string(loadstep) , dh) do vtkfile
                 vtk_point_data(vtkfile, dh, a) # displacement field
                 vtk_point_data(vtkfile, σx, "σx")
                 vtk_point_data(vtkfile, σy, "σy")
@@ -281,4 +281,94 @@ function fictitious_solver_C(d, dh0, coord₀)
         end
     end
     return Ψ, dh0, Kψ, Fᵢₙₜ, λ
+end
+
+function solver_C2(dh, coord)
+
+    # ---------- #
+    # Set params # // Kanske som input till solver???
+    # ---------- # // definiera mp här? och kanske ε ? iofs snyggare utanför!
+    t = 1.0
+
+    # Define material parameters
+    mp = [210 0.3] # [E ν]
+
+
+    # ------------- #
+    # Init-stuff    #
+    # ------------- #
+    imax = 25
+    TOL = 1e-8
+    residual = 0.0
+    iter = 1
+    # ------------- #.0
+    # ------------- #
+    #K = create_sparsity_pattern(dh)
+
+    # ------ #
+    #  Init  #
+    # ------ #
+    global Fᵢₙₜ = zeros(dh.ndofs.x)
+    global rc = zeros(dh.ndofs.x)
+    global Fₑₓₜ = zeros(dh.ndofs.x)
+    global a = zeros(dh.ndofs.x)
+    global Δa = zeros(dh.ndofs.x)
+    global res = zeros(dh.ndofs.x)
+    global K = create_sparsity_pattern(dh)
+    # ---------- #
+    # Set BCS    #
+    # ---------- #
+    # Set bcs - should be moved outside this function
+    bcdof_top, bcval_top = setBCXY(-0.01, dh, Γ_top)
+    bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
+    bcdof = [bcdof_top; bcdof_bot]
+    bcval = [bcval_top; bcval_bot]
+
+    ϵᵢⱼₖ = sortperm(bcdof)
+    bcdof = bcdof[ϵᵢⱼₖ]
+    bcval = bcval[ϵᵢⱼₖ]
+
+    # - For Linear solver..
+    pdofs = bcdof
+    fdofs = setdiff(1:dh.ndofs.x, pdofs)
+
+    bcval₀ = bcval
+
+    for loadstep ∈ 1 : 10
+        τ   = [0.0; 0.0001] * (loadstep-1)
+        res = res .* 0
+        bcval = bcval₀
+        residual = 0 * residual
+        iter = 0
+        fill!(Δa, 0.0)
+        println("Starting equillibrium iteration at loadstep: ", loadstep)
+
+        # # # # # # # # # #
+        # Newton solve.   #
+        # # # # # # # # # #
+        while (iter < imax && residual > TOL) || iter < 2
+            iter += 1
+            a += Δa
+            assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε, Γ_top, τ)
+            solveq!(Δa, K, -Fᵢₙₜ, bcdof, bcval)
+            bcval = 0 * bcval
+            res = Fᵢₙₜ - Fₑₓₜ
+            res[bcdof] = 0 * res[bcdof]
+            residual = norm(res, 2)
+            println("Iteration: ", iter, " Residual: ", residual)
+
+
+            σx, σy = StressExtract(dh, a, mp)
+            vtk_grid("hertz"  * string(loadstep), dh) do vtkfile
+                vtk_point_data(vtkfile, dh, a) # displacement field
+                vtk_point_data(vtkfile, σx, "σx")
+                vtk_point_data(vtkfile, σy, "σy")
+            end
+        end
+    end
+    fill!(Fₑₓₜ, 0.0)
+    Fₑₓₜ[bcdof] = -Fᵢₙₜ[bcdof]
+    τ_c = ExtractContactTraction(a, ε, coord)
+    return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
+
 end

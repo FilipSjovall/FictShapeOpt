@@ -17,8 +17,8 @@ include("run_linear.jl")
 include("sensitivitiesLin.jl")
 
 # Create two grids
-grid1 = createBoxMesh("box_1", 0.0, 0.0, 1.0, 1.0, 0.05)
-grid2 = createBoxMesh("box_2", 0.0, 0.99, 1.0, 1.0, 0.03)
+grid1 = createBoxMesh("box_1", 0.0, 0.0, 1.0, 1.0, 0.15)
+grid2 = createBoxMesh("box_2", 0.0, 0.99, 1.0, 1.0, 0.1)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -71,7 +71,7 @@ order = Dict{Int64,Int64}()
 for (i, nod) ∈ enumerate(contact_nods)
     push!(order, nod => i)
 end
-free_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
+freec_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
 
 # Define top nodeset for displacement controlled loading
 addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.49)
@@ -149,15 +149,17 @@ println("nu kommer det roliga")
 
 ###
 rc  = contact_residual(X_ordered, a, ε)
-rcc = contact_residual_reduced(X_ordered, a[contact_dofs], a[free_dofs], ε)
+rcc = contact_residual_reduced(X_ordered, a[contact_dofs], a[freec_dofs], ε)
 
-@time Kc = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, a[free_dofs], ε), a[contact_dofs]);
+@time Kc = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, a[freec_dofs], ε), a[contact_dofs]);
 
-a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord) # behövs "local" här?
+ε = 1e3
 
+a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord);
 
+sens_test = 0
 
-
+if sens_test==1
 
 # Test sensitivity
 for pert in 1:2
@@ -218,7 +220,7 @@ vtk_grid("contact fictious", dh) do vtkfile
     vtk_point_data(vtkfile, dh, Ψ) # displacement field
 end
 
-
+end
 
 if 1 == 1
 
