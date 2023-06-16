@@ -141,15 +141,14 @@ function assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε, Γ_top, 
     X_ordered = getXfromCoord(coord)
     #rc = contact_residual(X_ordered, a, ε)
     #Kc = ForwardDiff.jacobian(u -> contact_residual(X_ordered, u, ε), a)
-    #println("rc ", rc[contact_dofs]," " ,norm(rc)," ", norm(Kc))
     #K[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
     #Fᵢₙₜ[contact_dofs]            -= rc[contact_dofs]
 
     rc                             = contact_residual_reduced(X_ordered, a[contact_dofs], a[freec_dofs], ε)
     Kc                             = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, a[freec_dofs], ε), a[contact_dofs])
-    println("rc ", rc, " ", norm(rc), " ", norm(Kc))
     K[contact_dofs, contact_dofs] -= Kc
     Fᵢₙₜ[contact_dofs]            -= rc
+
 end
 
 function volume(dh,coord,enod)

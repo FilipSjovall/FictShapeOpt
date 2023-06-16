@@ -1,16 +1,14 @@
 # Solution vector
-ndof = size(coord,1)*2
-a    = zeros(ndof)
 K    = create_sparsity_pattern(dh)
 # Optimization norm
 kktnorm = 1.0
 # Boundary values and associated dofs
 bcdof,bcval = setBCLin(0.0,dh)
 # Sensitivities
-∂g_∂x = zeros(size(a)) 
-∂g_∂u = zeros(size(d)) 
-∂rᵤ_∂x= similar(K) 
-dr_dd = similar(K) 
+∂g_∂x = zeros(size(a))
+∂g_∂u = zeros(size(d))
+∂rᵤ_∂x= similar(K)
+dr_dd = similar(K)
 # Material parameters
 mp₀   = [1.0 1.0]
 mp    = [175 80.769230769230759]
@@ -33,7 +31,7 @@ global changetol     = 0.001;
 global kktnorm       = kkttol + 10;
 global outit         = 0;
 global change        = 1;
-global xmin[free_d] .= -0.8
-global xmax[free_d] .=  0.8
+global xmin[free_d] .= -0.1
+global xmax[free_d] .=  0.1
 global low           = xmin;
 global upp           = xmax;

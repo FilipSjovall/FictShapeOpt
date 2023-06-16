@@ -35,7 +35,7 @@ function penalty(g, ε)
     if g < 0.0
         p = 0.0
     else
-        p = -ε * g # funkar utan minus
+        p = ε * g # funkar utan minus
     end
    return p
 end
@@ -221,7 +221,8 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
 
    # Initialize r_c
    #τ_c = zeros(eltype(X_float), size(X)) # sparse...?
-   τ_c = zeros(eltype(X_float), size(coordu,1)) # sparse...?
+   #τ_c = zeros(eltype(X_float), length(contact_dofs))
+    τ_c = Dict{Int64,Real}()
 
    # ---------- #
    # ∫ᵧ 𝛅g λ dγ  #
@@ -230,11 +231,12 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
    # Loop over master side dofs
    #for C in master_dofs
    for (i, A) in enumerate(slave_dofs)
-      λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-      τ_c[A] = λ_A  * (1 / κ[i]) #  ∫ N^s N^s λ n dγ
-        println("Traction | ", A, " ", λ_A, " normals | ", normals[slave_dofs[i]], " gap | ", gₙ[i])
+    λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
+      #τ_c[i] = λ_A  * (1 / κ[i])
+        push!(τ_c, A => λ_A * (1 / κ[i]) )
+        #println("Traction | ", A, " ", λ_A, " normals | ", normals[slave_dofs[i]], " gap | ", gₙ[i])
    end
-   @show coords
+
    # ---------------------------------- #
    # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #
    # ---------------------------------- #

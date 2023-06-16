@@ -29,7 +29,7 @@ function solver(dh,coord)
       # ---------- #
       t        = 1.0
       bcval₀   = bcval
-      for n ∈ 1 : 10
+      for loadstep ∈ 1 : 10
           τ        = [0.1;0.1].*n
           res      = res.*0
           bcval    = bcval₀
@@ -172,7 +172,7 @@ function solver_C(dh, coord)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 10
+    for loadstep ∈ 1 : 3
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
@@ -254,15 +254,15 @@ function fictitious_solver_C(d, dh0, coord₀)
 
     bcval₀ = bcval
 
-    for n ∈ 1 : 10
+    for loadstep ∈ 1 : 10
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
         iter = 0
-        λ = 0.1 * n
+        λ = 0.1 * loadstep
         fill!(ΔΨ, 0.0)
 
-        println("Starting equillibrium iteration at loadstep: ", n)
+        println("Starting equillibrium iteration at loadstep: ", loadstep)
 
         # # # # # # # # # #
         # Newton solve.  #
@@ -278,7 +278,9 @@ function fictitious_solver_C(d, dh0, coord₀)
             residual = norm(res, 2)
             Ψ[bcdof] = bcval
             println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
+            postprocess_opt(Ψ, dh, "fict_def" * string(loadstep))
         end
+
     end
     return Ψ, dh0, Kψ, Fᵢₙₜ, λ
 end
@@ -334,7 +336,7 @@ function solver_C2(dh, coord)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 10
+    for loadstep ∈ 1 : 1
         τ   = [0.0; 0.0001] * (loadstep-1)
         res = res .* 0
         bcval = bcval₀

@@ -13,9 +13,9 @@ include("..//fem.jl")
 include("run_linear.jl")
 include("sensitivitiesLin.jl")
 
-gridC = createCircleMesh("circle",0.5, 1.5, 0.5, 0.4)
+gridC = createCircleMesh("circle",0.5, 1.5, 0.5, 0.1)
 
-gridB = createBoxMeshRev("box", 0.0, 0.5, 1.0, 0.501, 0.1)
+gridB = createBoxMeshRev("box", 0.0, 0.5, 1.0, 0.501, 0.01)
 
 grid_tot = merge_grids(gridB, gridC; tol=1e-6)
 
@@ -122,21 +122,104 @@ end
 
 
 # Penalty parameter
-ε = 200
+ε = 2000
+
+dh0 = deepcopy(dh)
+d = zeros(size(a))
+d .= 0.0
+testvar = 290
+perturbation = 1e-6
+mp = [210 0.3] # [E ν]
+test = zeros(2)
+dFₑₓₜ_dx = similar(K)
+C = zeros(2)
+∂rᵤ_∂x = similar(K)
+dr_dd = similar(K)
+∂rψ_∂d = similar(K)
+λᵤ = similar(a)
+λψ = similar(a)
+sens_test = 1
+
+#a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C2(dh, coord);
+
+if sens_test == 1
+
+    # Test sensitivity
+    for pert in 1:2
+        if pert == 1
+            # perturbera d
+            dh = deepcopy(dh0)
+            #dh.grid.nodes = deepcopy(dh0.grid.nodes)
+            d[testvar] = d[testvar] + perturbation
+        else
+            # perturbera d och resetta dh
+            dh = deepcopy(dh0)
+            #dh.grid.nodes = deepcopy(dh0.grid.nodes)
+            d[testvar] = d[testvar] - perturbation
+        end
+
+        # Check that grid is updated correctly
+        Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀);
+        updateCoords!(dh, Ψ)
+
+        coord = getCoord(getX(dh), dh)
+        register = getNodeDofs(dh)
+        X = getXfromCoord(coord)
+        #coord          = getCoordfromX(X)
+        vtk_grid("contact fictious", dh) do vtkfile
+            vtk_point_data(vtkfile, dh0, Ψ) # displacement field
+        end
+        #
+        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C2(dh, coord);
+        #test[pert] = a' * Fₑₓₜ
+
+        test[pert] = -a[pdofs]' * Fᵢₙₜ[pdofs]
+    end
+
+    ∂g_∂u = zeros(size(d))
+    ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
+
+    #dFₑₓₜ_dx = dFext_dx(dFₑₓₜ_dx, dh, mp, t, a, coord, enod, τ, Γt)
+    ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
+    dr_dd = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
+
+    ∂g_∂x = zeros(size(d))
+
+    ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
+
+    solveq!(λᵤ, K', ∂g_∂u, bcdof, bcval)  # var Fₑₓₜ;
+    solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof, bcval)
+
+    ∂g_∂d = -transpose(λψ) * dr_dd
+    asens = ∂g_∂d[testvar]
+
+    numsens = (test[1] - test[2]) / perturbation
+    numsens / asens
+
+    println("numsens: $numsens")
+    println("asens: $asens")
+
+    vtk_grid("contact fictious", dh) do vtkfile
+        vtk_point_data(vtkfile, dh, Ψ) # displacement field
+    end
+
+end
 
 a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C2(dh, coord);
 
 if 1 == 1
 
     using Plots
+    X_c = []
+    tract = []
+    for (key, val) ∈ traction
+        append!(X_c, coord[key, 1])
+        append!(tract, val)
+    end
 
-    contact_dofs = findall(t -> t != 0, traction)
-
-    X_c = coord[contact_dofs, 1]
-    tract = traction[contact_dofs]
     ϵᵢⱼₖ = sortperm(X_c)
-    X_c = X_c[ϵᵢⱼₖ]
     tract = tract[ϵᵢⱼₖ]
+    X_c = X_c[ϵᵢⱼₖ]
 
     plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
 

@@ -21,7 +21,10 @@ function neohooke1(defgrad,mp)
 
     C⁻¹ = inv(C)
     J   = det(Fₚ)
-
+    if J<0
+        println("hej")
+        println("F $Fₚ", " ", J)
+    end
     Stress   = Kₘ/2.0 * (J^2 - 1.0).*C⁻¹ + Gₘ*(J^(-2/3)).*( I(3) - tr(C)/3.0.*C⁻¹ )
     S        = [Stress[1,1]; Stress[2,2]; Stress[3,3]; Stress[1,2]]
     return S
@@ -35,7 +38,7 @@ function neohookeS!(Sₑ,eff,mp)
 end
 
 function dneohooke1(eff,mp)
-    D  = zeros(3,3) 
+    D  = zeros(3,3)
     Kₘ = mp[1]
     Gₘ = mp[2]
 
@@ -47,7 +50,7 @@ function dneohooke1(eff,mp)
     F[2,:] = [eff[3] eff[4] 0.0]
     F[3,:] = [0.0 0.0 1.0]
 
- 
+
     C = transpose(F)*F
 
     #C_inv = inv(C)
@@ -67,7 +70,7 @@ function dneohooke1(eff,mp)
     #D     = [D1111 D1122 D1112 ;
     #         D1122 D2222 D1222 ;
     #         D1112 D1222 D1212];
-    
+
     ix = Matrix{Int32}(undef,6,4)
     ix[1,:] = [1 1 1 1]
     ix[2,:] = [1 1 2 2]
@@ -81,9 +84,9 @@ function dneohooke1(eff,mp)
         jj = ix[el,2]
         kk = ix[el,3]
         l  = ix[el,4]
-        Ds[el] = a₁ * C⁻¹[i,jj] * C⁻¹[kk,l] - 
+        Ds[el] = a₁ * C⁻¹[i,jj] * C⁻¹[kk,l] -
                  a₂ * ( I[i,jj] * C⁻¹[kk,l] + C⁻¹[i,jj] * I[kk,l] ) +
-                 a₃ * ( C⁻¹[i,kk] * C⁻¹[jj,l] + C⁻¹[i,l] * C⁻¹[jj,kk] ) 
+                 a₃ * ( C⁻¹[i,kk] * C⁻¹[jj,l] + C⁻¹[i,l] * C⁻¹[jj,kk] )
     end
 #
     D[1,:] = [Ds[1] Ds[2] Ds[3]]
@@ -101,7 +104,7 @@ end
 
 
 function StVenantS(eff,mp)
-    D  = zeros(3,3) 
+    D  = zeros(3,3)
     Kₘ = mp[1]
     Gₘ = mp[2]
 
@@ -109,7 +112,7 @@ function StVenantS(eff,mp)
     E = 1e0
     ν = 0.3
 
-    my= E/(2*(1+ν)); 
+    my= E/(2*(1+ν));
     k = E/ (3*(1-2*ν));
 
     F  = zeros(3,3)
@@ -118,7 +121,7 @@ function StVenantS(eff,mp)
     F[2,:] = [eff[3] eff[4] 0.0]
     F[3,:] = [0.0 0.0 1.0]
 
- 
+
     C = transpose(F)*F
 
     Eg = 1/2 * ( C - I(3) )
@@ -130,14 +133,14 @@ function StVenantS(eff,mp)
 end
 
 function dStVenant(eff,mp)
-    D  = zeros(3,3) 
+    D  = zeros(3,3)
     K = mp[1]
     G = mp[2]
 
     #E = 9*K*G/(3*K+G)
     #v = (3*K-2*G)/(3*K+G)  * (1/2)
 
-    E = 1e0 
+    E = 1e0
     v = 0.3
 
     F  = zeros(3,3)
@@ -154,7 +157,7 @@ function mises(eff,S)
         F[1, :] = [eff[1] eff[2] 0.0]
         F[2, :] = [eff[3] eff[4] 0.0]
         F[3, :] = [0.0 0.0 1.0]
-        Sₑ      = 
+        Sₑ      =
         J       = det(F)
         σ_temp  = 1/J * F * Sₑ * F'
         σ_vm    = [σ_temp[1, 1] σ_temp[2, 2] σ_temp[3, 3] σ_temp[1, 2]]

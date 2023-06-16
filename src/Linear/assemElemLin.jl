@@ -8,7 +8,7 @@ ngp = 3
 
 ξ      = [2.0/3.0 1.0/6.0 1.0/6.0; 1.0/6.0 2.0/3.0 1.0/6.0; 1.0/6.0 1.0/6.0 2.0/3.0 ]
 w      = [1.0/3.0 1.0/3.0 1.0/3.0]
-index  = [1 2 3; 4 5 6; 7 8 9] 
+index  = [1 2 3; 4 5 6; 7 8 9]
 
 P₀     = [0.0 1.0 0.0; 0.0 0.0 1.0]
 
@@ -61,14 +61,14 @@ function assemGP(coord,ed,gp,mp,t)
     detJ                    = det(Jᵀ)
     dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
 
-    # Gradient matrices " ∇N " 
+    # Gradient matrices " ∇N "
     H₀[1,1:2:5]  = dNₓ[1,:]
     H₀[2,1:2:5]  = dNₓ[2,:]
     H₀[3,2:2:6]  = dNₓ[1,:]
     H₀[4,2:2:6]  = dNₓ[2,:]
 
     Bₗ₀[1,1:2:5] = dNₓ[1,:]
-    Bₗ₀[2,2:2:6] = dNₓ[2,:]  
+    Bₗ₀[2,2:2:6] = dNₓ[2,:]
     Bₗ₀[3,1:2:5] = dNₓ[2,:]
     Bₗ₀[3,2:2:6] = dNₓ[1,:]
 
@@ -78,7 +78,7 @@ function assemGP(coord,ed,gp,mp,t)
     A[2,:]       = [0.0 A_temp[2] 0.0 A_temp[4]]
     A[3,:]       = [A_temp[2] A_temp[1] A_temp[4] A_temp[3]]
 
-    # ∇N + ∂N∂x ⋅ ∇u 
+    # ∇N + ∂N∂x ⋅ ∇u
     B₀           = Bₗ₀ + A*H₀
 
     # Deformation gradient F = I + ∇u
@@ -90,7 +90,7 @@ function assemGP(coord,ed,gp,mp,t)
     # Vec(F)
     ef = [eff[1,1] eff[1,2] eff[2,1] eff[2,2]]
 
-    # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²    
+    # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²
     es = neohooke1(ef,mp)
     D  = dneohooke1(ef,mp)
 
@@ -103,8 +103,8 @@ function assemGP(coord,ed,gp,mp,t)
 
     # Internal force vector ∫ δE : S dΩ or ∫ ∇ₓδuᵢ : P dΩ
     fₑ            = transpose(B₀)*S*detJ*t*w[gp]/2
-    # ∫ δEᵀ D ΔE + ∇δuᵀ S ∇Δu dΩ 
-    kₑ            = ( transpose(B₀)*D*B₀ + transpose(H₀)*R*H₀ )*detJ*t*w[gp]/2 
+    # ∫ δEᵀ D ΔE + ∇δuᵀ S ∇Δu dΩ
+    kₑ            = ( transpose(B₀)*D*B₀ + transpose(H₀)*R*H₀ )*detJ*t*w[gp]/2
     return kₑ, fₑ
 end
 
@@ -125,7 +125,7 @@ function assemS(coord, ed, mp, t, gp)
     J⁻ = inv(Jᵀ)
     dNₓ = P₀ * J⁻ * transpose(dNᵣ[:, index[gp, :]])
 
-    # Gradient matrices " ∇N " 
+    # Gradient matrices " ∇N "
     H₀[1, 1:2:5] = dNₓ[1, :]
     H₀[2, 1:2:5] = dNₓ[2, :]
     H₀[3, 2:2:6] = dNₓ[1, :]
@@ -150,7 +150,7 @@ function assemS(coord, ed, mp, t, gp)
 
     # Vec(F)
     ef = [eff[1, 1] eff[1, 2] eff[2, 1] eff[2, 2]]
-    # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²    
+    # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²
     es = neohooke1(ef, mp)
     F  = zeros(3,3)
     Sₑ = zeros(3,3)
@@ -191,17 +191,17 @@ function dr_GP(coord,ed,gp,mp,t)
     detJ                    = det(Jᵀ)
     dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
 
-    # Gradient matrices  
+    # Gradient matrices
     @inbounds H₀[1,1:2:5]  = dNₓ[1,:]
     @inbounds H₀[2,1:2:5]  = dNₓ[2,:]
     @inbounds H₀[3,2:2:6]  = dNₓ[1,:]
     @inbounds H₀[4,2:2:6]  = dNₓ[2,:]
 
     @inbounds Bₗ₀[1,1:2:5] = dNₓ[1,:]
-    @inbounds Bₗ₀[2,2:2:6] = dNₓ[2,:]  
+    @inbounds Bₗ₀[2,2:2:6] = dNₓ[2,:]
     @inbounds Bₗ₀[3,1:2:5] = dNₓ[2,:]
     @inbounds Bₗ₀[3,2:2:6] = dNₓ[1,:]
-    
+
 
     A_temp = H₀*ed
     @inbounds A[1,:]        = [A_temp[1] 0.0 A_temp[3] 0.0]
@@ -213,15 +213,15 @@ function dr_GP(coord,ed,gp,mp,t)
     for dof in 1:6
         ## Sensitivities
         ∂G_∂x                   = - dNₓ * dX[dof,:,:] * dNₓ
-        ∂J_∂x                   =   detJ  * tr(dNₓ*dX[dof,:,:]) 
+        ∂J_∂x                   =   detJ  * tr(dNₓ*dX[dof,:,:])
 
         dH₀[1,1:2:5]  = ∂G_∂x[1,:]
         dH₀[2,1:2:5]  = ∂G_∂x[2,:]
         dH₀[3,2:2:6]  = ∂G_∂x[1,:]
         dH₀[4,2:2:6]  = ∂G_∂x[2,:]
-        
+
         dBₗ₀[1,1:2:5] = ∂G_∂x[1,:]
-        dBₗ₀[2,2:2:6] = ∂G_∂x[2,:]  
+        dBₗ₀[2,2:2:6] = ∂G_∂x[2,:]
         dBₗ₀[3,1:2:5] = ∂G_∂x[2,:]
         dBₗ₀[3,2:2:6] = ∂G_∂x[1,:]
 
@@ -231,17 +231,17 @@ function dr_GP(coord,ed,gp,mp,t)
         dA[1,:]        = [dA_temp[1] 0.0 dA_temp[3] 0.0]
         dA[2,:]        = [0.0 dA_temp[2] 0.0 dA_temp[4]]
         dA[3,:]        = [dA_temp[2] dA_temp[1] dA_temp[4] dA_temp[3]]
-        
-        dB₀            = dBₗ₀ + dA * H₀ + A * dH₀ 
+
+        dB₀            = dBₗ₀ + dA * H₀ + A * dH₀
 
         ## Material response
         #
         # Deformation gradient
         eff[1,1] = A_temp[1] + 1.0
         eff[1,2] = A_temp[2]
-        eff[2,1] = A_temp[3] 
+        eff[2,1] = A_temp[3]
         eff[2,2] = A_temp[4] + 1.0
- 
+
         ef = [eff[1,1] eff[1,2] eff[2,1] eff[2,2]]
 
         # Stress and material tangent
@@ -269,7 +269,7 @@ function Robin(coorde,Ψe,de,λ)
     # Byt mot 4x4
     N1N1        =  L/3
     N1N2        =  L/6
-    N2N2        =  L/3 
+    N2N2        =  L/3
     Kc[1,1:2:3] = [N1N1 N1N2]
     Kc[2,2:2:4] = [N1N1 N1N2]
     Kc[3,1:2:3] = [N1N2 N2N2]
@@ -279,16 +279,16 @@ function Robin(coorde,Ψe,de,λ)
 end
 
 function tractionLoad(coorde,τ)
-    L = sqrt((coorde[1,1] - coorde[2,1])^2 + (coorde[1,2] - coorde[2,2])^2) 
-    ∫Nᵀ = (L/2) * [1.0 0.0 1.0 0.0; 0.0 1.0 0.0 1.0]  
-    return -∫Nᵀ' * τ 
+    L = sqrt((coorde[1,1] - coorde[2,1])^2 + (coorde[1,2] - coorde[2,2])^2)
+    ∫Nᵀ = (L/2) * [1.0 0.0 1.0 0.0; 0.0 1.0 0.0 1.0]
+    return -∫Nᵀ' * τ
     #return -[τ[1];τ[1];τ[1];τ[1]]
 end
 
 function dTractionLoad(coorde,τ)
-    L  = sqrt((coorde[1,1] - coorde[2,1])^2 + (coorde[1,2] - coorde[2,2])^2) 
-    Δx = ( coorde[1,1] - coorde[2,1] ) / (2L) 
-    Δy = ( coorde[1,2] - coorde[2,2] ) / (2L) 
+    L  = sqrt((coorde[1,1] - coorde[2,1])^2 + (coorde[1,2] - coorde[2,2])^2)
+    Δx = ( coorde[1,1] - coorde[2,1] ) / (2L)
+    Δy = ( coorde[1,2] - coorde[2,2] ) / (2L)
 
     return -[ Δx*τ[1]  Δx*τ[2]  Δx*τ[1]  Δx*τ[2];
               Δy*τ[1]  Δy*τ[2]  Δy*τ[1]  Δy*τ[2];
@@ -338,7 +338,7 @@ function defgradGP(coord,ed,gp,mp,t)
     detJ = det(Jᵀ)
     dNₓ = P₀ * J⁻ * transpose(dNᵣ[:, index[gp, :]])
 
-    # Gradient matrices " ∇N " 
+    # Gradient matrices " ∇N "
     H₀[1, 1:2:5] = dNₓ[1, :]
     H₀[2, 1:2:5] = dNₓ[2, :]
     H₀[3, 2:2:6] = dNₓ[1, :]
@@ -355,7 +355,7 @@ function defgradGP(coord,ed,gp,mp,t)
     A[2, :] = [0.0 A_temp[2] 0.0 A_temp[4]]
     A[3, :] = [A_temp[2] A_temp[1] A_temp[4] A_temp[3]]
 
-    # ∇N + ∂N∂x ⋅ ∇u 
+    # ∇N + ∂N∂x ⋅ ∇u
     B₀ = Bₗ₀ + A * H₀
 
     # Deformation gradient F = I + ∇u
@@ -366,14 +366,14 @@ function defgradGP(coord,ed,gp,mp,t)
     # Vec(F)
     ef = [eff[1, 1] eff[1, 2] eff[2, 1] eff[2, 2]]
 
-    # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²    
+    # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²
 
 end
 
 function extrapolate_stress(s)
     stress = zeros(3)
     for nod in  1 : 3
-        stress[nod] = N[:,nod] ⋅ s
+        stress[nod] = (N[:,nod]./N[:,nod]) ⋅ s
     end
     return stress
 end

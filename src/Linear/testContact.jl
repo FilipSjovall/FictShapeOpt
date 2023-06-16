@@ -17,8 +17,8 @@ include("run_linear.jl")
 include("sensitivitiesLin.jl")
 
 # Create two grids
-grid1 = createBoxMesh("box_1", 0.0, 0.0, 1.0, 1.0, 0.15)
-grid2 = createBoxMesh("box_2", 0.0, 0.99, 1.0, 1.0, 0.1)
+grid1 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.0, 0.15)
+grid2 = createBoxMeshRev("box_2", 0.0, 0.99, 1.0, 1.0, 0.1)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -49,20 +49,20 @@ fv = FaceVectorValues(qr_face, ip);
 # ------------------ #
 # Create master sets #
 # ------------------ #
-addfaceset!(dh.grid, "Γ_master", x -> x[2] ≈ 1.0)
-Γm = getfaceset(dh.grid, "Γ_master")
+addfaceset!(dh.grid, "Γ_slave", x -> x[2] ≈ 1.0)
+Γs = getfaceset(dh.grid, "Γ_slave")
 
-addnodeset!(dh.grid, "nₘ", x -> x[2] ≈ 1.0)
-nₘ = getnodeset(dh.grid, "nₘ")
+addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ 1.0)
+nₛ = getnodeset(dh.grid, "nₛ")
 
 # ----------------- #
 # Create slave sets #
 # ----------------- #
-addfaceset!(dh.grid, "Γ_slave", x -> x[2] ≈ 0.99)
-Γs = getfaceset(dh.grid, "Γ_slave")
+addfaceset!(dh.grid, "Γ_master", x -> x[2] ≈ 0.99)
+Γm = getfaceset(dh.grid, "Γ_master")
 
-addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ 0.99)
-nₛ = getnodeset(dh.grid, "nₛ")
+addnodeset!(dh.grid, "nₘ", x -> x[2] ≈ 0.99)
+nₘ = getnodeset(dh.grid, "nₘ")
 
 # Extract all nbr nodes and dofs
 contact_dofs = getContactDofs(nₛ, nₘ)
@@ -96,9 +96,6 @@ coord₀  = deepcopy(coord)
     getfaceset(dh.grid, "Γ_master")
 )
 
-# Penalty parameter
-ε = 200.0
-
 # boundary conditions for contact analysis
 bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
 bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
@@ -127,8 +124,8 @@ global res      = zeros(dh.ndofs.x)
 dh0      = deepcopy(dh)
 d        = zeros(size(a))
 d       .= 0.0
-testvar  = 114
-perturbation        = 1e-6
+testvar  = 148
+perturbation        = 1e-8
 mp       = [210 0.3] # [E ν]
 test     = zeros(2)
 dFₑₓₜ_dx = similar(K)
@@ -138,101 +135,92 @@ dr_dd    = similar(K)
 ∂rψ_∂d   = similar(K)
 λᵤ       = similar(a)
 λψ       = similar(a)
-
+#traction = similar(contact_dofs)
 X_ordered = getXfromCoord(coord)
 
-### "Vanlig"
-@time Kc2                       = ForwardDiff.jacobian( u -> contact_residual(X_ordered,u,ε), a);
+ε = 100
 
 
-println("nu kommer det roliga")
-
-###
-rc  = contact_residual(X_ordered, a, ε)
-rcc = contact_residual_reduced(X_ordered, a[contact_dofs], a[freec_dofs], ε)
-
-@time Kc = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, a[freec_dofs], ε), a[contact_dofs]);
-
-ε = 1e3
-
-a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord);
-
-sens_test = 0
+sens_test = 1
 
 if sens_test==1
 
-# Test sensitivity
-for pert in 1:2
-    if pert == 1
-        # perturbera d
-        dh = deepcopy(dh0)
-        #dh.grid.nodes = deepcopy(dh0.grid.nodes)
-        d[testvar] = d[testvar] + perturbation
-    else
-        # perturbera d och resetta dh
-        dh = deepcopy(dh0)
-        #dh.grid.nodes = deepcopy(dh0.grid.nodes)
-        d[testvar] = d[testvar] - perturbation
+    # Test sensitivity
+    for pert in 1:2
+        if pert == 1
+            # perturbera d
+            dh = deepcopy(dh0)
+            #dh.grid.nodes = deepcopy(dh0.grid.nodes)
+            d[testvar] = d[testvar] + perturbation
+        else
+            # perturbera d och resetta dh
+            dh = deepcopy(dh0)
+            #dh.grid.nodes = deepcopy(dh0.grid.nodes)
+            d[testvar] = d[testvar] - perturbation
+        end
+
+        # Check that grid is updated correctly
+        Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀)
+        updateCoords!(dh, Ψ)
+
+        coord          = getCoord(getX(dh), dh)
+        register       = getNodeDofs(dh)
+        X              = getXfromCoord(coord)
+        #coord          = getCoordfromX(X)
+        vtk_grid("contact fictious", dh) do vtkfile
+            vtk_point_data(vtkfile, dh0, Ψ) # displacement field
+        end
+        #
+        a, _, Fₑₓₜ, Fᵢₙₜ,  K, traction = solver_C(dh, coord)
+        #test[pert] = a' * Fₑₓₜ
+
+        test[pert]          = -a[pdofs]' * Fᵢₙₜ[pdofs]
     end
 
-    # Check that grid is updated correctly
-    Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀)
-    updateCoords!(dh, Ψ)
+    ∂g_∂u = zeros(size(d))
+    ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
 
-    coord          = getCoord(getX(dh), dh)
-    register       = getNodeDofs(dh)
-    X              = getXfromCoord(coord)
-    #coord          = getCoordfromX(X)
+    #dFₑₓₜ_dx = dFext_dx(dFₑₓₜ_dx, dh, mp, t, a, coord, enod, τ, Γt)
+    ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
+    dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
+
+    ∂g_∂x = zeros(size(d))
+
+    ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
+
+    solveq!(λᵤ, K', ∂g_∂u, bcdof_o, bcval_o)  # var Fₑₓₜ;
+    solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o, bcval_o)
+
+    ∂g_∂d = -transpose(λψ) * dr_dd
+    asens = ∂g_∂d[testvar]
+
+    numsens = (test[1] - test[2]) / perturbation
+    numsens / asens
+
+    println("numsens: $numsens")
+    println("asens: $asens")
+
     vtk_grid("contact fictious", dh) do vtkfile
-        vtk_point_data(vtkfile, dh0, Ψ) # displacement field
+        vtk_point_data(vtkfile, dh, Ψ) # displacement field
     end
-    #
-    a, _, Fₑₓₜ, Fᵢₙₜ,  K, traction = solver_C(dh, coord) # behövs "local" här?
-    #test[pert] = a' * Fₑₓₜ
-
-    test[pert]          = -a[pdofs]' * Fᵢₙₜ[pdofs]
-end
-
-∂g_∂u = zeros(size(d))
-∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
-
-#dFₑₓₜ_dx = dFext_dx(dFₑₓₜ_dx, dh, mp, t, a, coord, enod, τ, Γt)
-∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
-dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
-
-∂g_∂x = zeros(size(d))
-
-∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
-
-solveq!(λᵤ, K', ∂g_∂u, bcdof_o, bcval_o)  # var Fₑₓₜ;
-solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o, bcval_o)
-
-∂g_∂d = -transpose(λψ) * dr_dd
-asens = ∂g_∂d[testvar]
-
-numsens = (test[1] - test[2]) / perturbation
-numsens / asens
-
-println("numsens: $numsens")
-println("asens: $asens")
-
-vtk_grid("contact fictious", dh) do vtkfile
-    vtk_point_data(vtkfile, dh, Ψ) # displacement field
-end
 
 end
+
+a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord);
 
 if 1 == 1
 
     using Plots
+    X_c   = []
+    tract = []
+    for (key,val) ∈ traction
+        append!(X_c,coord[key,1])
+        append!(tract,val)
+    end
 
-    contact_dofs = findall(t -> t != 0, traction)
-
-    X_c   = coord[contact_dofs, 1]
-    tract = traction[contact_dofs]
     ϵᵢⱼₖ  = sortperm(X_c)
-    X_c   = X_c[ϵᵢⱼₖ]
     tract = tract[ϵᵢⱼₖ]
+    X_c   = X_c[ϵᵢⱼₖ]
 
     plot(X_c, tract,legend= false, marker= 4, lc= :tomato, mc=:tomato )
 
