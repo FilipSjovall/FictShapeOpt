@@ -60,8 +60,8 @@ function dFext_dx(dF,dh,mp,t,a,coord,enod,τ, Γt)
     return dF
 end
 
-function drᵤ_dx_c(dr, dh, mp, t, a, coord, enod, ε)
-    assembler = start_assemble(dr)
+function drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
+    assembler = start_assemble(∂rᵤ_∂x)
     ie = 0
     drₑ = zeros(6, 6)
     for cell in CellIterator(dh)
@@ -76,9 +76,43 @@ function drᵤ_dx_c(dr, dh, mp, t, a, coord, enod, ε)
     drc       = ForwardDiff.jacobian(x -> contact_residual_ordered(x, a, ε), X_ordered)
 
     # dr[contact_dofs,contact_dofs] += drc[contact_dofs,contact_dofs]
-    dr -= drc
+    ∂rᵤ_∂x -= drc
 
-    return dr
+    return ∂rᵤ_∂x
+end
+
+function drΨ_dx_c(∂rΨ_∂x, dh, mp, t, Ψ, coord, enod, λ, d, Γ_robin, μ)
+    assembler = start_assemble(∂rΨ_∂x)
+    ie = 0
+    for cell in CellIterator(dh)
+        ie += 1
+        cell_dofs = celldofs(cell)
+        kₑ = zeros(6, 6)
+        fₑ = zeros(6)
+        kₑ, _ = assemElem(coord[enod[ie][2:end], :], Ψ[cell_dofs], mp, t)
+        ke = zeros(6, 6)
+        fe = zeros(6)
+        for face in 1:nfaces(cell)
+            if (cellid(cell), face) in Γ_robin
+                face_nods = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
+                face_dofs = [face_nods[1] * 2 - 1; face_nods[1] * 2; face_nods[2] * 2 - 1; face_nods[2] * 2]
+                X = coord[enod[ie][face_nods.+1], :]
+                ke[face_dofs, face_dofs], _ = Robin(X, Ψ[cell_dofs[face_dofs]], d[cell_dofs[face_dofs]], λ)
+            end
+        end
+        assemble!(assembler, cell_dofs, kₑ + ke)
+    end
+    # Contact
+    X_ordered = getXfromCoord(coord)
+    #rc = contact_residual(X_ordered, a, ε)
+    #Kc = ForwardDiff.jacobian(u -> contact_residual(X_ordered, u, ε), a)
+    #K[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
+    #Fᵢₙₜ[contact_dofs]            -= rc[contact_dofs]
+
+    X_ordered = getXinDofOrder(dh, X, coord)
+    drc       = ForwardDiff.jacobian(x -> contact_residual_ordered(x, a, ε), X_ordered)
+    ∂rΨ_∂x   -= drc
+
 end
 
 
@@ -110,28 +144,15 @@ function contact_pnorm(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) wher
    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
 
-   # Initialize the nodal gap vector.
-   gₙ = zeros(eltype(X_float), length(slave_dofs))
-
-   # Loop to compute weigted gap at each node
-   for i ∈ eachindex(gₙ)
-      gₙ[i] = g[i, :] ⋅ normals[slave_dofs[i]]
-   end
-
-   # Initialize r_c
-   #τ_c = zeros(eltype(X_float), size(X)) # sparse...?
-   #τ_c = zeros(eltype(X_float), length(contact_dofs))
-   g₀ = 0.0
-
-   # ---------- #
-   # ∫ᵧ 𝛅g λ dγ  #
-   # ---------- #
+   # ---------------- #
+   # (∑ₐ λₐᵖ )^(1/p)  #
+   # ---------------- #
 
    # Loop over master side dofs
-   #for C in master_dofs
+    g₀ = 0.0
    for (i, A) in enumerate(slave_dofs)
-    λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-      g₀ += (λ_A  * (1 / κ[i]))^p
+        λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
+        g₀ += (λ_A  * (1 / κ[i]))^p
    end
 
    # ---------------------------------- #
@@ -145,6 +166,8 @@ function contact_pnorm_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε,
 
     # Order  X
     X_ordered = getX_from_Dof_To_Node_order(dh, X)
+
+    #X_ordered = getXinDofOrder(dh, X, coord)
 
     r_c = contact_pnorm(X_ordered, a, ε,p)
 

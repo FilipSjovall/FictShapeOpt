@@ -124,7 +124,6 @@ global res      = zeros(dh.ndofs.x)
 dh0      = deepcopy(dh)
 d        = zeros(size(a))
 d       .= 0.0
-testvar  = 148
 perturbation        = 1e-8
 mp       = [210 0.3] # [E ν]
 test     = zeros(2)
@@ -133,13 +132,16 @@ C        = zeros(2)
 ∂rᵤ_∂x   = similar(K)
 dr_dd    = similar(K)
 ∂rψ_∂d   = similar(K)
+∂rΨ_∂x   = similar(K)
 λᵤ       = similar(a)
 λψ       = similar(a)
 #traction = similar(contact_dofs)
 X_ordered = getXfromCoord(coord)
 
 ε = 100
-
+μ = 100
+p = 2
+testvar  = 148
 
 sens_test = 1
 
@@ -160,56 +162,79 @@ if sens_test==1
         end
 
         # Check that grid is updated correctly
-        Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀)
+        #Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀)
+        Ψ, _, Kψ, _, λ = fictitious_solver_with_contact(d, dh0, coord₀)
         updateCoords!(dh, Ψ)
 
         coord          = getCoord(getX(dh), dh)
         register       = getNodeDofs(dh)
         X              = getXfromCoord(coord)
-        #coord          = getCoordfromX(X)
-        vtk_grid("contact fictious", dh) do vtkfile
-            vtk_point_data(vtkfile, dh0, Ψ) # displacement field
-        end
+        X_ordered      = getXfromCoord(coord) # ta bort och byta då målfunk anropas
         #
         a, _, Fₑₓₜ, Fᵢₙₜ,  K, traction = solver_C(dh, coord)
         #test[pert] = a' * Fₑₓₜ
 
-        test[pert]          = -a[pdofs]' * Fᵢₙₜ[pdofs]
+        #test[pert]          = -a[pdofs]' * Fᵢₙₜ[pdofs]
+        test[pert] = contact_pnorm(X_ordered, a, ε, p)
     end
+    ∂rᵤ_∂x = similar(K)
+    ∂rΨ_∂x = similar(K)
+    ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
+    ∂rΨ_∂x = drΨ_dx_c(∂rΨ_∂x, dh, mp, t, Ψ, coord, enod, λ, d, Γ_robin, μ)
+    dr_dd  =  drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 
     ∂g_∂u = zeros(size(d))
-    ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
-
-    #dFₑₓₜ_dx = dFext_dx(dFₑₓₜ_dx, dh, mp, t, a, coord, enod, τ, Γt)
-    ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
-    dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
-
     ∂g_∂x = zeros(size(d))
 
-    ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
+    ∂g_∂x = ForwardDiff.gradient(x -> contact_pnorm_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
+    ∂g_∂u = ForwardDiff.gradient(u -> contact_pnorm(X_ordered, u, ε, p), a)
 
-    solveq!(λᵤ, K', ∂g_∂u, bcdof_o, bcval_o)  # var Fₑₓₜ;
-    solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o, bcval_o)
+    #∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
+    #∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
+
+    solveq!(λᵤ, K',  ∂g_∂u, bcdof_o, bcval_o)
+    solveq!(λψ, ∂rΨ_∂x', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o, bcval_o)
+    #solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o, bcval_o)
 
     ∂g_∂d = -transpose(λψ) * dr_dd
-    asens = ∂g_∂d[testvar]
+    asens =  ∂g_∂d[testvar]
 
     numsens = (test[1] - test[2]) / perturbation
-    numsens / asens
 
     println("numsens: $numsens")
     println("asens: $asens")
-
-    vtk_grid("contact fictious", dh) do vtkfile
-        vtk_point_data(vtkfile, dh, Ψ) # displacement field
-    end
-
 end
 
-a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord);
+
+
+g_test  = 0
+testvar = 30
+if g_test == 1
+    τ = [1.0 1.0]
+    ∂rᵤ_∂x = similar(K)
+    for pert in 1:2
+        if pert == 1
+            X_ordered[testvar] += perturbation
+            #a[testvar] += perturbation
+        else
+            X_ordered[testvar] -= perturbation
+            #a[testvar] -= perturbation
+        end
+        test[pert] = contact_pnorm(X_ordered, a, ε, p)
+        #assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε, Γ_top, τ)
+        #test[pert] = -a[pdofs]' * Fᵢₙₜ[pdofs]
+    end
+    @show numsens = (test[1] - test[2]) / perturbation
+    #∂rᵤ_∂x  = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
+    #asens   = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
+    #@show asens[testvar]
+    #asens   = ForwardDiff.gradient(u -> contact_pnorm(X_ordered, u, ε, p), a)
+    asens   = ForwardDiff.gradient(x -> contact_pnorm(x, a, ε, p), X_ordered)
+    @show asens[testvar]
+end
 
 if 1 == 1
-
+    #a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord)
     using Plots
     X_c   = []
     tract = []
@@ -217,11 +242,8 @@ if 1 == 1
         append!(X_c,coord[key,1])
         append!(tract,val)
     end
-
     ϵᵢⱼₖ  = sortperm(X_c)
     tract = tract[ϵᵢⱼₖ]
     X_c   = X_c[ϵᵢⱼₖ]
-
     plot(X_c, tract,legend= false, marker= 4, lc= :tomato, mc=:tomato )
-
 end

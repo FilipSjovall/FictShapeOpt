@@ -211,6 +211,7 @@ function solver_C(dh, coord)
 
 end
 
+# Fictitious equillibrium for shape optimization of problem with contact
 function fictitious_solver_C(d, dh0, coord₀)
     # allt överflödigt bör vid tillfälle flyttas utanför
     # lösare till ett "init-liknande script så att huvudsaklig kod hålls ren
@@ -285,6 +286,9 @@ function fictitious_solver_C(d, dh0, coord₀)
     return Ψ, dh0, Kψ, Fᵢₙₜ, λ
 end
 
+
+
+# Solver for hertz contact
 function solver_C2(dh, coord)
 
     # ---------- #
@@ -373,4 +377,78 @@ function solver_C2(dh, coord)
     τ_c = ExtractContactTraction(a, ε, coord)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
 
+end
+
+# Fictitious equillibrium for shape optimization with consistent with contact
+function fictitious_solver_with_contact(d, dh0, coord₀)
+    # allt överflödigt bör vid tillfälle flyttas utanför
+    # lösare till ett "init-liknande script så att huvudsaklig kod hålls ren
+    imax = 25
+    TOL = 1e-10
+    residual = 0.0
+    iter = 1
+    global λ
+    ndof = size(coord₀, 1) * 2
+    nelm = size(enod, 1)
+
+
+
+    #  ----- #
+    # Init   #
+    #  ----- #
+    global Kψ = create_sparsity_pattern(dh)
+    global Ψ = zeros(dh.ndofs.x)
+    global Fᵢₙₜ = zeros(dh.ndofs.x)
+    global Fₑₓₜ = zeros(dh.ndofs.x)
+    global Ψ = zeros(dh.ndofs.x)
+    global ΔΨ = zeros(dh.ndofs.x)
+    global res = zeros(dh.ndofs.x)
+    res = zeros(ndof)
+    bcdof_top, bcval_top = setBCXY(0.0, dh, Γ_top)
+    bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
+    bcdof = [bcdof_top; bcdof_bot]
+    bcval = [bcval_top; bcval_bot]
+
+    ϵᵢⱼₖ = sortperm(bcdof)
+    bcdof = bcdof[ϵᵢⱼₖ]
+    bcval = bcval[ϵᵢⱼₖ]
+
+    # Struct - problem {dh,bcs,mp}
+
+    pdofs = bcdof
+    fdofs = setdiff(1:ndof, pdofs)
+    # ---------- #
+    # Set params # // Kanske som input till solver???
+    # ---------- #
+
+    bcval₀ = bcval
+
+    for loadstep ∈ 1:10
+        res = res .* 0
+        bcval = bcval₀
+        residual = 0 * residual
+        iter = 0
+        λ = 0.1 * loadstep
+        fill!(ΔΨ, 0.0)
+
+        println("Starting equillibrium iteration at loadstep: ", loadstep)
+
+        # # # # # # # # # #
+        # Newton solve.  #
+        # # # # # # # # # #
+        while (iter < imax && residual > TOL) || iter < 2
+            iter += 1
+            Ψ += ΔΨ
+            assemGlobal!(Kψ, Fᵢₙₜ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
+            solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof, bcval)
+            bcval = bcval .* 0
+            res = Fᵢₙₜ #- Fₑₓₜ
+            res[bcdof] = res[bcdof] .* 0
+            residual = norm(res, 2)
+            Ψ[bcdof] = bcval
+            println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
+            postprocess_opt(Ψ, dh, "fict_def_low_penalty" * string(loadstep))
+        end
+    end
+    return Ψ, dh0, Kψ, Fᵢₙₜ, λ
 end

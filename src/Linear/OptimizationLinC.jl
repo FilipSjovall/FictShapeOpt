@@ -2,7 +2,8 @@ using Mortar2D, ForwardDiff
 using Ferrite, FerriteGmsh, FerriteMeshParser
 using LinearSolve, SparseArrays # LinearSolvePardiso
 using IterativeSolvers, IncompleteLU    # AlgebraicMultigrid
-using SparseDiffTools, Symbolics
+using SparseDiffTools
+using Plots
 
 include("..//mesh_reader.jl")
 include("initLin.jl") # initieras massa skit
@@ -21,7 +22,7 @@ include("..//mma.jl")
 
 
 # Create two grids
-grid1 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.0, 0.15)
+grid1 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.0, 0.123)
 grid2 = createBoxMeshRev("box_2", 0.0, 0.99, 1.0, 1.0, 0.1)
 
 # Merge into one grid
@@ -142,8 +143,7 @@ dh0 = deepcopy(dh)
 d   = zeros(size(a))
 d .= 0.0
 mp = [210 0.3] # [E ν]
-dFₑₓₜ_dx = similar(K)
-∂rᵤ_∂x = similar(K)
+global ∂rᵤ_∂x = similar(K)
 dr_dd = similar(K)
 ∂rψ_∂d = similar(K)
 λᵤ = similar(a)
@@ -211,6 +211,7 @@ function Optimize(dh)
             global locked_d = setdiff(1:length(a),free_d)
             global low
             global upp
+            global traction
         # # # # # # # # # # # # # #
         OptIter += 1
 
@@ -238,15 +239,16 @@ function Optimize(dh)
         #g = -a[pdofs]' * Fᵢₙₜ[pdofs]
         #∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
         #∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
-        p = 4
+        p = 5
         X_ordered = getXfromCoord(coord)
         g         = contact_pnorm(X_ordered, a, ε, p)
-        ∂g_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered(x, a, ε, p),X_ordered)
+        ∂g_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
         ∂g_∂u     = ForwardDiff.gradient(u -> contact_pnorm(X_ordered, u, ε, p), a)
 
         # # # # # # # # #
         # Sensitivities #
         # # # # # # # # #
+        ∂rᵤ_∂x = similar(K)
         ∂rᵤ_∂x       = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
         dr_dd        = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 
@@ -260,7 +262,7 @@ function Optimize(dh)
         # Full sensitivity  #
         # # # # # # # # # # #
         ∂g_∂d = (-transpose(λψ) * dr_dd)'
-        #∂g_∂d[locked_d] .= 0.0 # fulfix?
+        ∂g_∂d[locked_d] .= 0.0 # fulfix?
 
         # # # # # # # # # # #
         # Volume constraint #
@@ -274,10 +276,10 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
-        X, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n, OptIter, d, xmin, xmax, xold1, xold2, 10 * g, 10 * ∂g_∂d, g₁, ∂Ω∂d', low, upp, a0, am, C, d2)
-        xold2 = xold1
-        xold1 = d
-        d = X
+        X, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n, OptIter, d, xmin, xmax, xold1, xold2, -10 * g, -10 * ∂g_∂d, g₁, ∂Ω∂d', low, upp, a0, am, C, d2)
+        xold2  = xold1
+        xold1  = d
+        d      = X
         change = norm(d .- xold1)
 
         # # # # # # # # # #
@@ -297,22 +299,32 @@ function Optimize(dh)
             postprocess_opt(a, dh, "results/DeformationC" * string(OptIter))
         end
         println("Objective: ", g_hist, " Constraint: ", g₁)
-        if OptIter == 50
+        if OptIter == 10
             break
         end
+
     end
 
-    # # # # # # # # #
-    # Plot history  #
-    # # # # # # # # #
-    fig = Figure()
-    ax1, l1 = lines(fig[1, 1], 1..OptIter, g_hist[1:OptIter], color = :red)
-    ax2, l2 = lines(fig[2, 1], 1..OptIter, v_hist[1:OptIter], color = :blue)
-    Legend(fig[1:2, 2], [l1, l2], ["Objective", "Constraint"])
-    fig
-    return g_hist, v_hist, OptIter
+    return g_hist, v_hist, OptIter, traction
 end
 
+
+
+Optimize(dh)
+
+X_c = []
+tract = []
+for (key, val) ∈ traction
+    append!(X_c, coord[key, 1])
+    append!(tract, val)
+end
+ϵᵢⱼₖ = sortperm(X_c)
+tract = tract[ϵᵢⱼₖ]
+X_c = X_c[ϵᵢⱼₖ]
+Plots.plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
+OptIter = 2
+Plots.plot(collect(1:OptIter), g_hist[1:OptIter],lc =:red, label="Objective",linewidth=3)
+Plots.plot!(collect(1:OptIter), v_hist[1:OptIter], lc = :blue, label="Constraint",linewidth=3)
 
 #using Makie
 #OptIter=37
