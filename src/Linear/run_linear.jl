@@ -36,7 +36,7 @@ function solver(dh,coord)
           residual = 0*residual
           iter     = 0
           fill!(Δa,0.0)
-          println("Starting equillibrium iteration at loadstep: ",n)
+          println("Starting equilibrium iteration at loadstep: ",n)
           # # # # # # # # # #
           # Newton solve.  #
           # # # # # # # # # #
@@ -130,7 +130,7 @@ function solver_C(dh, coord)
     t = 1.0
 
     # Define material parameters
-    mp = [210 0.3] # [E ν]
+    mp    = [175 80.769230769230759]
 
     # ------------- #
     # Init-stuff    #
@@ -157,7 +157,7 @@ function solver_C(dh, coord)
     # Set BCS    #
     # ---------- #
     # Set bcs - should be moved outside this function
-    bcdof_top, bcval_top = setBCXY(-0.01, dh, Γ_top)
+    bcdof_top, bcval_top = setBCXY(-0.05, dh, Γ_top)
     bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
     bcdof = [bcdof_top; bcdof_bot]
     bcval = [bcval_top; bcval_bot]
@@ -172,13 +172,13 @@ function solver_C(dh, coord)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 3
+    for loadstep ∈ 1 : 4
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
         iter = 0
         fill!(Δa, 0.0)
-        println("Starting equillibrium iteration at loadstep: ", loadstep)
+        println("Starting equilibrium iteration at loadstep: ", loadstep)
 
         # # # # # # # # # #
         # Newton solve.   #
@@ -263,7 +263,7 @@ function fictitious_solver_C(d, dh0, coord₀)
         λ = 0.1 * loadstep
         fill!(ΔΨ, 0.0)
 
-        println("Starting equillibrium iteration at loadstep: ", loadstep)
+        println("Starting equilibrium iteration at loadstep: ", loadstep)
 
         # # # # # # # # # #
         # Newton solve.  #
@@ -297,7 +297,7 @@ function solver_C2(dh, coord)
     t = 1.0
 
     # Define material parameters
-    mp = [210 0.3] # [E ν]
+    mp = [175 80.769230769230759]
 
 
     # ------------- #
@@ -325,7 +325,7 @@ function solver_C2(dh, coord)
     # Set BCS    #
     # ---------- #
     # Set bcs - should be moved outside this function
-    bcdof_top, bcval_top = setBCXY(-0.01, dh, Γ_top)
+    bcdof_top, bcval_top = setBCXY(-0.05, dh, Γ_top)
     bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
     bcdof = [bcdof_top; bcdof_bot]
     bcval = [bcval_top; bcval_bot]
@@ -347,7 +347,7 @@ function solver_C2(dh, coord)
         residual = 0 * residual
         iter = 0
         fill!(Δa, 0.0)
-        println("Starting equillibrium iteration at loadstep: ", loadstep)
+        println("Starting equilibrium iteration at loadstep: ", loadstep)
 
         # # # # # # # # # #
         # Newton solve.   #
@@ -431,7 +431,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀)
         λ = 0.1 * loadstep
         fill!(ΔΨ, 0.0)
 
-        println("Starting equillibrium iteration at loadstep: ", loadstep)
+        println("Starting equilibrium iteration at loadstep: ", loadstep)
 
         # # # # # # # # # #
         # Newton solve.  #

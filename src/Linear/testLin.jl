@@ -26,7 +26,7 @@ xe = x_glob[dofs]
     for pert in 1:2
         coord[indexet,1] = coord[indexet,1] + ϵ * (-real(1*im^(pert)))
         #ke,fe[:,pert] = assemGP(coord[nods,:],ed,gp,mp,t)
-        
+
         ke, fe[:,pert] = assemElem(coord[nods,:],ed,mp,t)
     end
     numsens = (fe[:,2] - fe[:,1])/ϵ
@@ -37,12 +37,12 @@ xe = x_glob[dofs]
     indexet = 3
     ke = zeros(6,6)
     fe = zeros(6,6)
-    for pert in 1:2 
+    for pert in 1:2
         println(" vad är fel ? ")
         if pert == 1
-            ed[indexet] = ed[indexet] + ϵ 
+            ed[indexet] = ed[indexet] + ϵ
         else
-            ed[indexet] = ed[indexet] - ϵ 
+            ed[indexet] = ed[indexet] - ϵ
         end
         ke, fe[:,pert] = assemElem(coord[nods,:],ed,mp,t)
     end
@@ -73,9 +73,9 @@ xe = x_glob[dofs]
         fe[:,pert] .= 0.0
         ke= zeros(6,6)
         if pert == 1
-            ed[indexet] = ed[indexet] + ϵ 
+            ed[indexet] = ed[indexet] + ϵ
         else
-            ed[indexet] = ed[indexet] - ϵ 
+            ed[indexet] = ed[indexet] - ϵ
         end
         # * (-real(1*im^(pert)))
         #ke, fe[:,pert]  = assemElem(coord[nods,:],ed,mp,t)
@@ -86,11 +86,11 @@ xe = x_glob[dofs]
                 face_dofs      = [face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2]
                 X              = coord[enod[ie][face_nods.+1] ,:]
                 ke[face_dofs,face_dofs],fe[face_dofs,pert]   = Robin(X,ed[face_dofs],de[face_dofs],λ)
-            end    
+            end
         end
     end
     numsens = (fe[:,1] - fe[:,2])/ϵ
-    asens   = ke[:,indexet] 
+    asens   = ke[:,indexet]
     numsens./asens
 ####
 ## Test r_fictitious w.r.t. d
@@ -117,9 +117,9 @@ xe = x_glob[dofs]
         dfe= zeros(6,6)
         fe[:,pert] .= 0.0
         if pert == 1
-            de[indexet] = de[indexet] + ϵ 
+            de[indexet] = de[indexet] + ϵ
         else
-            de[indexet] = de[indexet] - ϵ 
+            de[indexet] = de[indexet] - ϵ
         end
         for face in 1:nfaces(hej)
             if (cellid(hej), face) in Γ_robin
@@ -127,12 +127,12 @@ xe = x_glob[dofs]
                 face_dofs      = [face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2]
                 X              = coord[enod[ie][face_nods.+1] ,:]
                 dfe[face_dofs,face_dofs],fe[face_dofs,pert]   = Robin(X,ed[face_dofs],de[face_dofs],λ)
-            end    
+            end
         end
         dfe = -dfe
     end
     numsens = (fe[:,1] - fe[:,2])/ϵ
-    asens   = dfe[:,indexet] 
+    asens   = dfe[:,indexet]
     numsens./asens
 #####
 ## Test objective function and sensitivity
@@ -142,11 +142,11 @@ xe = x_glob[dofs]
     for pert in 1:2
         Fₑₓₜ .=0
         if pert == 1
-            a[indexet] = a[indexet] + ϵ 
+            a[indexet] = a[indexet] + ϵ
         else
-            a[indexet] = a[indexet] - ϵ 
+            a[indexet] = a[indexet] - ϵ
         end
-        
+
         τ        = [0.1;0.1].*n
         assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γt,τ)
         assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
@@ -164,7 +164,7 @@ xe = x_glob[dofs]
 ## Test global dr_dd
     ## bla bla
     load_files()
-    Ψ, _, Kψ, _, λ = fictitious_solver(d, dh0, coord₀) 
+    Ψ, _, Kψ, _, λ = fictitious_solver(d, dh0, coord₀)
     λ       = 1.0
     Fψ      = similar(Fᵢₙₜ)
     test    = zeros(284,2)
@@ -173,9 +173,9 @@ xe = x_glob[dofs]
     ϵ       = 1e-6
     for pert in 1:2
         if pert == 1
-            d[indexet] = d[indexet] + ϵ 
+            d[indexet] = d[indexet] + ϵ
         else
-            d[indexet] = d[indexet] - ϵ 
+            d[indexet] = d[indexet] - ϵ
         end
         coord₀ = getCoord(getX(dh0),dh0)
         assemGlobal!(Kψ,Fψ,dh0,mp₀,t,Ψ,coord₀,enod,λ,d,Γ_robin)
@@ -194,18 +194,18 @@ xe = x_glob[dofs]
     #X = getX(dh)
     incr = zeros(284)
     test = zeros(284,2)
-    
+
     indexet = 20#72
     for pert in 1:2
         if pert == 1
-            coord[indexet,1] += ϵ 
+            coord[indexet,1] += ϵ
             #X[indexet]   +=   ϵ
-            #incr[indexet] =   ϵ 
+            #incr[indexet] =   ϵ
             #updateCoords!(dh,incr)
         else
-            coord[indexet,1] -= ϵ 
+            coord[indexet,1] -= ϵ
            # X[indexet]   -=   ϵ
-            #incr[indexet] = - ϵ 
+            #incr[indexet] = - ϵ
             #updateCoords!(dh,incr)
         end
         #coord = getCoord(X,dh) # borde flyttas in i solver..
@@ -214,11 +214,11 @@ xe = x_glob[dofs]
         assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γt,τ)
         test[:,pert]                   = Fᵢₙₜ;
     end
-    
-    numsens = ( test[:,1] - test[:,2] )./ϵ;   
-    ∂rᵤ_∂x  = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod,τ, Γt);
-    asens   = ∂rᵤ_∂x[:,173];#∂rᵤ_∂x[:,1]; ## dof 6 motsvarar nod 2
-    kvot    = numsens./asens;
+
+    numsens     = ( test[:,1] - test[:,2] )./ϵ;
+    ∂rᵤ_∂x      = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod,τ, Γt);
+    asens       = ∂rᵤ_∂x[:,173];#∂rᵤ_∂x[:,1]; ## dof 6 motsvarar nod 2
+    kvot        = numsens./asens;
     filter_kvot = filter(x-> abs(x)<1000,kvot)
 #####
 ## Test dg_dx
@@ -227,14 +227,14 @@ xe = x_glob[dofs]
     test = zeros(2)
     for pert in 1:2
         if pert == 1
-            coord[indexet,2] += ϵ 
+            coord[indexet,2] += ϵ
             #X[indexet]   +=   ϵ
-            #incr[indexet] =   ϵ 
+            #incr[indexet] =   ϵ
             #updateCoords!(dh,incr)
         else
-            coord[indexet,2] -= ϵ 
+            coord[indexet,2] -= ϵ
             #X[indexet]   -=   ϵ
-            #incr[indexet] = - ϵ 
+            #incr[indexet] = - ϵ
             #updateCoords!(dh,incr)
         end
         #coord = getCoord(X,dh) # borde flyttas in i solver..
@@ -250,18 +250,18 @@ xe = x_glob[dofs]
     end
     #∂rᵤ_∂x = drᵤ_dx(∂rᵤ_∂x,dh,mp,t,a,coord,enod);
     dFₑₓₜ_dx  = dFext_dx(dFₑₓₜ_dx,dh,mp,t,a,coord,enod,τ,Γt);
-    numsens   = (test[1]-test[2])./ϵ   
+    numsens   = (test[1]-test[2])./ϵ
     dF[fdofs] = a[fdofs]'*dFₑₓₜ_dx[fdofs,fdofs]
     asens     = dF[134]
     #asens    = ∂rᵤ_∂x[:,2]; ## dof 6 motsvarar nod 2
     kvot      = numsens./asens
-    
+
 
 
     # Create conversion chart nods < - > dofs
     function index_nod_to_grid(dh,coord)
         X = getX(dh)
-        X_nods = reshape_to_nodes(dh, X, :u)[1:2,:] 
+        X_nods = reshape_to_nodes(dh, X, :u)[1:2,:]
         index_register = zeros(Int,length(dh.grid.nodes),2)
         for ii in 1:142
             temp1 = coord[ii,:]
@@ -289,7 +289,7 @@ xe = x_glob[dofs]
     Ψ        = similar(d)
     a        = similar(d)
     Fₑₓₜ     = similar(d)
-    K        = create_sparsity_pattern(dh) 
+    K        = create_sparsity_pattern(dh)
     Kψ       = similar(K)
     dFₑₓₜ_dx = similar(K)
     C        = zeros(2)
@@ -307,12 +307,12 @@ xe = x_glob[dofs]
             # perturbera d
             dh = deepcopy(dh0)
             #dh.grid.nodes = deepcopy(dh0.grid.nodes)
-            d[indexet] = d[indexet] + ϵ 
+            d[indexet] = d[indexet] + ϵ
         else
             # perturbera d och resetta dh
             dh = deepcopy(dh0)
             #dh.grid.nodes = deepcopy(dh0.grid.nodes)
-            d[indexet] = d[indexet] - ϵ 
+            d[indexet] = d[indexet] - ϵ
         end
 
         # Check that grid is updated correctly
@@ -320,7 +320,7 @@ xe = x_glob[dofs]
         Ψ, _, Kψ, _, λ = fictitious_solver(d, dh0, coord₀)
         updateCoords!(dh,Ψ)
         coord = getCoord(getX(dh),dh)
-        
+
         a, _, Fₑₓₜ, Fᵢₙₜ, K             = solver(dh,coord)
         test[pert]                      = a'*Fₑₓₜ;
     end
@@ -336,7 +336,7 @@ xe = x_glob[dofs]
 
         dr_dd         = drψ(dr_dd,dh0,Ψ,λ,d,Γ_robin,coord₀);
         #dr_dd[locked_d,:] .=0
-        #dr_dd[:,locked_d] .=0 
+        #dr_dd[:,locked_d] .=0
         ∂g_∂x         = zeros(size(d));
 
         ∂g_∂x[fdofs]  = a[fdofs]'*dFₑₓₜ_dx[fdofs,fdofs];
@@ -353,7 +353,7 @@ xe = x_glob[dofs]
 
         numsens/asens
     end
-    
+
 
 ## Volume constraint direct sensitivity w.r.t. x
     indexet = 14
@@ -385,17 +385,17 @@ xe = x_glob[dofs]
             # perturbera d
             dh = deepcopy(dh0)
             #dh.grid.nodes = deepcopy(dh0.grid.nodes)
-            d[indexet] = d[indexet] + ϵ 
+            d[indexet] = d[indexet] + ϵ
         else
             # perturbera d och resetta dh
             dh = deepcopy(dh0)
             #dh.grid.nodes = deepcopy(dh0.grid.nodes)
-            d[indexet] = d[indexet] - ϵ 
+            d[indexet] = d[indexet] - ϵ
         end
 
         # Check that grid is updated correctly
         #coord = getCoord(getX(dh0),dh0)
-        Ψ, _, Kψ, _, λ               = fictitious_solver(d,dh0,coord₀); # 
+        Ψ, _, Kψ, _, λ               = fictitious_solver(d,dh0,coord₀); #
         # Update coords
         updateCoords!(dh,Ψ)
         coord = getCoord(getX(dh),dh)
@@ -406,7 +406,7 @@ xe = x_glob[dofs]
     dr_dd         = drψ(dr_dd,dh0,Ψ,λ,d,Γ_robin,coord₀);
 
     ∂Ω_∂x         = volume_sens(dh,coord);
-    
+
     λᵥₒₗ          = similar(a);
 
     solveq!(λᵥₒₗ, Kψ,∂Ω_∂x, bcdof, bcval.*0);

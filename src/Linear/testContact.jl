@@ -6,7 +6,7 @@ using IterativeSolvers, IncompleteLU    # AlgebraicMultigrid
 using SparseDiffTools, Symbolics
 
 include("..//mesh_reader.jl")
-include("initLin.jl") # initieras massa skit
+#include("initLin.jl") # initieras massa skit
 include("Contact//contact_help.jl")
 include("assemLin.jl")
 include("assemElemLin.jl")
@@ -15,6 +15,7 @@ include("..//fem.jl")
 #include("runLinContact.jl")
 include("run_linear.jl")
 include("sensitivitiesLin.jl")
+
 
 # Create two grids
 grid1 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.0, 0.15)
@@ -124,8 +125,9 @@ global res      = zeros(dh.ndofs.x)
 dh0      = deepcopy(dh)
 d        = zeros(size(a))
 d       .= 0.0
-perturbation        = 1e-8
-mp       = [210 0.3] # [E ν]
+mp       = [175 80.769230769230759] # [E ν]
+mp₀      = [1.0 1.0]
+t        = 1.0
 test     = zeros(2)
 dFₑₓₜ_dx = similar(K)
 C        = zeros(2)
@@ -137,14 +139,15 @@ dr_dd    = similar(K)
 λψ       = similar(a)
 #traction = similar(contact_dofs)
 X_ordered = getXfromCoord(coord)
-
+include("initOptLin.jl")
 ε = 100
 μ = 100
 p = 2
-testvar  = 148
+testvar  = 414
 
 sens_test = 1
-
+perturbation        = 1e-6
+X = getXfromCoord(coord)
 if sens_test==1
 
     # Test sensitivity
@@ -167,37 +170,37 @@ if sens_test==1
         updateCoords!(dh, Ψ)
 
         coord          = getCoord(getX(dh), dh)
-        register       = getNodeDofs(dh)
+        #register       = getNodeDofs(dh)
         X              = getXfromCoord(coord)
         X_ordered      = getXfromCoord(coord) # ta bort och byta då målfunk anropas
         #
         a, _, Fₑₓₜ, Fᵢₙₜ,  K, traction = solver_C(dh, coord)
         #test[pert] = a' * Fₑₓₜ
 
-        #test[pert]          = -a[pdofs]' * Fᵢₙₜ[pdofs]
-        test[pert] = contact_pnorm(X_ordered, a, ε, p)
+        test[pert]          = -a[pdofs]' * Fᵢₙₜ[pdofs]
+        #test[pert] = contact_pnorm(X_ordered, a, ε, p)
     end
     ∂rᵤ_∂x = similar(K)
-    ∂rΨ_∂x = similar(K)
+    #∂rΨ_∂x = similar(K)
     ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
-    ∂rΨ_∂x = drΨ_dx_c(∂rΨ_∂x, dh, mp, t, Ψ, coord, enod, λ, d, Γ_robin, μ)
-    dr_dd  =  drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
+    #∂rΨ_∂x = drΨ_dx_c(∂rΨ_∂x, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
+    dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 
-    ∂g_∂u = zeros(size(d))
-    ∂g_∂x = zeros(size(d))
+    ∂g_∂u  = zeros(size(d))
+    ∂g_∂x  = zeros(size(d))
 
-    ∂g_∂x = ForwardDiff.gradient(x -> contact_pnorm_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
-    ∂g_∂u = ForwardDiff.gradient(u -> contact_pnorm(X_ordered, u, ε, p), a)
+    #∂g_∂x = ForwardDiff.gradient(x -> contact_pnorm_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
+    #∂g_∂u = ForwardDiff.gradient(u -> contact_pnorm(X_ordered, u, ε, p), a)
 
-    #∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
-    #∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
+    ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
+    ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
 
     solveq!(λᵤ, K',  ∂g_∂u, bcdof_o, bcval_o)
-    solveq!(λψ, ∂rΨ_∂x', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o, bcval_o)
+    solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o, bcval_o)
     #solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o, bcval_o)
 
-    ∂g_∂d = -transpose(λψ) * dr_dd
-    asens =  ∂g_∂d[testvar]
+    ∂g_∂d   = -transpose(λψ) * dr_dd
+    asens   =  ∂g_∂d[testvar]
 
     numsens = (test[1] - test[2]) / perturbation
 
@@ -208,33 +211,44 @@ end
 
 
 g_test  = 0
-testvar = 30
+Fψ = similar(Fᵢₙₜ)
+#perturbation = 1e-5
+#testvar = 30
 if g_test == 1
+    X_ordered = getXfromCoord(coord₀)
     τ = [1.0 1.0]
+    testf = zeros(dh.ndofs.x,2)
     ∂rᵤ_∂x = similar(K)
     for pert in 1:2
         if pert == 1
-            X_ordered[testvar] += perturbation
+            #X_ordered[testvar] += perturbation
             #a[testvar] += perturbation
+            Ψ[testvar] += perturbation
         else
-            X_ordered[testvar] -= perturbation
+            #X_ordered[testvar] -= perturbation
             #a[testvar] -= perturbation
+            Ψ[testvar] -= perturbation
         end
-        test[pert] = contact_pnorm(X_ordered, a, ε, p)
+        #test[pert] = contact_pnorm(X_ordered, a, ε, p)
         #assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε, Γ_top, τ)
         #test[pert] = -a[pdofs]' * Fᵢₙₜ[pdofs]
+        assemGlobal!(Kψ, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
+        testf[:, pert] = Fψ
     end
-    @show numsens = (test[1] - test[2]) / perturbation
+    numsens = (testf[:,1] - testf[:,2]) / perturbation
     #∂rᵤ_∂x  = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
     #asens   = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
     #@show asens[testvar]
     #asens   = ForwardDiff.gradient(u -> contact_pnorm(X_ordered, u, ε, p), a)
-    asens   = ForwardDiff.gradient(x -> contact_pnorm(x, a, ε, p), X_ordered)
-    @show asens[testvar]
+    #asens   = ForwardDiff.gradient(x -> contact_pnorm(x, a, ε, p), X_ordered)
+    #∂rΨ_∂x = drΨ_dx_c(∂rΨ_∂x, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
+    #asens  = ∂rΨ_∂x
+    asens = Kψ[:,testvar]
+    @show hello = asens[findall(x -> x != 0, numsens)] ./ numsens[findall(x -> x != 0, numsens)]
 end
 
-if 1 == 1
-    #a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord)
+if 1 == 2
+    a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord);
     using Plots
     X_c   = []
     tract = []

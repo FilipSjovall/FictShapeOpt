@@ -152,29 +152,29 @@ function assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε, Γ_top, 
 
 end
 
-function assemGlobal!(K, Fᵢₙₜ, dh, mp, t, Ψ, coord, enod, λ, d, Γ_robin, μ)
-    assembler = start_assemble(K, Fᵢₙₜ)
+function assemGlobal!(K, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
+    assembler = start_assemble(K, Fψ)
     ie = 0
-    for cell in CellIterator(dh)
+    for cell in CellIterator(dh0)
         ie += 1
         cell_dofs = celldofs(cell)
         kₑ = zeros(6, 6)
         fₑ = zeros(6)
-        kₑ, fₑ = assemElem(coord[enod[ie][2:end], :], Ψ[cell_dofs], mp, t)
+        kₑ, fₑ = assemElem(coord₀[enod[ie][2:end], :], Ψ[cell_dofs], mp₀, t)
         ke = zeros(6, 6)
         fe = zeros(6)
         for face in 1:nfaces(cell)
             if (cellid(cell), face) in Γ_robin
                 face_nods = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
                 face_dofs = [face_nods[1] * 2 - 1; face_nods[1] * 2; face_nods[2] * 2 - 1; face_nods[2] * 2]
-                X = coord[enod[ie][face_nods.+1], :]
+                X = coord₀[enod[ie][face_nods.+1], :]
                 ke[face_dofs, face_dofs], fe[face_dofs] = Robin(X, Ψ[cell_dofs[face_dofs]], d[cell_dofs[face_dofs]], λ)
             end
         end
         assemble!(assembler, cell_dofs, kₑ + ke, fₑ + fe)
     end
     # Contact
-    X_ordered = getXfromCoord(coord)
+    X_ordered = getXfromCoord(coord₀)
     #rc = contact_residual(X_ordered, a, ε)
     #Kc = ForwardDiff.jacobian(u -> contact_residual(X_ordered, u, ε), a)
     #K[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
@@ -183,7 +183,7 @@ function assemGlobal!(K, Fᵢₙₜ, dh, mp, t, Ψ, coord, enod, λ, d, Γ_robin
     rc = contact_residual_reduced(X_ordered, Ψ[contact_dofs], Ψ[freec_dofs], μ)
     Kc = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, Ψ[freec_dofs], μ), Ψ[contact_dofs])
     K[contact_dofs, contact_dofs] -= Kc
-    Fᵢₙₜ[contact_dofs]            -= rc
+    Fψ[contact_dofs]              -= rc
 end
 
 function volume(dh,coord,enod)

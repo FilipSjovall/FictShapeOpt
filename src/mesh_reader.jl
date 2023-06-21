@@ -378,9 +378,9 @@ function createCircleMesh(filename, x₀, y₀, r, h)
 
 
     p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
-    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h)
-    p3 = gmsh.model.geo.add_point(x₀ - r, y₀, 0.0, h)
-    p4 = gmsh.model.geo.add_point(x₀, y₀ - r, 0.0, h/10 )
+    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h/2)
+    p3 = gmsh.model.geo.add_point(x₀ - r, y₀, 0.0, h/2)
+    p4 = gmsh.model.geo.add_point(x₀, y₀ - r, 0.0, h/4 )
 
     # Add lines
     #    # Start - Center - End
@@ -607,4 +607,21 @@ function getX_from_Dof_To_Node_order(dh,X::AbstractVector{T}) where T
         X_ordered[2node]     = X[dofs[2]]
     end
     return X_ordered
+end
+
+function index_nod_to_grid(dh, coord)
+    coord = getCoord(getX(dh), dh)
+    X = getX(dh)
+    X_nods = reshape_to_nodes(dh, X, :u)[1:2, :]
+    index_register = zeros(Int, length(dh.grid.nodes), 2)
+    for ii in 1:length(coord[:, 1])
+        temp2 = X_nods[:, ii]
+        for jj in 1:length(coord[:, 1])
+            temp1 = coord[jj, :]
+            if temp1 == temp2
+                index_register[ii, :] = [ii, jj]
+            end
+        end
+    end
+    return index_register
 end

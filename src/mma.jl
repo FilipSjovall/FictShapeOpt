@@ -3,21 +3,21 @@
 #    Copyright (C) 2007, 2008 Krister Svanberg
 #
 #    This file, mmasub.m, is part of GCMMA-MMA-code.
-#    
+#
 #    GCMMA-MMA-code is free software; you can redistribute it and/or
-#    modify it under the terms of the GNU General Public License as 
-#    published by the Free Software Foundation; either version 3 of 
+#    modify it under the terms of the GNU General Public License as
+#    published by the Free Software Foundation; either version 3 of
 #    the License, or (at your option) any later version.
-#    
+#
 #    This code is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
-#    
+#
 #    You should have received a copy of the GNU General Public License
-#    (file COPYING) along with this file.  If not, see 
+#    (file COPYING) along with this file.  If not, see
 #    <http://www.gnu.org/licenses/>.
-#    
+#
 #    You should have received a file README along with this file,
 #    containing contact information.  If not, see
 #    <http://www.smoptit.se/> or e-mail mmainfo@smoptit.se or krille@math.kth.se.
@@ -30,7 +30,7 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   #
   #    This function mmasub performs one MMA-iteration, aimed at
   #    solving the nonlinear programming problem:
-  #         
+  #
   #      Minimize  f_0(x) + a_0*z + sum( c_i*y_i + 0.5*d_i*(y_i)^2 )
   #    subject to  f_i(x) - a_i*z - y_i <= 0,  i = 1,...,m
   #                xmin_j <= x_j <= xmax_j,    j = 1,...,n
@@ -61,7 +61,7 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   #  a     = Column vector with the constants a_i in the terms a_i*z.
   #  c     = Column vector with the constants c_i in the terms c_i*y_i.
   #  d     = Column vector with the constants d_i in the terms 0.5*d_i*(y_i)^2.
-  #     
+  #
   #*** OUTPUT:
   #
   #  xmma  = Column vector with the optimal values of the variables x_j
@@ -85,13 +85,13 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   epsimin = 10^(-7);
   raa0 = 0.00001;
 
-  move = 0.5;# FOR COMPLIANT
+  move = 0.5;# "standard"
   # move = 1.0;
 
   albefa = 0.1;
 
-  asyinit = 0.5;# FOR COMPLIANT
-  #asyinit = 0.01;
+  #asyinit = 0.5;# FOR COMPLIANT
+  asyinit = 0.01;
 
   asyincr = 1.2;
   asydecr = 0.7;
@@ -180,21 +180,21 @@ end
 #    Copyright (C) 2006 Krister Svanberg
 #
 #    This file, subsolv.m, is part of GCMMA-MMA-code.
-#    
+#
 #    GCMMA-MMA-code is free software; you can redistribute it and/or
-#    modify it under the terms of the GNU General Public License as 
-#    published by the Free Software Foundation; either version 3 of 
+#    modify it under the terms of the GNU General Public License as
+#    published by the Free Software Foundation; either version 3 of
 #    the License, or (at your option) any later version.
-#    
+#
 #    This code is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
-#    
+#
 #    You should have received a copy of the GNU General Public License
-#    (file COPYING) along with this file.  If not, see 
+#    (file COPYING) along with this file.  If not, see
 #    <http://www.gnu.org/licenses/>.
-#    
+#
 #    You should have received a file README along with this file,
 #    containing contact information.  If not, see
 #    <http://www.smoptit.se/> or e-mail mmainfo@smoptit.se or krille@math.kth.se.
@@ -205,17 +205,17 @@ end
 function subsolv(m,n,epsimin,low,upp,alfa,beta,p0,q0,P,Q,a0,a,b,c,d);
   #
   # This function subsolv solves the MMA subproblem:
-  #         
+  #
   # minimize   SUM[ p0j/(uppj-xj) + q0j/(xj-lowj) ] + a0*z +
   #          + SUM[ ci*yi + 0.5*di*(yi)^2 ],
   #
   # subject to SUM[ pij/(uppj-xj) + qij/(xj-lowj) ] - ai*z - yi <= bi,
   #            alfaj <=  xj <=  betaj,  yi >= 0,  z >= 0.
-  #        
+  #
   # Input:  m, n, low, upp, alfa, beta, p0, q0, P, Q, a0, a, b, c, d.
   # Output: xmma,ymma,zmma, slack variables and Lagrange multiplers.
   #
- 
+
   een = ones(n);
   eem = ones(m);
   epsi = 1;
@@ -328,7 +328,7 @@ function subsolv(m,n,epsimin,low,upp,alfa,beta,p0,q0,P,Q,a0,a,b,c,d);
           ds   = -s + epsvecm./lam - (s.*dlam)./lam;
           xx  = [ y'  z  lam'  xsi'  eta'  mu'  zet  s']';
           dxx = [dy' dz dlam' dxsi' deta' dmu' dzet ds']';
-          #    
+          #
           stepxx = -1.01*dxx./xx;
           stmxx  = maximum(stepxx);
           stepalfa = -1.01*dx./(x-alfa);
@@ -411,6 +411,3 @@ function subsolv(m,n,epsimin,low,upp,alfa,beta,p0,q0,P,Q,a0,a,b,c,d);
   return xmma,ymma,zmma,lamma,xsimma,etamma,mumma,zetmma,smma
 end
 #-------------------------------------------------------------
-
-
-

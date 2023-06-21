@@ -13,7 +13,7 @@ include("..//material.jl")
 include("..//fem.jl")
 
 
-# Create two grids 
+# Create two grids
 grid1 = createBoxMesh("box_1", 0.0, 0.0, 1.0, 1.0, 0.1)
 grid2 = createBoxMesh("box_2", 0.33, 0.99, 0.33, 0.5, 0.05)
 
@@ -75,19 +75,19 @@ X = getX(dh)
 
 coord = getCoordfromX(X)
 
-# Solve the nonlinear equillibrium problem .. 
+# Solve the nonlinear equillibrium problem ..
 function solver(dh, coord)
 
     # ---------- #
     # Set params # // Kanske som input till solver???
-    # ---------- # // definiera mp här? och kanske ε ? iofs snyggare utanför!  
+    # ---------- # // definiera mp här? och kanske ε ? iofs snyggare utanför!
     t = 1.0
 
     # Penalty parameter
     ε = 200.0
 
     # Define material parameters
-    mp = [210 0.3] # [E ν]
+    mp = [175 80.769230769230759] # [E ν]
 
     # ------------- #
     # Init-stuff    #
@@ -110,8 +110,8 @@ function solver(dh, coord)
     global res  = zeros(dh.ndofs.x)
 
     # ---------- #
-    # Set BCS    # 
-    # ---------- # 
+    # Set BCS    #
+    # ---------- #
     # Set bcs - should be moved outside this function
     bcdof_top, bcval_top = setBCXY(-0.01, dh, Γ_top)
     bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)

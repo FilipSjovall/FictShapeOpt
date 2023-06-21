@@ -74,9 +74,8 @@ function drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
 
     X_ordered = getXinDofOrder(dh, X, coord)
     drc       = ForwardDiff.jacobian(x -> contact_residual_ordered(x, a, ε), X_ordered)
-
     # dr[contact_dofs,contact_dofs] += drc[contact_dofs,contact_dofs]
-    ∂rᵤ_∂x -= drc
+    ∂rᵤ_∂x   -= drc
 
     return ∂rᵤ_∂x
 end
@@ -96,23 +95,22 @@ function drΨ_dx_c(∂rΨ_∂x, dh, mp, t, Ψ, coord, enod, λ, d, Γ_robin, μ)
             if (cellid(cell), face) in Γ_robin
                 face_nods = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
                 face_dofs = [face_nods[1] * 2 - 1; face_nods[1] * 2; face_nods[2] * 2 - 1; face_nods[2] * 2]
-                X = coord[enod[ie][face_nods.+1], :]
-                ke[face_dofs, face_dofs], _ = Robin(X, Ψ[cell_dofs[face_dofs]], d[cell_dofs[face_dofs]], λ)
+                Xf = coord[enod[ie][face_nods.+1], :]
+                ke[face_dofs, face_dofs], _ = Robin(Xf, Ψ[cell_dofs[face_dofs]], d[cell_dofs[face_dofs]], λ)
             end
         end
         assemble!(assembler, cell_dofs, kₑ + ke)
     end
     # Contact
     X_ordered = getXfromCoord(coord)
-    #rc = contact_residual(X_ordered, a, ε)
-    #Kc = ForwardDiff.jacobian(u -> contact_residual(X_ordered, u, ε), a)
-    #K[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
-    #Fᵢₙₜ[contact_dofs]            -= rc[contact_dofs]
+    #X_ordered = getXinDofOrder(dh0, X, coord₀)
+    Kc = ForwardDiff.jacobian(x -> contact_residual(x, Ψ, μ), X_ordered)
+    ∂rΨ_∂x[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
 
-    X_ordered = getXinDofOrder(dh, X, coord)
-    drc       = ForwardDiff.jacobian(x -> contact_residual_ordered(x, a, ε), X_ordered)
-    ∂rΨ_∂x   -= drc
-
+    #X_ordered = getXinDofOrder(dh0, X, coord₀)
+    #drc       = ForwardDiff.jacobian(x -> contact_residual_ordered(x, Ψ, μ), X_ordered)
+    #∂rΨ_∂x   -= drc
+    return ∂rΨ_∂x
 end
 
 
