@@ -157,7 +157,7 @@ function solver_C(dh, coord)
     # Set BCS    #
     # ---------- #
     # Set bcs - should be moved outside this function
-    bcdof_top, bcval_top = setBCXY(-0.05, dh, Γ_top)
+    bcdof_top, bcval_top = setBCXY(-0.01, dh, Γ_top)
     bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
     bcdof = [bcdof_top; bcdof_bot]
     bcval = [bcval_top; bcval_bot]
@@ -172,7 +172,7 @@ function solver_C(dh, coord)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 4
+    for loadstep ∈ 1 : 10
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
@@ -340,7 +340,7 @@ function solver_C2(dh, coord)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 1
+    for loadstep ∈ 1 : 10
         τ   = [0.0; 0.0001] * (loadstep-1)
         res = res .* 0
         bcval = bcval₀

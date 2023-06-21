@@ -22,7 +22,7 @@ include("..//mma.jl")
 
 
 # Create two grids
-grid1 = createCircleMesh("circle", 0.5, 1.5, 0.5, 0.1)
+grid1 = createCircleMesh("circle", 0.5, 1.5, 0.5, 0.15)
 grid2 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.001, 0.05)
 
 # Merge into one grid
@@ -157,8 +157,8 @@ function Optimize(dh)
         λψ   = similar(a)
         λᵤ   = similar(a)
         λᵥₒₗ = similar(a)
-        Vₘₐₓ = 2.0
-        global ε    = 5e4
+        Vₘₐₓ = 1.2 * volume(dh, coord, enod)
+        global ε    = 1e5
         global μ    = 1e4
         l    = similar(a)
         l   .= 0.5
@@ -167,6 +167,8 @@ function Optimize(dh)
         coord₀  = coord
         global g_hist = zeros(200)
         global v_hist = zeros(200)
+        global T = zeros(size(a))
+        T[bcdof_bot_o] .= 1.0
     #
     while kktnorm > tol || OptIter < 3 #&& OptIter < 50
 
@@ -219,8 +221,8 @@ function Optimize(dh)
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
         coord₀ = getCoord(getX(dh0), dh0) # x₀
-        Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀)
-        #Ψ, _, Kψ, _, λ = fictitious_solver_with_contact(d, dh0, coord₀)
+        #Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀)
+        Ψ, _, Kψ, _, λ = fictitious_solver_with_contact(d, dh0, coord₀)
 
         # # # # # #
         # Filter  #
@@ -237,14 +239,20 @@ function Optimize(dh)
         # # # # # # #
         # Objective #
         # # # # # # #
+        # Max reaction force
+        g            = -T' * Fᵢₙₜ
+        ∂g_∂x = -(T' * ∂rᵤ_∂x)'
+        ∂g_∂u = -(T' * K)'
+        # Compliance
         #g = -a[pdofs]' * Fᵢₙₜ[pdofs]
         #∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
         #∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
-        p = 2
-        X_ordered = getXfromCoord(coord)
-        g         = contact_pnorm(X_ordered, a, ε, p)
-        ∂g_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
-        ∂g_∂u     = ForwardDiff.gradient(u -> contact_pnorm(X_ordered, u, ε, p), a)
+        # Max/Min λ
+        #p = 2
+        #X_ordered = getXfromCoord(coord)
+        #g         = contact_pnorm(X_ordered, a, ε, p)
+        #∂g_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
+        #∂g_∂u     = ForwardDiff.gradient(u -> contact_pnorm(X_ordered, u, ε, p), a)
 
         # # # # # # # # #
         # Sensitivities #
@@ -295,7 +303,7 @@ function Optimize(dh)
         println("Iter: ", OptIter, " Norm of change: ", kktnorm, " Objective: ", g)
         if mod(OptIter,1) == 0
             coord = getCoord(getX(dh0), dh0)
-            postprocess_opt(Ψ, dh0, "results/Shape_without_contact" * string(OptIter))
+            postprocess_opt(Ψ, dh0, "results/Shape_with_contact" * string(OptIter))
             coord = getCoord(getX(dh), dh)
             postprocess_opt(a, dh, "results/DeformationC" * string(OptIter))
         end
