@@ -31,8 +31,10 @@ global changetol     = 0.001;
 global kktnorm       = kkttol + 10;
 global outit         = 0;
 global change        = 1;
-global xmin[contact_dofs] .= -0.2
-global xmax[contact_dofs] .=  0.2
+global xmin[contact_dofs] .= -0.05
+global xmax[contact_dofs] .=  0.05
+global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.2
+global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.2
 global low           = xmin;
 global upp           = xmax;
 

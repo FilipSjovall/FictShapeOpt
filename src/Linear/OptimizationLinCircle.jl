@@ -31,8 +31,6 @@ grid_tot = merge_grids(grid1, grid2; tol=1e-6)
 # Create dofhandler with displacement field u
 dh = DofHandler(grid_tot)
 
-
-
 add!(dh, :u, 2)
 close!(dh)
 
@@ -51,9 +49,6 @@ addfaceset!(dh.grid, "Γ_slave", x -> x[2] ≈ 1.001)
 addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ 1.001)
 nₛ = getnodeset(dh.grid, "nₛ")
 
-# ----------------- #
-# Create slave sets #
-# ----------------- #
 # ----------------- #
 # Create slave sets #
 # ----------------- #
@@ -76,11 +71,15 @@ freec_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
 addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.5)
 Γ_top = getnodeset(dh.grid, "Γ_top")
 
+addnodeset!(dh.grid, "n_top", x -> x[2] ≈ 1.5)
+n_top = getnodeset(dh.grid, "n_top")
 
 # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
 addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
 Γ_bot = getnodeset(dh.grid, "Γ_bot")
 
+addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.0)
+n_bot = getnodeset(dh.grid, "n_bot")
 
 # Final preparations for contact
 register = getNodeDofs(dh)
@@ -157,7 +156,7 @@ function Optimize(dh)
         λψ   = similar(a)
         λᵤ   = similar(a)
         λᵥₒₗ = similar(a)
-        Vₘₐₓ = 1.2 * volume(dh, coord, enod)
+        Vₘₐₓ = 1.1 * volume(dh, coord, enod)
         global ε    = 1e5
         global μ    = 1e4
         l    = similar(a)
@@ -303,9 +302,9 @@ function Optimize(dh)
         println("Iter: ", OptIter, " Norm of change: ", kktnorm, " Objective: ", g)
         if mod(OptIter,1) == 0
             coord = getCoord(getX(dh0), dh0)
-            postprocess_opt(Ψ, dh0, "results/Shape_with_contact" * string(OptIter))
-            coord = getCoord(getX(dh), dh)
-            postprocess_opt(a, dh, "results/DeformationC" * string(OptIter))
+            postprocess_opt(Ψ, dh0, "results/Shape_with_contact_n_constraint" * string(OptIter))
+            #coord = getCoord(getX(dh), dh)
+            #postprocess_opt(a, dh, "results/DeformationC" * string(OptIter))
         end
         println("Objective: ", g_hist, " Constraint: ", g₁)
         if OptIter == 100
@@ -335,10 +334,117 @@ OptIter = 2
 Plots.plot(collect(1:OptIter), g_hist[1:OptIter],lc =:red, label="Objective",linewidth=3)
 Plots.plot!(collect(1:OptIter), v_hist[1:OptIter], lc = :blue, label="Constraint",linewidth=3)
 
-#using Makie
-#OptIter=37
-#fig = Figure()
-#ax1, l1 = lines(fig[1, 1], 1..OptIter, g_hist[1:OptIter], color = :red)
-#ax2, l2 = lines(fig[2, 1], 1..OptIter, v_hist[1:OptIter], color = :blue)
-#Legend(fig[1:2, 2], [l1, l2], ["Objective", "Constraint"])
-#fig
+function remeshCircle(filename)
+    # Funkar för tillfället bara för circle som master men detta går att skriva om
+    # ny funktion för att definiera kontakt- och bc-ytor osv.
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+    master_coords = zeros(length(nₘ),2)
+    top_coords    = zeros(length(n_top),2)
+
+    for (i,node) in enumerate(nₘ)
+        master_coords[i,:] = dh.grid.nodes[node].x
+    end
+
+    for (i, node) in enumerate(n_top)
+        top_coords[i, :] = dh.grid.nodes[node].x
+    end
+
+    # Behöver specificera sorteringen m.a.på x
+    #sortslices(master_coords,dims=1)
+    master_coords = master_coords[sortperm(master_coords[:, 1]), :]
+    top_coords    = top_coords[sortperm(top_coords[:, 1]), :]
+    #sortslices(top_coords, dims=1)
+
+    Points = []
+    append!(Points, gmsh.model.geo.add_point(top_coords[1,1],top_coords[1,2], 0.0, 0.1))
+    for (x,y) in eachrow(master_coords)
+        append!(Points,gmsh.model.geo.add_point(x,y,0.0,0.1))
+    end
+    append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, 0.1))
+
+
+    Lines = Vector{Int32}()
+    #append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
+    for (i,x) in enumerate(eachrow(master_coords[1:end,:]))
+        @show i
+        append!(Lines,gmsh.model.geo.add_line(Points[i+1],Points[i+2]))
+    end
+    append!(Lines,gmsh.model.geo.add_line(Points[end],Points[1]))
+    append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
+
+    Loop = gmsh.model.geo.add_curve_loop(Lines[:])
+
+    Surf = gmsh.model.geo.add_plane_surface([Loop])
+
+    gmsh.model.geo.synchronize()
+    gmsh.model.mesh.generate(2)
+    #gmsh.model.mesh.
+    grid = mktempdir() do dir
+        path = joinpath(dir, filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
+    return grid
+end
+
+
+
+function remeshBox(filename)
+    # Funkar för tillfället bara för circle som master men detta går att skriva om
+    # ny funktion för att definiera kontakt- och bc-ytor osv.
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+    slave_coords = zeros(length(nₘ), 2)
+    bot_coords = zeros(length(n_bot), 2)
+
+    for (i, node) in enumerate(nₛ)
+        slave_coords[i, :] = dh.grid.nodes[node].x
+    end
+
+    for (i, node) in enumerate(n_bot)
+        bot_coords[i, :] = dh.grid.nodes[node].x
+    end
+
+    # Behöver specificera sorteringen m.a.på x
+    #sortslices(master_coords,dims=1)
+    slave_coords = slave_coords[sortperm(slave_coords[:, 1]), :]
+    bot_coords = bot_coords[sortperm(bot_coords[:, 1]), :]
+    #sortslices(bot_coords, dims=1)
+
+    Points = []
+    append!(Points, gmsh.model.geo.add_point(bot_coords[1, 1], bot_coords[1, 2], 0.0, 0.1))
+    for (x, y) in eachrow(slave_coords)
+        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, 0.1))
+    end
+    append!(Points, gmsh.model.geo.add_point(bot_coords[end, 1], bot_coords[end, 2], 0.0, 0.1))
+
+
+    Lines = Vector{Int32}()
+    #append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
+    append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
+    for (i, x) in enumerate(eachrow(slave_coords[1:end, :]))
+        @show i
+        append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
+    end
+
+    append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
+
+    Loop = gmsh.model.geo.add_curve_loop(Lines[:])
+
+    Surf = gmsh.model.geo.add_plane_surface([Loop])
+
+    gmsh.model.geo.synchronize()
+    #gmsh.model.mesh.generate(2)
+    #gmsh.model.mesh.
+    grid = mktempdir() do dir
+        path = joinpath(dir, filename * ".msh")
+        gmsh.write(path)
+        #togrid(path)
+    end
+    Gmsh.finalize()
+    return grid
+end

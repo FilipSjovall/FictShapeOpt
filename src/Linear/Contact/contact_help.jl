@@ -59,7 +59,8 @@ function gap_function(X::AbstractVector{T}) where {T}
    g0 = zeros(eltype(X_float), length(slave_dofs), 2)
 
    # Loops are fast with the LLVM compiler
-   for (j, A) in (enumerate(slave_dofs))
+   #for (j, A) in (enumerate(slave_dofs))
+    for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
       slave = [0; 0]
       for B in slave_dofs
          slave += D[A, B] * coords[B]
@@ -129,7 +130,8 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε::Numb
    g = zeros(eltype(X_float), length(slave_dofs), 2)
 
    # Loops are fast with the LLVM compiler
-   for (j, A) in (enumerate(slave_dofs))
+   #for (j, A) in (enumerate(slave_dofs))
+    for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
       slave = [0; 0]
       for B in intersect(slave_dofs, 1:size(D, 2))
          slave += D[A, B] * coords[B]
@@ -150,7 +152,8 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε::Numb
    # ---------- #
    # ∫ᵧ 𝛅g λ dγ  #
    # ---------- #
-   for (i, A) in enumerate(slave_dofs)
+   #for (i, A) in enumerate(slave_dofs)
+    for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
       λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
       for B in intersect(slave_dofs, 1:size(D, 2))
          B_dofs = register[B, :]  # Extract nodal degrees of freedom
@@ -279,7 +282,8 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
     g = zeros(eltype(X_float), length(slave_dofs), 2)
 
     # Loops are fast with the LLVM compiler
-    for (j, A) in (enumerate(slave_dofs))
+    #for (j, A) in (enumerate(slave_dofs))
+    for (j, A) in ( enumerate( intersect( slave_dofs, 1:min(size(D,2),size(M,1)) ) ) )
         slave = [0; 0]
         for B in slave_dofs
             slave += D[A, B] * coords[B]
@@ -299,7 +303,8 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
     # ---------- #
     # ∫ᵧ 𝛅g λ dγ  #
     # ---------- #
-    for (i, A) in enumerate(slave_dofs)
+    #for (i, A) in enumerate(slave_dofs)
+    for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
         for (j,B) in enumerate(slave_dofs)
             # Extract nodal degrees of freedom

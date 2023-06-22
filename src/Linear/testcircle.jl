@@ -19,7 +19,8 @@ include("sensitivitiesLin.jl")
 
 # Create two grids
 grid1 = createCircleMesh("circle", 0.5, 1.5, 0.5, 0.1)
-grid2 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.001, 0.05)
+#grid2 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.001, 0.05)
+grid2 = createBoxMeshRev("box_1", -0.5, 0.0, 2.0, 1.001, 0.05)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)

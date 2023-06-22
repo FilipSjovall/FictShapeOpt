@@ -172,7 +172,7 @@ function solver_C(dh, coord)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 10
+    for loadstep ∈ 1 : 5
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
