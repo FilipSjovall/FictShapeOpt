@@ -29,14 +29,14 @@ grid2 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.001, 0.05)
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
 
 # Create dofhandler with displacement field u
-dh = DofHandler(grid_tot)
+global dh = DofHandler(grid_tot)
 
 add!(dh, :u, 2)
 close!(dh)
 
 
 # Extract CALFEM-style matrices
-coord, enod = getTopology(dh)
+global coord, enod = getTopology(dh)
 register = index_nod_to_grid(dh, coord)
 
 
@@ -44,28 +44,28 @@ register = index_nod_to_grid(dh, coord)
 # Create master sets #
 # ------------------ #
 addfaceset!(dh.grid, "Γ_slave", x -> x[2] ≈ 1.001)
-Γs = getfaceset(dh.grid, "Γ_slave")
+global Γs = getfaceset(dh.grid, "Γ_slave")
 
 addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ 1.001)
-nₛ = getnodeset(dh.grid, "nₛ")
+global nₛ = getnodeset(dh.grid, "nₛ")
 
 # ----------------- #
 # Create slave sets #
 # ----------------- #
 addfaceset!(dh.grid, "Γ_master", x -> ((x[1] - 0.5)^2 + (x[2] - 1.5)^2) ≈ 0.5^2 && x[2] < 1.5)
-Γm = getfaceset(dh.grid, "Γ_master")
+global Γm = getfaceset(dh.grid, "Γ_master")
 
 addnodeset!(dh.grid, "nₘ", x -> ((x[1] - 0.5)^2 + (x[2] - 1.5)^2) ≈ 0.5^2 && x[2] < 1.5)
-nₘ = getnodeset(dh.grid, "nₘ")
+global nₘ = getnodeset(dh.grid, "nₘ")
 
 # Extract all nbr nodes and dofs
-contact_dofs = getContactDofs(nₛ, nₘ)
-contact_nods = getContactNods(nₛ, nₘ)
-order = Dict{Int64,Int64}()
+global contact_dofs = getContactDofs(nₛ, nₘ)
+global contact_nods = getContactNods(nₛ, nₘ)
+global order = Dict{Int64,Int64}()
 for (i, nod) ∈ enumerate(contact_nods)
     push!(order, nod => i)
 end
-freec_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
+global freec_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
 
 # Define top nodeset for displacement controlled loading
 addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.5)
@@ -82,13 +82,13 @@ addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.0)
 n_bot = getnodeset(dh.grid, "n_bot")
 
 # Final preparations for contact
-register = getNodeDofs(dh)
-X = getX(dh)
-coord = getCoordfromX(X)
+global register = getNodeDofs(dh)
+global X = getX(dh)
+global coord = getCoordfromX(X)
 
 # Init fictious
 
-coord₀ = deepcopy(coord)
+global coord₀ = deepcopy(coord)
 Γ_robin = union(
     getfaceset(dh.grid, "Γ_slave"),
     getfaceset(dh.grid, "Γ_master")
@@ -128,31 +128,34 @@ bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
 bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o = [bcdof_top_o; bcdof_bot_o]
 ϵᵢⱼₖ = sortperm(bcdof_o)
-bcdof_o = bcdof_o[ϵᵢⱼₖ]
-bcval_o = bcdof_o .* 0.0
+global bcdof_o = bcdof_o[ϵᵢⱼₖ]
+global bcval_o = bcdof_o .* 0.0
 
 # - For Linear solver..
 pdofs = bcdof_o
 fdofs = setdiff(1:dh.ndofs.x, pdofs)
 
 
-dh0 = deepcopy(dh)
+global dh0 = deepcopy(dh)
 d   = zeros(size(a))
 d .= 0.0
 global ∂rᵤ_∂x = similar(K)
-dr_dd = similar(K)
-∂rψ_∂d = similar(K)
-λᵤ = similar(a)
-λψ = similar(a)
+global dr_dd = similar(K)
+global ∂rψ_∂d = similar(K)
+global λᵤ = similar(a)
+global λψ = similar(a)
 
 
 include("initOptLin.jl")
 
+#reMeshGrids()
+
+#@run reMeshGrids!(dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, X, bcdof_o, bcval_o, d)
 
 function Optimize(dh)
 
     # Flytta allt nedan till init_opt?
-        dh0 = deepcopy(dh)
+        global dh0 = deepcopy(dh)
         λψ   = similar(a)
         λᵤ   = similar(a)
         λᵥₒₗ = similar(a)
@@ -164,9 +167,9 @@ function Optimize(dh)
         tol  = 1e-6
         OptIter = 0
         coord₀  = coord
-        global g_hist = zeros(200)
-        global v_hist = zeros(200)
-        global T = zeros(size(a))
+        g_hist = zeros(200)
+        v_hist = zeros(200)
+        T = zeros(size(a))
         T[bcdof_bot_o] .= 1.0
     #
     while kktnorm > tol || OptIter < 3 #&& OptIter < 50
@@ -215,6 +218,53 @@ function Optimize(dh)
             global traction
         # # # # # # # # # # # # # #
         OptIter += 1
+        if OptIter % 1 == 0
+            reMeshGrids!(dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
+            # Initialize tangents
+            global K = create_sparsity_pattern(dh) # behövs
+            global Kψ = create_sparsity_pattern(dh) # behövs
+            global a = zeros(dh.ndofs.x) # behövs
+            global Ψ = zeros(dh.ndofs.x) # behövs
+            global Fᵢₙₜ = zeros(dh.ndofs.x) # behövs?
+            global rc = zeros(dh.ndofs.x) # behövs?
+            global Fₑₓₜ = zeros(dh.ndofs.x) # behövs ?
+            global a = zeros(dh.ndofs.x) # behövs ?
+            global Δa = zeros(dh.ndofs.x) # behövs inte
+            global res = zeros(dh.ndofs.x) # behövs inte
+            global ∂rᵤ_∂x = similar(K) # behövs inte om vi har lokal funktion?
+            global dr_dd = similar(K) # behövs inte om vi har lokal funktion?
+            global ∂rψ_∂d = similar(K) # behövs inte om vi har lokal funktion?
+            global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
+            global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
+            global ∂rᵤ_∂x = similar(K) # behövs inte om vi har lokal funktion?
+            global λᵤ = similar(a) # behövs inte om vi har lokal funktion?
+            global λψ = similar(a) # behövs inte om vi har lokal funktion?
+            global m = 1 # behöver inte skrivas över
+            global n_mma = length(d) # behöver skrivas över
+            global epsimin = 0.0000001 # behöver inte skrivas över
+            global xval = d[:] # behöver skrivas över
+            global xold1 = xval # behöver skrivas över
+            global xold2 = xval # behöver skrivas över
+            global xmin = -ones(n_mma) / 20 # behöver skrivas över
+            global xmax = ones(n_mma) / 20 # behöver skrivas över
+            global C = 1000 * ones(m) # behöver inte skrivas över
+            global d2 = zeros(m) # behöver inte skrivas över
+            global a0 = 1 # behöver inte skrivas över
+            global am = zeros(m) # behöver inte skrivas över
+            global outeriter = 0 # behöver inte skrivas över
+            global kkttol = 0.001 # behöver inte skrivas över
+            global changetol = 0.001 # behöver inte skrivas över
+            global kktnorm = kkttol + 10 # behöver inte skrivas över
+            global outit = 0 # behöver inte skrivas över
+            global change = 1 # behöver inte skrivas över
+            global xmin[contact_dofs] .= -0.05 # behöver skrivas över
+            global xmax[contact_dofs] .= 0.05 # behöver skrivas över
+            global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.2 # behöver skrivas över
+            global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= 0.2 # behöver skrivas över
+            global low = xmin # behöver skrivas över
+            global upp = xmax # behöver skrivas över
+
+        end
 
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
@@ -226,9 +276,9 @@ function Optimize(dh)
         # # # # # #
         # Filter  #
         # # # # # #
-        dh    = deepcopy(dh0)
+        global dh    = deepcopy(dh0)
         updateCoords!(dh, Ψ) # x₀ + Ψ = x
-        coord = getCoord(getX(dh), dh)
+        global coord = getCoord(getX(dh), dh)
 
         # # # # # # # # #
         # Equillibrium  #
@@ -293,8 +343,8 @@ function Optimize(dh)
         # # # # # # # # # #
         # Postprocessing  #
         # # # # # # # # # #
-        global v_hist[OptIter] = g₁
-        global g_hist[OptIter] = g
+        v_hist[OptIter] = g₁
+        g_hist[OptIter] = g
 
         #The residual vector of the KKT conditions is calculated:
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
@@ -311,6 +361,7 @@ function Optimize(dh)
             break
         end
 
+
     end
 
     return g_hist, v_hist, OptIter, traction
@@ -318,7 +369,9 @@ end
 
 
 
-Optimize(dh)
+#Optimize(dh)
+
+#=
 
 X_c = []
 tract = []
@@ -333,118 +386,4 @@ Plots.plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
 OptIter = 2
 Plots.plot(collect(1:OptIter), g_hist[1:OptIter],lc =:red, label="Objective",linewidth=3)
 Plots.plot!(collect(1:OptIter), v_hist[1:OptIter], lc = :blue, label="Constraint",linewidth=3)
-
-function remeshCircle(filename)
-    # Funkar för tillfället bara för circle som master men detta går att skriva om
-    # ny funktion för att definiera kontakt- och bc-ytor osv.
-    Gmsh.initialize()
-    gmsh.option.set_number("General.Verbosity", 2)
-
-    master_coords = zeros(length(nₘ),2)
-    top_coords    = zeros(length(n_top),2)
-
-    for (i,node) in enumerate(nₘ)
-        master_coords[i,:] = dh.grid.nodes[node].x
-    end
-
-    for (i, node) in enumerate(n_top)
-        top_coords[i, :] = dh.grid.nodes[node].x
-    end
-
-    # Behöver specificera sorteringen m.a.på x
-    #sortslices(master_coords,dims=1)
-    master_coords = master_coords[sortperm(master_coords[:, 1]), :]
-    top_coords    = top_coords[sortperm(top_coords[:, 1]), :]
-    #sortslices(top_coords, dims=1)
-
-    Points = []
-    append!(Points, gmsh.model.geo.add_point(top_coords[1,1],top_coords[1,2], 0.0, 0.1))
-    for (x,y) in eachrow(master_coords)
-        append!(Points,gmsh.model.geo.add_point(x,y,0.0,0.1))
-    end
-    append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, 0.1))
-
-
-    Lines = Vector{Int32}()
-    #append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
-    for (i,x) in enumerate(eachrow(master_coords[1:end,:]))
-        @show i
-        append!(Lines,gmsh.model.geo.add_line(Points[i+1],Points[i+2]))
-    end
-    append!(Lines,gmsh.model.geo.add_line(Points[end],Points[1]))
-    append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
-
-    Loop = gmsh.model.geo.add_curve_loop(Lines[:])
-
-    Surf = gmsh.model.geo.add_plane_surface([Loop])
-
-    gmsh.model.geo.synchronize()
-    gmsh.model.mesh.generate(2)
-    #gmsh.model.mesh.
-    grid = mktempdir() do dir
-        path = joinpath(dir, filename * ".msh")
-        gmsh.write(path)
-        togrid(path)
-    end
-    Gmsh.finalize()
-    return grid
-end
-
-
-
-function remeshBox(filename)
-    # Funkar för tillfället bara för circle som master men detta går att skriva om
-    # ny funktion för att definiera kontakt- och bc-ytor osv.
-    Gmsh.initialize()
-    gmsh.option.set_number("General.Verbosity", 2)
-
-    slave_coords = zeros(length(nₘ), 2)
-    bot_coords = zeros(length(n_bot), 2)
-
-    for (i, node) in enumerate(nₛ)
-        slave_coords[i, :] = dh.grid.nodes[node].x
-    end
-
-    for (i, node) in enumerate(n_bot)
-        bot_coords[i, :] = dh.grid.nodes[node].x
-    end
-
-    # Behöver specificera sorteringen m.a.på x
-    #sortslices(master_coords,dims=1)
-    slave_coords = slave_coords[sortperm(slave_coords[:, 1]), :]
-    bot_coords = bot_coords[sortperm(bot_coords[:, 1]), :]
-    #sortslices(bot_coords, dims=1)
-
-    Points = []
-    append!(Points, gmsh.model.geo.add_point(bot_coords[1, 1], bot_coords[1, 2], 0.0, 0.1))
-    for (x, y) in eachrow(slave_coords)
-        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, 0.1))
-    end
-    append!(Points, gmsh.model.geo.add_point(bot_coords[end, 1], bot_coords[end, 2], 0.0, 0.1))
-
-
-    Lines = Vector{Int32}()
-    #append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
-    append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
-    for (i, x) in enumerate(eachrow(slave_coords[1:end, :]))
-        @show i
-        append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
-    end
-
-    append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
-
-    Loop = gmsh.model.geo.add_curve_loop(Lines[:])
-
-    Surf = gmsh.model.geo.add_plane_surface([Loop])
-
-    gmsh.model.geo.synchronize()
-    #gmsh.model.mesh.generate(2)
-    #gmsh.model.mesh.
-    grid = mktempdir() do dir
-        path = joinpath(dir, filename * ".msh")
-        gmsh.write(path)
-        #togrid(path)
-    end
-    Gmsh.finalize()
-    return grid
-end
+=#

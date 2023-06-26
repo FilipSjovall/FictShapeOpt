@@ -172,7 +172,7 @@ function solver_C(dh, coord)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 5
+    for loadstep ∈ 1 : 1
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
@@ -423,7 +423,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1:10
+    for loadstep ∈ 1 : 1
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual

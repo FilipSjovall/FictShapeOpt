@@ -4,10 +4,7 @@ K    = create_sparsity_pattern(dh)
 kktnorm = 1.0
 # Boundary values and associated dofs
 bcdof,bcval = setBCLin(0.0,dh)
-# Sensitivities
-∂g_∂x = zeros(size(a))
-∂g_∂u = zeros(size(d))
-∂rᵤ_∂x= similar(K)
+
 dr_dd = similar(K)
 # Material parameters
 mp₀   = [1.0 1.0]
@@ -37,20 +34,3 @@ global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.2
 global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.2
 global low           = xmin;
 global upp           = xmax;
-
-
-function postprocess_opt(Ψ, dh, str)
-    begin
-        vtk_grid(str, dh) do vtkfile
-            vtk_point_data(vtkfile, dh, Ψ)
-        end
-    end
-end
-
-function postprocess(a, dh)
-    begin
-        vtk_grid("hyperelasticity_2", dh) do vtkfile
-            vtk_point_data(vtkfile, dh, a)
-        end
-    end
-end

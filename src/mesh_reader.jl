@@ -7,6 +7,22 @@ using  FerriteGmsh
 using  FerriteMeshParser
 using  Gmsh
 #file = open(mesh_path,"r")
+function postprocess_opt(Ψ, dh, str)
+    begin
+        vtk_grid(str, dh) do vtkfile
+            vtk_point_data(vtkfile, dh, Ψ)
+        end
+    end
+end
+
+function postprocess(a, dh)
+    begin
+        vtk_grid("hyperelasticity_2", dh) do vtkfile
+            vtk_point_data(vtkfile, dh, a)
+        end
+    end
+end
+
 function getMesh_ASCII(filename)
 
     mesh_path = "data//Quadratic//"*filename
@@ -624,4 +640,298 @@ function index_nod_to_grid(dh, coord)
         end
     end
     return index_register
+end
+
+function remeshCircle(filename)
+    # Funkar för tillfället bara för circle som master men detta går att skriva om
+    # ny funktion för att definiera kontakt- och bc-ytor osv.
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+    master_coords = zeros(length(nₘ), 2)
+    top_coords = zeros(length(n_top), 2)
+
+    for (i, node) in enumerate(nₘ)
+        master_coords[i, :] = dh.grid.nodes[node].x
+    end
+
+    for (i, node) in enumerate(n_top)
+        top_coords[i, :] = dh.grid.nodes[node].x
+    end
+
+    # Behöver specificera sorteringen m.a.på x
+    #sortslices(master_coords,dims=1)
+    master_coords = master_coords[sortperm(master_coords[:, 1]), :]
+    top_coords = top_coords[sortperm(top_coords[:, 1]), :]
+    #sortslices(top_coords, dims=1)
+
+    Points = []
+    append!(Points, gmsh.model.geo.add_point(top_coords[1, 1], top_coords[1, 2], 0.0, 0.1))
+    for (x, y) in eachrow(master_coords)
+        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, 0.1))
+    end
+    append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, 0.1))
+
+
+    Lines = Vector{Int32}()
+    #append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
+    for (i, x) in enumerate(eachrow(master_coords[1:end, :]))
+        #@show i
+        append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
+    end
+    append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
+    append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
+
+    Loop = gmsh.model.geo.add_curve_loop(Lines[:])
+
+    Surf = gmsh.model.geo.add_plane_surface([Loop])
+
+    gmsh.model.geo.synchronize()
+
+    # Make physical group of slave nodes
+    gmsh.model.add_physical_group(1, Lines[3:end-2], -1, "Γ_m")
+    gmsh.model.add_physical_group(2, [Surf], -1, " hej ")
+
+
+    gmsh.model.mesh.generate(2)
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
+    return grid
+end
+
+function remeshBox(filename)
+    # Funkar för tillfället bara för circle som master men detta går att skriva om
+    # ny funktion för att definiera kontakt- och bc-ytor osv.
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+    # init
+    slave_coords = zeros(length(nₛ), 2)
+    bot_coords = zeros(length(n_bot), 2)
+
+    # loop over node sets
+    for (i, node) in enumerate(nₛ)
+        slave_coords[i, :] = dh.grid.nodes[node].x
+    end
+
+    for (i, node) in enumerate(n_bot)
+        bot_coords[i, :] = dh.grid.nodes[node].x
+    end
+
+    # Behöver specificera sorteringen m.a.p x
+    slave_coords = slave_coords[sortperm(slave_coords[:, 1]), :]
+
+    bot_coords = bot_coords[sortperm(bot_coords[:, 1]), :]
+
+    # add points gmsh
+    Points = []
+    append!(Points, gmsh.model.geo.add_point(bot_coords[1, 1], bot_coords[1, 2], 0.0, 0.1))
+    for (x, y) in eachrow(slave_coords)
+        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, 0.1)) # sätt in h = ... hur fint nät?
+    end
+    append!(Points, gmsh.model.geo.add_point(bot_coords[end, 1], bot_coords[end, 2], 0.0, 0.1))
+
+    # lines through points
+    Lines = Vector{Int32}()
+    append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
+    for (i, x) in enumerate(eachrow(slave_coords[1:end, :])) # Iterator.reverse
+        #@show i
+        append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
+    end
+    append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
+
+    # patch it up
+    Loop = gmsh.model.geo.add_curve_loop(Lines[:])
+    Surf = gmsh.model.geo.add_plane_surface([Loop])
+
+    gmsh.model.geo.synchronize()
+
+    # Make physical group of slave nodes
+    gmsh.model.add_physical_group(1, Lines[3:end-2], -1, "Γ_s")
+    gmsh.model.add_physical_group(2, [Surf], -1, " hej ")
+
+
+    gmsh.model.mesh.generate(2)
+    #gmsh.model.mesh.
+    #
+    gridB = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
+    return gridB
+end
+
+function getMasterCoord_remeshed(dhB)
+    master_coords = zeros(length(dhB.grid.facesets[""]) + 1, 2)
+    i = 0
+    for cell in CellIterator(dhB)
+        for face in 1:nfaces(cell)
+            if (cellid(cell), face) in dhB.grid.facesets[""]
+                #@show cell
+                face_nods = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
+                node_ids = cell.nodes[face_nods]
+                X1 = dhB.grid.nodes[node_ids[1]].x
+                X2 = dhB.grid.nodes[node_ids[2]].x
+                if X1 ∉ eachrow(master_coords)
+                    i += 1
+                    #append!(master_coords, X1)
+                    master_coords[i, :] = X1
+                end
+                if X2 ∉ eachrow(master_coords)
+                    i += 1
+                    #append!(master_coords, X2)
+                    master_coords[i, :] = X2
+                end
+            end
+        end
+    end
+    return master_coords
+end
+
+function getSlaveCoord_remeshed(dhC)
+    slave_coords = zeros(length(dhC.grid.facesets[""]) + 1, 2)
+    i = 0
+    for cell in CellIterator(dhC)
+        for face in 1:nfaces(cell)
+            if (cellid(cell), face) in dhC.grid.facesets[""]
+                #@show cell
+                face_nods = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
+                node_ids = cell.nodes[face_nods]
+                X1 = dhC.grid.nodes[node_ids[1]].x
+                X2 = dhC.grid.nodes[node_ids[2]].x
+                if X1 ∉ eachrow(slave_coords)
+                    i += 1
+                    #append!(slave_coords, X1)
+                    slave_coords[i, :] = X1
+                end
+                if X2 ∉ eachrow(slave_coords)
+                    i += 1
+                    #append!(slave_coords, X2)
+                    slave_coords[i, :] = X2
+                end
+            end
+        end
+    end
+    return slave_coords
+end
+
+function reMeshGrids!(dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,contact_nods,order,freec_dofs,free_d,locked_d,bcdof_o,bcval_o,d,dh0,coord₀)
+    gridB = remeshBox("reBox")
+    gridC = remeshCircle("reCircle")
+
+    dhC = DofHandler(gridC)
+    add!(dhC, :u, 2)
+    close!(dhC)
+
+    dhB = DofHandler(gridB)
+    add!(dhB, :u, 2)
+    close!(dhB)
+
+    masters = getMasterCoord_remeshed(dhB)
+
+    slaves = getSlaveCoord_remeshed(dhC)
+
+    # Merge into one grid
+    grid_tot = merge_grids(gridB, gridC; tol=1e-6)
+
+    # Create dofhandler with displacement field u
+    global dh = nothing
+    global dh = DofHandler(grid_tot)
+
+    add!(dh, :u, 2)
+    close!(dh)
+
+    # Extract CALFEM-style matrices
+    global coord, enod = getTopology(dh)
+    global register = index_nod_to_grid(dh, coord)
+
+    addfaceset!(dh.grid, "Γ_slave", x -> x ∈ eachrow(slaves))
+    global Γs = getfaceset(dh.grid, "Γ_slave")
+    addnodeset!(dh.grid, "nₛ", x -> x ∈ eachrow(slaves))
+    global nₛ = getnodeset(dh.grid, "nₛ")
+
+    addfaceset!(dh.grid, "Γ_master", x -> x ∈ eachrow(masters))
+    global Γm = getfaceset(dh.grid, "Γ_master")
+    addnodeset!(dh.grid, "nₘ", x -> x ∈ eachrow(masters))
+    global nₘ = getnodeset(dh.grid, "nₘ")
+
+    dhB = nothing
+    dhC = nothing
+
+    # Extract all nbr nodes and dofs
+    global contact_dofs = getContactDofs(nₛ, nₘ)
+    global contact_nods = getContactNods(nₛ, nₘ)
+    global order = Dict{Int64,Int64}()
+    for (i, nod) ∈ enumerate(contact_nods)
+        push!(order, nod => i)
+    end
+    global freec_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
+
+    # Define top nodeset for displacement controlled loading
+    addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.5)
+    Γ_top = getnodeset(dh.grid, "Γ_top")
+
+    addnodeset!(dh.grid, "n_top", x -> x[2] ≈ 1.5)
+    n_top = getnodeset(dh.grid, "n_top")
+
+    # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
+    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
+    Γ_bot = getnodeset(dh.grid, "Γ_bot")
+
+    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.0)
+    n_bot = getnodeset(dh.grid, "n_bot")
+
+    # Final preparations for contact
+    global X = getX(dh)
+    global coord = getCoordfromX(X)
+
+    # Init fictious
+
+
+    Γ_robin = union(
+        getfaceset(dh.grid, "Γ_slave"),
+        getfaceset(dh.grid, "Γ_master")
+    )
+    n_robin = union(
+        getnodeset(dh.grid, "nₛ"),
+        getnodeset(dh.grid, "nₘ")
+    )
+
+    #for inod in nodx
+    #   append!(free_d,register[inod,2]*2-1)
+    #end
+    free_d = []
+    for jnod in n_robin
+        append!(free_d, register[jnod, 2] )
+    end
+
+    locked_d = setdiff(1:dh.ndofs.x,free_d)
+
+    # boundary conditions for contact analysis
+    bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+    bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+    bcdof_o = [bcdof_top_o; bcdof_bot_o]
+    ϵᵢⱼₖ = sortperm(bcdof_o)
+    global bcdof_o = bcdof_o[ϵᵢⱼₖ]
+    global bcval_o = bcdof_o .* 0.0
+
+    # - For Linear solver..
+    pdofs = bcdof_o
+    fdofs = setdiff(1:dh.ndofs.x, pdofs)
+
+
+    global dh0    = deepcopy(dh)
+    global coord₀ = deepcopy(coord)
+    d   = zeros(size(a))
+    d .= 0.0
+
+
+
+
 end
