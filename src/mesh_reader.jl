@@ -573,7 +573,7 @@ end
 
 function getContactDofs(nₛ, nₘ)
     contact_dofs = Int64[]
-    register = getNodeDofs(dh)
+    global register = getNodeDofs(dh)
     for node_nbr in nₛ
         for dof in 1:2
             append!(contact_dofs, register[node_nbr, dof])
@@ -660,27 +660,30 @@ function remeshCircle(filename)
     end
 
     # Behöver specificera sorteringen m.a.på x
-    #sortslices(master_coords,dims=1)
     master_coords = master_coords[sortperm(master_coords[:, 1]), :]
     top_coords = top_coords[sortperm(top_coords[:, 1]), :]
-    #sortslices(top_coords, dims=1)
 
     Points = []
-    append!(Points, gmsh.model.geo.add_point(top_coords[1, 1], top_coords[1, 2], 0.0, 0.1))
-    for (x, y) in eachrow(master_coords)
+    #append!(Points, gmsh.model.geo.add_point(top_coords[1, 1], top_coords[1, 2], 0.0, 0.1))
+    #for (x, y) in eachrow(master_coords)
+    #    append!(Points, gmsh.model.geo.add_point(x, y, 0.0, 0.1))
+    #end
+    #append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, 0.1))
+    append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, 0.1))
+    for (x, y) in Iterators.reverse(eachrow(master_coords))
         append!(Points, gmsh.model.geo.add_point(x, y, 0.0, 0.1))
     end
-    append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, 0.1))
+    append!(Points, gmsh.model.geo.add_point(top_coords[1, 1], top_coords[1, 2], 0.0, 0.1))
 
 
     Lines = Vector{Int32}()
     #append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
+    append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
     for (i, x) in enumerate(eachrow(master_coords[1:end, :]))
-        #@show i
         append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
     end
     append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
-    append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
+
 
     Loop = gmsh.model.geo.add_curve_loop(Lines[:])
 
@@ -694,6 +697,8 @@ function remeshCircle(filename)
 
 
     gmsh.model.mesh.generate(2)
+    #gmsh.model.mesh.reverse(2)
+
     grid = mktempdir() do dir
         path = joinpath(filename * ".msh")
         gmsh.write(path)
@@ -739,11 +744,9 @@ function remeshBox(filename)
     Lines = Vector{Int32}()
     append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
     for (i, x) in enumerate(eachrow(slave_coords[1:end, :])) # Iterator.reverse
-        #@show i
         append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
     end
     append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
-
     # patch it up
     Loop = gmsh.model.geo.add_curve_loop(Lines[:])
     Surf = gmsh.model.geo.add_plane_surface([Loop])
@@ -754,9 +757,9 @@ function remeshBox(filename)
     gmsh.model.add_physical_group(1, Lines[3:end-2], -1, "Γ_s")
     gmsh.model.add_physical_group(2, [Surf], -1, " hej ")
 
-
     gmsh.model.mesh.generate(2)
-    #gmsh.model.mesh.
+
+    #gmsh.model.mesh.reverse(2)
     #
     gridB = mktempdir() do dir
         path = joinpath(filename * ".msh")
@@ -833,12 +836,12 @@ function reMeshGrids!(dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,cont
     add!(dhB, :u, 2)
     close!(dhB)
 
-    masters = getMasterCoord_remeshed(dhB)
+    masters = getMasterCoord_remeshed(dhC)
 
-    slaves = getSlaveCoord_remeshed(dhC)
+    slaves = getSlaveCoord_remeshed(dhB)
 
     # Merge into one grid
-    grid_tot = merge_grids(gridB, gridC; tol=1e-6)
+    grid_tot = merge_grids(gridC, gridB; tol=1e-6)
 
     # Create dofhandler with displacement field u
     global dh = nothing
@@ -849,7 +852,7 @@ function reMeshGrids!(dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,cont
 
     # Extract CALFEM-style matrices
     global coord, enod = getTopology(dh)
-    global register = index_nod_to_grid(dh, coord)
+    global register    = index_nod_to_grid(dh, coord)
 
     addfaceset!(dh.grid, "Γ_slave", x -> x ∈ eachrow(slaves))
     global Γs = getfaceset(dh.grid, "Γ_slave")
@@ -867,6 +870,7 @@ function reMeshGrids!(dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,cont
     # Extract all nbr nodes and dofs
     global contact_dofs = getContactDofs(nₛ, nₘ)
     global contact_nods = getContactNods(nₛ, nₘ)
+    global order = nothing
     global order = Dict{Int64,Int64}()
     for (i, nod) ∈ enumerate(contact_nods)
         push!(order, nod => i)
@@ -875,17 +879,17 @@ function reMeshGrids!(dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,cont
 
     # Define top nodeset for displacement controlled loading
     addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.5)
-    Γ_top = getnodeset(dh.grid, "Γ_top")
+    global Γ_top = getnodeset(dh.grid, "Γ_top")
 
     addnodeset!(dh.grid, "n_top", x -> x[2] ≈ 1.5)
-    n_top = getnodeset(dh.grid, "n_top")
+    global n_top = getnodeset(dh.grid, "n_top")
 
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
     addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
-    Γ_bot = getnodeset(dh.grid, "Γ_bot")
+    global Γ_bot = getnodeset(dh.grid, "Γ_bot")
 
     addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.0)
-    n_bot = getnodeset(dh.grid, "n_bot")
+    global n_bot = getnodeset(dh.grid, "n_bot")
 
     # Final preparations for contact
     global X = getX(dh)
@@ -894,11 +898,11 @@ function reMeshGrids!(dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,cont
     # Init fictious
 
 
-    Γ_robin = union(
+    global Γ_robin = union(
         getfaceset(dh.grid, "Γ_slave"),
         getfaceset(dh.grid, "Γ_master")
     )
-    n_robin = union(
+    global n_robin = union(
         getnodeset(dh.grid, "nₛ"),
         getnodeset(dh.grid, "nₘ")
     )
@@ -906,30 +910,30 @@ function reMeshGrids!(dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,cont
     #for inod in nodx
     #   append!(free_d,register[inod,2]*2-1)
     #end
-    free_d = []
+    global free_d = []
     for jnod in n_robin
         append!(free_d, register[jnod, 2] )
     end
 
-    locked_d = setdiff(1:dh.ndofs.x,free_d)
+    global locked_d = setdiff(1:dh.ndofs.x,free_d)
 
     # boundary conditions for contact analysis
     bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
-    bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+    bcdof_bot_o, _ = setBCXY( 0.0, dh, Γ_bot)
     bcdof_o = [bcdof_top_o; bcdof_bot_o]
     ϵᵢⱼₖ = sortperm(bcdof_o)
     global bcdof_o = bcdof_o[ϵᵢⱼₖ]
     global bcval_o = bcdof_o .* 0.0
 
     # - For Linear solver..
-    pdofs = bcdof_o
-    fdofs = setdiff(1:dh.ndofs.x, pdofs)
+    global pdofs = bcdof_o
+    global fdofs = setdiff(1:dh.ndofs.x, pdofs)
 
 
     global dh0    = deepcopy(dh)
     global coord₀ = deepcopy(coord)
-    d   = zeros(size(a))
-    d .= 0.0
+    global d   = zeros(size(a))
+    global d .= 0.0
 
 
 

@@ -243,7 +243,7 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
    # ---------------------------------- #
    # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #
    # ---------------------------------- #
-
+   # @show normals
    return τ_c
 end
 

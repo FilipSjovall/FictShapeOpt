@@ -163,16 +163,16 @@ function solver_C(dh, coord)
     bcval = [bcval_top; bcval_bot]
 
     ϵᵢⱼₖ  = sortperm(bcdof)
-    bcdof = bcdof[ϵᵢⱼₖ]
-    bcval = bcval[ϵᵢⱼₖ]
+    global bcdof = bcdof[ϵᵢⱼₖ]
+    global bcval = bcval[ϵᵢⱼₖ]
 
     # - For Linear solver..
-    pdofs = bcdof
-    fdofs = setdiff(1:dh.ndofs.x, pdofs)
+    global pdofs = bcdof
+    global fdofs = setdiff(1:dh.ndofs.x, pdofs)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 1
+    for loadstep ∈ 1 : 5
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
@@ -195,13 +195,14 @@ function solver_C(dh, coord)
             println("Iteration: ", iter, " Residual: ", residual)
 
             postprocess_opt(a, dh, "contact_mesh" * string(loadstep))
-
+            #=
             σx, σy = StressExtract(dh, a, mp)
             vtk_grid("contact" * string(loadstep) , dh) do vtkfile
                 vtk_point_data(vtkfile, dh, a) # displacement field
                 vtk_point_data(vtkfile, σx, "σx")
                 vtk_point_data(vtkfile, σy, "σy")
-            end
+            =#
+            #end
         end
     end
     fill!(Fₑₓₜ, 0.0)
@@ -285,8 +286,6 @@ function fictitious_solver_C(d, dh0, coord₀)
     end
     return Ψ, dh0, Kψ, Fᵢₙₜ, λ
 end
-
-
 
 # Solver for hertz contact
 function solver_C2(dh, coord)
@@ -396,43 +395,41 @@ function fictitious_solver_with_contact(d, dh0, coord₀)
     #  ----- #
     # Init   #
     #  ----- #
-    global Kψ = create_sparsity_pattern(dh)
-    global Ψ = zeros(dh.ndofs.x)
-    global Fᵢₙₜ = zeros(dh.ndofs.x)
-    global Fₑₓₜ = zeros(dh.ndofs.x)
-    global Ψ = zeros(dh.ndofs.x)
-    global ΔΨ = zeros(dh.ndofs.x)
-    global res = zeros(dh.ndofs.x)
+    global Kψ = create_sparsity_pattern(dh0)
+    global Ψ = zeros(dh0.ndofs.x)
+    global Fᵢₙₜ = zeros(dh0.ndofs.x)
+    global Fₑₓₜ = zeros(dh0.ndofs.x)
+    global Ψ = zeros(dh0.ndofs.x)
+    global ΔΨ = zeros(dh0.ndofs.x)
+    global res = zeros(dh0.ndofs.x)
     res = zeros(ndof)
-    bcdof_top, bcval_top = setBCXY(0.0, dh, Γ_top)
-    bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
-    bcdof = [bcdof_top; bcdof_bot]
-    bcval = [bcval_top; bcval_bot]
+    bcdof_top, bcval_top = setBCXY(0.0, dh0, Γ_top)
+    bcdof_bot, bcval_bot = setBCXY(0.0, dh0, Γ_bot)
+    global bcdof = [bcdof_top; bcdof_bot]
+    global bcval = [bcval_top; bcval_bot]
 
     ϵᵢⱼₖ = sortperm(bcdof)
-    bcdof = bcdof[ϵᵢⱼₖ]
-    bcval = bcval[ϵᵢⱼₖ]
+    global bcdof = bcdof[ϵᵢⱼₖ]
+    global bcval = bcval[ϵᵢⱼₖ]
 
-    # Struct - problem {dh,bcs,mp}
+    # Struct - problem {dh0,bcs,mp}
 
-    pdofs = bcdof
-    fdofs = setdiff(1:ndof, pdofs)
+    global pdofs = bcdof
+    global fdofs = setdiff(1:ndof, pdofs)
     # ---------- #
     # Set params # // Kanske som input till solver???
     # ---------- #
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 1
+    for loadstep ∈ 1 : 10
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
         iter = 0
         λ = 0.1 * loadstep
         fill!(ΔΨ, 0.0)
-
         println("Starting equilibrium iteration at loadstep: ", loadstep)
-
         # # # # # # # # # #
         # Newton solve.  #
         # # # # # # # # # #
@@ -447,7 +444,8 @@ function fictitious_solver_with_contact(d, dh0, coord₀)
             residual = norm(res, 2)
             Ψ[bcdof] = bcval
             println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
-            postprocess_opt(Ψ, dh, "fict_def_low_penalty" * string(loadstep))
+            postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
+            #τ_c = ExtractContactTraction(Ψ, μ, coord₀)
         end
     end
     return Ψ, dh0, Kψ, Fᵢₙₜ, λ

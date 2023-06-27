@@ -28,6 +28,9 @@ grid2 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.001, 0.05)
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
 
+grid1 = nothing
+grid2 = nothing
+
 # Create dofhandler with displacement field u
 global dh = DofHandler(grid_tot)
 
@@ -37,7 +40,7 @@ close!(dh)
 
 # Extract CALFEM-style matrices
 global coord, enod = getTopology(dh)
-register = index_nod_to_grid(dh, coord)
+global register = index_nod_to_grid(dh, coord)
 
 
 # ------------------ #
@@ -69,17 +72,17 @@ global freec_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
 
 # Define top nodeset for displacement controlled loading
 addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.5)
-Γ_top = getnodeset(dh.grid, "Γ_top")
+global Γ_top = getnodeset(dh.grid, "Γ_top")
 
 addnodeset!(dh.grid, "n_top", x -> x[2] ≈ 1.5)
-n_top = getnodeset(dh.grid, "n_top")
+global n_top = getnodeset(dh.grid, "n_top")
 
 # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
 addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
-Γ_bot = getnodeset(dh.grid, "Γ_bot")
+global Γ_bot = getnodeset(dh.grid, "Γ_bot")
 
 addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.0)
-n_bot = getnodeset(dh.grid, "n_bot")
+global n_bot = getnodeset(dh.grid, "n_bot")
 
 # Final preparations for contact
 global register = getNodeDofs(dh)
@@ -89,11 +92,11 @@ global coord = getCoordfromX(X)
 # Init fictious
 
 global coord₀ = deepcopy(coord)
-Γ_robin = union(
+global Γ_robin = union(
     getfaceset(dh.grid, "Γ_slave"),
     getfaceset(dh.grid, "Γ_master")
 )
-n_robin = union(
+global n_robin = union(
     getnodeset(dh.grid, "nₛ"),
     getnodeset(dh.grid, "nₘ")
 )
@@ -101,12 +104,12 @@ n_robin = union(
 #for inod in nodx
 #   append!(free_d,register[inod,2]*2-1)
 #end
-free_d = []
+global free_d = []
 for jnod in n_robin
     append!(free_d, register[jnod, 2] )
 end
 
-locked_d = setdiff(1:dh.ndofs.x,free_d)
+global locked_d = setdiff(1:dh.ndofs.x,free_d)
 
 
 
@@ -132,45 +135,41 @@ global bcdof_o = bcdof_o[ϵᵢⱼₖ]
 global bcval_o = bcdof_o .* 0.0
 
 # - For Linear solver..
-pdofs = bcdof_o
-fdofs = setdiff(1:dh.ndofs.x, pdofs)
+global pdofs = bcdof_o
+global fdofs = setdiff(1:dh.ndofs.x, pdofs)
 
 
 global dh0 = deepcopy(dh)
-d   = zeros(size(a))
-d .= 0.0
+global d   = zeros(size(a))
+global d .= 0.0
 global ∂rᵤ_∂x = similar(K)
 global dr_dd = similar(K)
 global ∂rψ_∂d = similar(K)
 global λᵤ = similar(a)
 global λψ = similar(a)
 
-
 include("initOptLin.jl")
 
-#reMeshGrids()
-
-#@run reMeshGrids!(dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, X, bcdof_o, bcval_o, d)
 
 function Optimize(dh)
 
     # Flytta allt nedan till init_opt?
-        global dh0 = deepcopy(dh)
-        λψ   = similar(a)
-        λᵤ   = similar(a)
-        λᵥₒₗ = similar(a)
-        Vₘₐₓ = 1.1 * volume(dh, coord, enod)
+        global dh0  = deepcopy(dh)
+        global λψ   = similar(a)
+        global λᵤ   = similar(a)
+        global λᵥₒₗ = similar(a)
+        Vₘₐₓ        = 1.1 * volume(dh, coord, enod)
         global ε    = 1e5
         global μ    = 1e4
-        l    = similar(a)
-        l   .= 0.5
-        tol  = 1e-6
+        #l    = similar(a)
+        #l   .= 0.5
+        tol     = 1e-6
         OptIter = 0
-        coord₀  = coord
-        g_hist = zeros(200)
-        v_hist = zeros(200)
-        T = zeros(size(a))
-        T[bcdof_bot_o] .= 1.0
+        global coord₀  = coord
+        g_hist         = zeros(200)
+        v_hist         = zeros(200)
+        global T = zeros(size(a))
+        global T[bcdof_bot_o] .= 1.0
     #
     while kktnorm > tol || OptIter < 3 #&& OptIter < 50
 
@@ -197,7 +196,7 @@ function Optimize(dh)
             global xold2
             global xmin
             global xmax
-            global low#A() = A(Float64[],[]).
+            global low #A() = A(Float64[],[]).
             global C
             global d2
             global a0
@@ -210,18 +209,19 @@ function Optimize(dh)
             global change
             global λ
             global g_ini
-            global pdofs = bcdof_o
-            global fdofs = setdiff(1:length(a), pdofs)
+            global pdofs    = bcdof_o
+            global fdofs    = setdiff(1:length(a), pdofs)
             global locked_d = setdiff(1:length(a),free_d)
             global low
             global upp
             global traction
         # # # # # # # # # # # # # #
         OptIter += 1
+
         if OptIter % 1 == 0
             reMeshGrids!(dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
             # Initialize tangents
-            global K = create_sparsity_pattern(dh) # behövs
+            global K  = create_sparsity_pattern(dh) # behövs
             global Kψ = create_sparsity_pattern(dh) # behövs
             global a = zeros(dh.ndofs.x) # behövs
             global Ψ = zeros(dh.ndofs.x) # behövs
@@ -229,6 +229,7 @@ function Optimize(dh)
             global rc = zeros(dh.ndofs.x) # behövs?
             global Fₑₓₜ = zeros(dh.ndofs.x) # behövs ?
             global a = zeros(dh.ndofs.x) # behövs ?
+            global d = similar(a)
             global Δa = zeros(dh.ndofs.x) # behövs inte
             global res = zeros(dh.ndofs.x) # behövs inte
             global ∂rᵤ_∂x = similar(K) # behövs inte om vi har lokal funktion?
@@ -239,6 +240,7 @@ function Optimize(dh)
             global ∂rᵤ_∂x = similar(K) # behövs inte om vi har lokal funktion?
             global λᵤ = similar(a) # behövs inte om vi har lokal funktion?
             global λψ = similar(a) # behövs inte om vi har lokal funktion?
+            global λᵥₒₗ = similar(a) # behövs inte om vi har lokal funktion?
             global m = 1 # behöver inte skrivas över
             global n_mma = length(d) # behöver skrivas över
             global epsimin = 0.0000001 # behöver inte skrivas över
@@ -246,7 +248,7 @@ function Optimize(dh)
             global xold1 = xval # behöver skrivas över
             global xold2 = xval # behöver skrivas över
             global xmin = -ones(n_mma) / 20 # behöver skrivas över
-            global xmax = ones(n_mma) / 20 # behöver skrivas över
+            global xmax = ones(n_mma)  / 20 # behöver skrivas över
             global C = 1000 * ones(m) # behöver inte skrivas över
             global d2 = zeros(m) # behöver inte skrivas över
             global a0 = 1 # behöver inte skrivas över
@@ -258,21 +260,30 @@ function Optimize(dh)
             global outit = 0 # behöver inte skrivas över
             global change = 1 # behöver inte skrivas över
             global xmin[contact_dofs] .= -0.05 # behöver skrivas över
-            global xmax[contact_dofs] .= 0.05 # behöver skrivas över
+            global xmax[contact_dofs] .=  0.05 # behöver skrivas över
             global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.2 # behöver skrivas över
             global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= 0.2 # behöver skrivas över
-            global low = xmin # behöver skrivas över
-            global upp = xmax # behöver skrivas över
-
+            global low        = xmin # behöver skrivas över
+            global upp        = xmax # behöver skrivas över
+            global d .= 0
+            #global d[free_d] .= 0.05
+            global bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+            global bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+            global bcdof_o = [bcdof_top_o; bcdof_bot_o]
+            ϵᵢⱼₖ = sortperm(bcdof_o)
+            global bcdof_o = bcdof_o[ϵᵢⱼₖ]
+            global bcval_o = bcdof_o .* 0.0
+            global T               = zeros(size(a))
+            global T[bcdof_bot_o] .= 1.0
         end
 
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
-        coord₀ = getCoord(getX(dh0), dh0) # x₀
+
+        global coord₀ = getCoord(getX(dh0), dh0) # x₀
         #Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀)
         Ψ, _, Kψ, _, λ = fictitious_solver_with_contact(d, dh0, coord₀)
-
         # # # # # #
         # Filter  #
         # # # # # #
@@ -285,11 +296,18 @@ function Optimize(dh)
         # # # # # # # # #
         a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord)
 
+        # # # # # # # # #
+        # Sensitivities #
+        # # # # # # # # #
+        ∂rᵤ_∂x = similar(K)
+        ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
+        dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
+
         # # # # # # #
         # Objective #
         # # # # # # #
         # Max reaction force
-        g            = -T' * Fᵢₙₜ
+        g     = - T' * Fᵢₙₜ
         ∂g_∂x = -(T' * ∂rᵤ_∂x)'
         ∂g_∂u = -(T' * K)'
         # Compliance
@@ -302,13 +320,6 @@ function Optimize(dh)
         #g         = contact_pnorm(X_ordered, a, ε, p)
         #∂g_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
         #∂g_∂u     = ForwardDiff.gradient(u -> contact_pnorm(X_ordered, u, ε, p), a)
-
-        # # # # # # # # #
-        # Sensitivities #
-        # # # # # # # # #
-        ∂rᵤ_∂x = similar(K)
-        ∂rᵤ_∂x       = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
-        dr_dd        = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 
         # # # # # # #
         # Adjoints  #
