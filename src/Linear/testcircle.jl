@@ -149,6 +149,69 @@ testvar  = 414
 sens_test = 1
 perturbation        = 1e-6
 X = getXfromCoord(coord)
+
+remesh = 1
+
+if remesh == 1
+    reMeshGrids!(dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
+    # Initialize tangents
+    global K = create_sparsity_pattern(dh) # behövs
+    global Kψ = create_sparsity_pattern(dh) # behövs
+    global a = zeros(dh.ndofs.x) # behövs
+    global Ψ = zeros(dh.ndofs.x) # behövs
+    global Fᵢₙₜ = zeros(dh.ndofs.x) # behövs?
+    global rc = zeros(dh.ndofs.x) # behövs?
+    global Fₑₓₜ = zeros(dh.ndofs.x) # behövs ?
+    global a = zeros(dh.ndofs.x) # behövs ?
+    global d = similar(a)
+    global Δa = zeros(dh.ndofs.x) # behövs inte
+    global res = zeros(dh.ndofs.x) # behövs inte
+    global ∂rᵤ_∂x = similar(K) # behövs inte om vi har lokal funktion?
+    global dr_dd = similar(K) # behövs inte om vi har lokal funktion?
+    global ∂rψ_∂d = similar(K) # behövs inte om vi har lokal funktion?
+    global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
+    global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
+    global ∂rᵤ_∂x = similar(K) # behövs inte om vi har lokal funktion?
+    global λᵤ = similar(a) # behövs inte om vi har lokal funktion?
+    global λψ = similar(a) # behövs inte om vi har lokal funktion?
+    global λᵥₒₗ = similar(a) # behövs inte om vi har lokal funktion?
+    global m = 1 # behöver inte skrivas över
+    global n_mma = length(d) # behöver skrivas över
+    global epsimin = 0.0000001 # behöver inte skrivas över
+    global xval = d[:] # behöver skrivas över
+    global xold1 = xval # behöver skrivas över
+    global xold2 = xval # behöver skrivas över
+    global xmin = -ones(n_mma) / 20 # behöver skrivas över
+    global xmax = ones(n_mma) / 20 # behöver skrivas över
+    global C = 1000 * ones(m) # behöver inte skrivas över
+    global d2 = zeros(m) # behöver inte skrivas över
+    global a0 = 1 # behöver inte skrivas över
+    global am = zeros(m) # behöver inte skrivas över
+    global outeriter = 0 # behöver inte skrivas över
+    global kkttol = 0.001 # behöver inte skrivas över
+    global changetol = 0.001 # behöver inte skrivas över
+    global kktnorm = kkttol + 10 # behöver inte skrivas över
+    global outit = 0 # behöver inte skrivas över
+    global change = 1 # behöver inte skrivas över
+    global xmin[contact_dofs] .= -0.05 # behöver skrivas över
+    global xmax[contact_dofs] .= 0.05 # behöver skrivas över
+    global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.2 # behöver skrivas över
+    global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= 0.2 # behöver skrivas över
+    global low = xmin # behöver skrivas över
+    global upp = xmax # behöver skrivas över
+    global d .= 0
+    #global d[free_d] .= 0.05
+    global bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+    global bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+    global bcdof_o = [bcdof_top_o; bcdof_bot_o]
+    ϵᵢⱼₖ = sortperm(bcdof_o)
+    global bcdof_o = bcdof_o[ϵᵢⱼₖ]
+    global bcval_o = bcdof_o .* 0.0
+    global T = zeros(size(a))
+    global T[bcdof_bot_o] .= 1.0
+end
+
+
 if sens_test==1
 
     # Test sensitivity

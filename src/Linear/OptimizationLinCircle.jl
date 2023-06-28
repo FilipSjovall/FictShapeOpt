@@ -160,7 +160,7 @@ function Optimize(dh)
         global λᵥₒₗ = similar(a)
         Vₘₐₓ        = 1.1 * volume(dh, coord, enod)
         global ε    = 1e5
-        global μ    = 1e4
+        global μ    = 1e3
         #l    = similar(a)
         #l   .= 0.5
         tol     = 1e-6
@@ -218,7 +218,7 @@ function Optimize(dh)
         # # # # # # # # # # # # # #
         OptIter += 1
 
-        if OptIter % 1 == 0
+        if OptIter % 10 == 0
             reMeshGrids!(dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
             # Initialize tangents
             global K  = create_sparsity_pattern(dh) # behövs
@@ -324,7 +324,7 @@ function Optimize(dh)
         # # # # # # #
         # Adjoints  #
         # # # # # # #
-        solveq!(λᵤ, K', ∂g_∂u, bcdof_o, bcval_o)
+        solveq!(λᵤ, K',  ∂g_∂u, bcdof_o, bcval_o)
         solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o, bcval_o)
 
         # # # # # # # # # # #

@@ -80,29 +80,29 @@ function drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
     return ∂rᵤ_∂x
 end
 
-function drΨ_dx_c(∂rΨ_∂x, dh, mp, t, Ψ, coord, enod, λ, d, Γ_robin, μ)
+function drΨ_dx_c(∂rΨ_∂x, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
     assembler = start_assemble(∂rΨ_∂x)
     ie = 0
-    for cell in CellIterator(dh)
+    for cell in CellIterator(dh0)
         ie += 1
         cell_dofs = celldofs(cell)
         kₑ = zeros(6, 6)
         fₑ = zeros(6)
-        kₑ, _ = assemElem(coord[enod[ie][2:end], :], Ψ[cell_dofs], mp, t)
+        kₑ, _ = assemElem(coord₀[enod[ie][2:end], :], Ψ[cell_dofs], mp₀, t)
         ke = zeros(6, 6)
         fe = zeros(6)
         for face in 1:nfaces(cell)
             if (cellid(cell), face) in Γ_robin
                 face_nods = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
                 face_dofs = [face_nods[1] * 2 - 1; face_nods[1] * 2; face_nods[2] * 2 - 1; face_nods[2] * 2]
-                Xf = coord[enod[ie][face_nods.+1], :]
+                Xf = coord₀[enod[ie][face_nods.+1], :]
                 ke[face_dofs, face_dofs], _ = Robin(Xf, Ψ[cell_dofs[face_dofs]], d[cell_dofs[face_dofs]], λ)
             end
         end
         assemble!(assembler, cell_dofs, kₑ + ke)
     end
     # Contact
-    X_ordered = getXfromCoord(coord)
+    X_ordered = getXfromCoord(coord₀)
     #X_ordered = getXinDofOrder(dh0, X, coord₀)
     Kc = ForwardDiff.jacobian(x -> contact_residual(x, Ψ, μ), X_ordered)
     ∂rΨ_∂x[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
