@@ -350,15 +350,19 @@ function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
     p2 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, h)
     p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h)
     p4 = gmsh.model.geo.add_point(x₀, y₀ + Δy, 0.0, h)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀, 0.0, h)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx / 2, y₀ + Δy, 0.0, h)
 
     # Add the lines
     l1 = gmsh.model.geo.add_line(p1, p4)
-    l2 = gmsh.model.geo.add_line(p4, p3)
-    l3 = gmsh.model.geo.add_line(p3, p2)
-    l4 = gmsh.model.geo.add_line(p2, p1)
+    l2 = gmsh.model.geo.add_line(p4, p6)
+    l3 = gmsh.model.geo.add_line(p6, p3)
+    l4 = gmsh.model.geo.add_line(p3, p2)
+    l5 = gmsh.model.geo.add_line(p2, p5)
+    l6 = gmsh.model.geo.add_line(p5, p1)
 
     # Create the closed curve loop and the surface
-    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4])
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6])
     surf = gmsh.model.geo.add_plane_surface([loop])
 
     # Synchronize the model
@@ -369,7 +373,13 @@ function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
     gmsh.model.add_physical_group(1, [l2], -1, "Γ2")
     gmsh.model.add_physical_group(1, [l3], -1, "Γ3")
     gmsh.model.add_physical_group(1, [l4], -1, "Γ4")
-    gmsh.model.add_physical_group(2, [surf])
+    gmsh.model.add_physical_group(1, [l5], -1, "Γ5")
+    gmsh.model.add_physical_group(1, [l6], -1, "Γ6")
+    gmsh.model.add_physical_group(2, [surf], 1)
+
+    gmsh.model.mesh.embed(0, [p5], 2 ,1)
+    gmsh.model.mesh.embed(0, [p6], 2, 1)
+
 
     gmsh.model.mesh.generate(2)
 
@@ -534,10 +544,31 @@ function setBCXY(bc_load, dh, nodes)
     for node in nodes
         xdof = nodeDofs[node, 1]
         ydof = nodeDofs[node, 2]
-        append!(bc_dof,xdof)
+
         append!(bc_dof, ydof)
-        append!(bc_val, 0.0)
         append!(bc_val, bc_load)
+        if dh.grid.nodes[node].x[1] ≈ 0.5
+            append!(bc_dof, xdof)
+            append!(bc_val, 0.0)
+        end
+    end
+    return bc_dof, bc_val
+end
+
+function setBCXY_both(bc_load, dh, nodes)
+    ## Find bc cell_dofs
+    bc_dof = Vector{Int64}()
+    bc_val = Vector{Float64}()
+    nodeDofs = getNodeDofs(dh)
+    for node in nodes
+        xdof = nodeDofs[node, 1]
+        ydof = nodeDofs[node, 2]
+
+        append!(bc_dof, ydof)
+        append!(bc_val, bc_load)
+
+        append!(bc_dof, xdof)
+        append!(bc_val, 0.0)
     end
     return bc_dof, bc_val
 end
@@ -642,7 +673,7 @@ function index_nod_to_grid(dh, coord)
     return index_register
 end
 
-function remeshCircle(filename)
+function remeshCircle(filename,h)
     # Funkar för tillfället bara för circle som master men detta går att skriva om
     # ny funktion för att definiera kontakt- och bc-ytor osv.
     Gmsh.initialize()
@@ -651,12 +682,11 @@ function remeshCircle(filename)
     master_coords = zeros(length(nₘ), 2)
     top_coords = zeros(length(n_top), 2)
 
-    for (i, node) in enumerate(nₘ)
-        master_coords[i, :] = dh.grid.nodes[node].x
-    end
-
     for (i, node) in enumerate(n_top)
         top_coords[i, :] = dh.grid.nodes[node].x
+    end
+    for (i, node) in enumerate(nₘ)
+        master_coords[i, :] = dh.grid.nodes[node].x
     end
 
     # Behöver specificera sorteringen m.a.på x
@@ -669,12 +699,12 @@ function remeshCircle(filename)
     #    append!(Points, gmsh.model.geo.add_point(x, y, 0.0, 0.1))
     #end
     #append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, 0.1))
-    append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, 0.1))
+    append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, h*4))
     for (x, y) in Iterators.reverse(eachrow(master_coords))
-        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, 0.1))
+        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h))
     end
-    append!(Points, gmsh.model.geo.add_point(top_coords[1, 1], top_coords[1, 2], 0.0, 0.1))
-
+    append!(Points, gmsh.model.geo.add_point(top_coords[1, 1], top_coords[1, 2], 0.0, h*4))
+    append!(Points, gmsh.model.geo.add_point(0.5, 1.5, 0.0, h*4))
 
     Lines = Vector{Int32}()
     #append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
@@ -682,17 +712,20 @@ function remeshCircle(filename)
     for (i, x) in enumerate(eachrow(master_coords[1:end, :]))
         append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
     end
+    append!(Lines, gmsh.model.geo.add_line(Points[end-1], Points[end]))
     append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
 
 
     Loop = gmsh.model.geo.add_curve_loop(Lines[:])
+    # 🍌 = gmsh.model.geo.remove_all_duplicates()
+
 
     Surf = gmsh.model.geo.add_plane_surface([Loop])
 
     gmsh.model.geo.synchronize()
 
     # Make physical group of slave nodes
-    gmsh.model.add_physical_group(1, Lines[3:end-2], -1, "Γ_m")
+    gmsh.model.add_physical_group(1, Lines[2:end-2], -1, "Γ_m")
     gmsh.model.add_physical_group(2, [Surf], -1, " hej ")
 
 
@@ -708,7 +741,7 @@ function remeshCircle(filename)
     return grid
 end
 
-function remeshBox(filename)
+function remeshBox(filename,h)
     # Funkar för tillfället bara för circle som master men detta går att skriva om
     # ny funktion för att definiera kontakt- och bc-ytor osv.
     Gmsh.initialize()
@@ -734,21 +767,37 @@ function remeshBox(filename)
 
     # add points gmsh
     Points = []
-    append!(Points, gmsh.model.geo.add_point(bot_coords[1, 1], bot_coords[1, 2], 0.0, 0.1))
+    append!(Points, gmsh.model.geo.add_point(bot_coords[1, 1], bot_coords[1, 2], 0.0, h*4))
     for (x, y) in eachrow(slave_coords)
-        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, 0.1)) # sätt in h = ... hur fint nät?
+        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h)) # sätt in h = ... hur fint nät?
     end
-    append!(Points, gmsh.model.geo.add_point(bot_coords[end, 1], bot_coords[end, 2], 0.0, 0.1))
+    append!(Points, gmsh.model.geo.add_point(bot_coords[end, 1], bot_coords[end, 2], 0.0, h*4))
+    # extra point to ensure we can place boundary condition in the very middle
+    append!(Points, gmsh.model.geo.add_point(0.5, 0.0, 0.0, h*4))
+
 
     # lines through points
     Lines = Vector{Int32}()
+
+
+    append!(Lines, gmsh.model.geo.add_line(Points[end-1], Points[end]))
     append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
-    for (i, x) in enumerate(eachrow(slave_coords[1:end, :])) # Iterator.reverse
+    for (i, x) in enumerate(eachrow(slave_coords[1:end, :]))
         append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
     end
     append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
+
+    #append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
+    #for (i, x) in enumerate(eachrow(slave_coords[1:end, :])) # Iterator.reverse
+    #    append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
+    #end
+    #append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
+
     # patch it up
     Loop = gmsh.model.geo.add_curve_loop(Lines[:])
+
+    gmsh.model.geo.remove_all_duplicates()
+
     Surf = gmsh.model.geo.add_plane_surface([Loop])
 
     gmsh.model.geo.synchronize()
@@ -770,17 +819,17 @@ function remeshBox(filename)
     return gridB
 end
 
-function getMasterCoord_remeshed(dhB)
-    master_coords = zeros(length(dhB.grid.facesets[""]) + 1, 2)
+function getMasterCoord_remeshed(dhC)
+    master_coords = zeros(length(dhC.grid.facesets[""]) + 1, 2)
     i = 0
-    for cell in CellIterator(dhB)
+    for cell in CellIterator(dhC)
         for face in 1:nfaces(cell)
-            if (cellid(cell), face) in dhB.grid.facesets[""]
+            if (cellid(cell), face) in dhC.grid.facesets[""]
                 #@show cell
                 face_nods = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
                 node_ids = cell.nodes[face_nods]
-                X1 = dhB.grid.nodes[node_ids[1]].x
-                X2 = dhB.grid.nodes[node_ids[2]].x
+                X1 = dhC.grid.nodes[node_ids[1]].x
+                X2 = dhC.grid.nodes[node_ids[2]].x
                 if X1 ∉ eachrow(master_coords)
                     i += 1
                     #append!(master_coords, X1)
@@ -797,17 +846,17 @@ function getMasterCoord_remeshed(dhB)
     return master_coords
 end
 
-function getSlaveCoord_remeshed(dhC)
-    slave_coords = zeros(length(dhC.grid.facesets[""]) + 1, 2)
+function getSlaveCoord_remeshed(dhB)
+    slave_coords = zeros(length(dhB.grid.facesets[""]) + 1, 2)
     i = 0
-    for cell in CellIterator(dhC)
+    for cell in CellIterator(dhB)
         for face in 1:nfaces(cell)
-            if (cellid(cell), face) in dhC.grid.facesets[""]
+            if (cellid(cell), face) in dhB.grid.facesets[""]
                 #@show cell
                 face_nods = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
                 node_ids = cell.nodes[face_nods]
-                X1 = dhC.grid.nodes[node_ids[1]].x
-                X2 = dhC.grid.nodes[node_ids[2]].x
+                X1 = dhB.grid.nodes[node_ids[1]].x
+                X2 = dhB.grid.nodes[node_ids[2]].x
                 if X1 ∉ eachrow(slave_coords)
                     i += 1
                     #append!(slave_coords, X1)
@@ -824,9 +873,9 @@ function getSlaveCoord_remeshed(dhC)
     return slave_coords
 end
 
-function reMeshGrids!(dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,contact_nods,order,freec_dofs,free_d,locked_d,bcdof_o,bcval_o,d,dh0,coord₀)
-    gridB = remeshBox("reBox")
-    gridC = remeshCircle("reCircle")
+function reMeshGrids!(h,dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,contact_nods,order,freec_dofs,free_d,locked_d,bcdof_o,bcval_o,d,dh0,coord₀)
+    gridB = remeshBox("reBox",h)
+    gridC = remeshCircle("reCircle",h)
 
     dhC = DofHandler(gridC)
     add!(dhC, :u, 2)
@@ -836,9 +885,10 @@ function reMeshGrids!(dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,cont
     add!(dhB, :u, 2)
     close!(dhB)
 
+    slaves = getSlaveCoord_remeshed(dhB)
+
     masters = getMasterCoord_remeshed(dhC)
 
-    slaves = getSlaveCoord_remeshed(dhB)
 
     # Merge into one grid
     grid_tot = merge_grids(gridC, gridB; tol=1e-6)

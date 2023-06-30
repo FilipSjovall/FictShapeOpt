@@ -20,9 +20,10 @@ include("..//mma.jl")
 
 #include("initLin.jl")
 
-
+r₀ = 0.5
 # Create two grids
-grid1 = createCircleMesh("circle", 0.5, 1.5, 0.5, 0.15)
+grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.15)
+#grid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 grid2 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.001, 0.05)
 
 # Merge into one grid
@@ -55,11 +56,20 @@ global nₛ = getnodeset(dh.grid, "nₛ")
 # ----------------- #
 # Create slave sets #
 # ----------------- #
-addfaceset!(dh.grid, "Γ_master", x -> ((x[1] - 0.5)^2 + (x[2] - 1.5)^2) ≈ 0.5^2 && x[2] < 1.5)
+
+addfaceset!(dh.grid, "Γ_master", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 && x[2] < 1.5)
 global Γm = getfaceset(dh.grid, "Γ_master")
 
-addnodeset!(dh.grid, "nₘ", x -> ((x[1] - 0.5)^2 + (x[2] - 1.5)^2) ≈ 0.5^2 && x[2] < 1.5)
+addnodeset!(dh.grid, "nₘ", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 && x[2] < 1.5)
 global nₘ = getnodeset(dh.grid, "nₘ")
+
+#=
+addfaceset!(dh.grid, "Γ_master", x -> x[2]≈1.0)
+global Γm = getfaceset(dh.grid, "Γ_master")
+
+addnodeset!(dh.grid, "nₘ", x -> x[2] ≈ 1.0)
+global nₘ = getnodeset(dh.grid, "nₘ")
+=#
 
 # Extract all nbr nodes and dofs
 global contact_dofs = getContactDofs(nₛ, nₘ)
@@ -134,6 +144,14 @@ bcdof_o = [bcdof_top_o; bcdof_bot_o]
 global bcdof_o = bcdof_o[ϵᵢⱼₖ]
 global bcval_o = bcdof_o .* 0.0
 
+bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
+ϵᵢⱼₖ = sortperm(bcdof_o)
+global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
+global bcval_o2 = bcdof_o2 .* 0.0
+
+
 # - For Linear solver..
 global pdofs = bcdof_o
 global fdofs = setdiff(1:dh.ndofs.x, pdofs)
@@ -147,6 +165,9 @@ global dr_dd = similar(K)
 global ∂rψ_∂d = similar(K)
 global λᵤ = similar(a)
 global λψ = similar(a)
+
+global Δ = -0.1
+global nloadsteps = 0
 
 include("initOptLin.jl")
 
@@ -218,8 +239,8 @@ function Optimize(dh)
         # # # # # # # # # # # # # #
         OptIter += 1
 
-        if OptIter % 10 == 0
-            reMeshGrids!(dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
+        if OptIter % 25 == 0 || OptIter == 1
+            reMeshGrids!(0.05, dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
             # Initialize tangents
             global K  = create_sparsity_pattern(dh) # behövs
             global Kψ = create_sparsity_pattern(dh) # behövs
@@ -229,7 +250,7 @@ function Optimize(dh)
             global rc = zeros(dh.ndofs.x) # behövs?
             global Fₑₓₜ = zeros(dh.ndofs.x) # behövs ?
             global a = zeros(dh.ndofs.x) # behövs ?
-            global d = similar(a)
+            global d = zeros(dh.ndofs.x)
             global Δa = zeros(dh.ndofs.x) # behövs inte
             global res = zeros(dh.ndofs.x) # behövs inte
             global ∂rᵤ_∂x = similar(K) # behövs inte om vi har lokal funktion?
@@ -248,7 +269,7 @@ function Optimize(dh)
             global xold1 = xval # behöver skrivas över
             global xold2 = xval # behöver skrivas över
             global xmin = -ones(n_mma) / 20 # behöver skrivas över
-            global xmax = ones(n_mma)  / 20 # behöver skrivas över
+            global xmax =  ones(n_mma)  / 20 # behöver skrivas över
             global C = 1000 * ones(m) # behöver inte skrivas över
             global d2 = zeros(m) # behöver inte skrivas över
             global a0 = 1 # behöver inte skrivas över
@@ -259,10 +280,10 @@ function Optimize(dh)
             global kktnorm = kkttol + 10 # behöver inte skrivas över
             global outit = 0 # behöver inte skrivas över
             global change = 1 # behöver inte skrivas över
-            global xmin[contact_dofs] .= -0.05 # behöver skrivas över
-            global xmax[contact_dofs] .=  0.05 # behöver skrivas över
+            global xmin[contact_dofs] .= -0.2 # behöver skrivas över
+            global xmax[contact_dofs] .=  0.2 # behöver skrivas över
             global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.2 # behöver skrivas över
-            global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= 0.2 # behöver skrivas över
+            global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.2 # behöver skrivas över
             global low        = xmin # behöver skrivas över
             global upp        = xmax # behöver skrivas över
             global d .= 0
@@ -273,8 +294,21 @@ function Optimize(dh)
             ϵᵢⱼₖ = sortperm(bcdof_o)
             global bcdof_o = bcdof_o[ϵᵢⱼₖ]
             global bcval_o = bcdof_o .* 0.0
+
+            bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+            bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+            bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
+            ϵᵢⱼₖ = sortperm(bcdof_o)
+            global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
+            global bcval_o2 = bcdof_o2 .* 0.0
+
             global T               = zeros(size(a))
             global T[bcdof_bot_o] .= 1.0
+            global nloadsteps      = nloadsteps + 10
+        end
+
+        if OptIter % 5 == 0
+            global dh0 = deepcopy(dh)
         end
 
         # # # # # # # # # # # # # #
@@ -283,7 +317,7 @@ function Optimize(dh)
 
         global coord₀ = getCoord(getX(dh0), dh0) # x₀
         #Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀)
-        Ψ, _, Kψ, _, λ = fictitious_solver_with_contact(d, dh0, coord₀)
+        Ψ, _, Kψ, _, λ = fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
         # # # # # #
         # Filter  #
         # # # # # #
@@ -294,7 +328,7 @@ function Optimize(dh)
         # # # # # # # # #
         # Equillibrium  #
         # # # # # # # # #
-        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord)
+        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord, Δ, nloadsteps)
 
         # # # # # # # # #
         # Sensitivities #
@@ -307,13 +341,13 @@ function Optimize(dh)
         # Objective #
         # # # # # # #
         # Max reaction force
-        g     = - T' * Fᵢₙₜ
-        ∂g_∂x = -(T' * ∂rᵤ_∂x)'
-        ∂g_∂u = -(T' * K)'
+        #g     = - T' * Fᵢₙₜ
+        #∂g_∂x = -(T' * ∂rᵤ_∂x)'
+        #∂g_∂u = -(T' * K)'
         # Compliance
-        #g = -a[pdofs]' * Fᵢₙₜ[pdofs]
-        #∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
-        #∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
+        g = -a[pdofs]' * Fᵢₙₜ[pdofs]
+        ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
+        ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
         # Max/Min λ
         #p = 2
         #X_ordered = getXfromCoord(coord)
@@ -325,7 +359,7 @@ function Optimize(dh)
         # Adjoints  #
         # # # # # # #
         solveq!(λᵤ, K',  ∂g_∂u, bcdof_o, bcval_o)
-        solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o, bcval_o)
+        solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
 
         # # # # # # # # # # #
         # Full sensitivity  #
@@ -345,10 +379,10 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
-        X, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, -10 * g, -10 * ∂g_∂d, g₁, ∂Ω∂d', low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, -10 * g, -10 * ∂g_∂d, g₁, ∂Ω∂d', low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
-        d      = X
+        d      = d_new
         change = norm(d .- xold1)
 
         # # # # # # # # # #
@@ -365,6 +399,7 @@ function Optimize(dh)
             coord = getCoord(getX(dh0), dh0)
             postprocess_opt(Ψ, dh0, "results/Shape_with_contact_n_constraint" * string(OptIter))
             #coord = getCoord(getX(dh), dh)
+            postprocess_opt(d, dh0, "results/design_variables" * string(OptIter))
             #postprocess_opt(a, dh, "results/DeformationC" * string(OptIter))
         end
         println("Objective: ", g_hist, " Constraint: ", g₁)

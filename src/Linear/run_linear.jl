@@ -122,7 +122,7 @@ function fictitious_solver(d,dh0,coord₀)
   end
 
 #
-function solver_C(dh, coord)
+function solver_C(dh, coord, Δ, nloadsteps)
 
     # ---------- #
     # Set params # // Kanske som input till solver???
@@ -157,7 +157,7 @@ function solver_C(dh, coord)
     # Set BCS    #
     # ---------- #
     # Set bcs - should be moved outside this function
-    bcdof_top, bcval_top = setBCXY(-0.01, dh, Γ_top)
+    bcdof_top, bcval_top = setBCXY(Δ/nloadsteps, dh, Γ_top)
     bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
     bcdof = [bcdof_top; bcdof_bot]
     bcval = [bcval_top; bcval_bot]
@@ -172,7 +172,7 @@ function solver_C(dh, coord)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 5
+    for loadstep ∈ 1 : nloadsteps
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
@@ -186,6 +186,7 @@ function solver_C(dh, coord)
         while (iter < imax && residual > TOL) || iter < 2
             iter += 1
             a += Δa
+
             assemGlobal!(K, Fᵢₙₜ,rc, dh, mp, t, a, coord, enod, ε)
             solveq!(Δa, K, -Fᵢₙₜ, bcdof, bcval)
             bcval = 0 * bcval
@@ -379,7 +380,7 @@ function solver_C2(dh, coord)
 end
 
 # Fictitious equillibrium for shape optimization with consistent with contact
-function fictitious_solver_with_contact(d, dh0, coord₀)
+function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     # allt överflödigt bör vid tillfälle flyttas utanför
     # lösare till ett "init-liknande script så att huvudsaklig kod hålls ren
     imax = 25
@@ -403,8 +404,8 @@ function fictitious_solver_with_contact(d, dh0, coord₀)
     global ΔΨ = zeros(dh0.ndofs.x)
     global res = zeros(dh0.ndofs.x)
     res = zeros(ndof)
-    bcdof_top, bcval_top = setBCXY(0.0, dh0, Γ_top)
-    bcdof_bot, bcval_bot = setBCXY(0.0, dh0, Γ_bot)
+    bcdof_top, bcval_top = setBCXY_both(0.0, dh0, Γ_top)
+    bcdof_bot, bcval_bot = setBCXY_both(0.0, dh0, Γ_bot)
     global bcdof = [bcdof_top; bcdof_bot]
     global bcval = [bcval_top; bcval_bot]
 
@@ -422,12 +423,12 @@ function fictitious_solver_with_contact(d, dh0, coord₀)
 
     bcval₀ = bcval
 
-    for loadstep ∈ 1 : 10
+    for loadstep ∈ 1 : nloadsteps
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
         iter = 0
-        λ = 0.1 * loadstep
+        λ = (1.0 / nloadsteps) * loadstep
         fill!(ΔΨ, 0.0)
         println("Starting equilibrium iteration at loadstep: ", loadstep)
         # # # # # # # # # #

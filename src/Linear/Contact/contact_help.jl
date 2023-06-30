@@ -9,7 +9,7 @@ function create_contact_list(dh,Γs,Γm, coord_dual)
     for face in  Γs
        i        += 1
        face_el   = face[1]
-       face_nods = Ferrite.faces(dh.grid.cells[face_el])[1]
+       face_nods = Ferrite.faces(dh.grid.cells[face_el])[face[2]]
        push!(elements,face_el=>[face_nods[1],face_nods[2]])
        push!(coords,face_nods[1]=>coord_dual[face_nods[1],:])
        push!(coords,face_nods[2]=>coord_dual[face_nods[2],:])
@@ -21,7 +21,7 @@ function create_contact_list(dh,Γs,Γm, coord_dual)
     for face in  Γm
        i        += 1
        face_el   = face[1]
-       face_nods = Ferrite.faces(dh.grid.cells[face_el])[1]
+       face_nods = Ferrite.faces(dh.grid.cells[face_el])[face[2]]
        push!(elements,face_el=>[face_nods[1],face_nods[2]])
        push!(coords,face_nods[1]=>coord_dual[face_nods[1],:])
        push!(coords,face_nods[2]=>coord_dual[face_nods[2],:])
@@ -306,7 +306,7 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
     #for (i, A) in enumerate(slave_dofs)
     for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-        for (j,B) in enumerate(slave_dofs)
+        for (j, B) in (enumerate(intersect(slave_dofs, 1:size(D, 2))))
             # Extract nodal degrees of freedom
 
             #B_dofs = [2j-1, 2j]

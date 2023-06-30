@@ -167,7 +167,7 @@ function assemGlobal!(Kψ, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_rob
             if (cellid(cell), face) in Γ_robin
                 face_nods = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
                 face_dofs = [face_nods[1] * 2 - 1; face_nods[1] * 2; face_nods[2] * 2 - 1; face_nods[2] * 2]
-                Xc = coord₀[enod[ie][face_nods.+1], :]
+                Xc = coord₀[enod[ie][face_nods.+1], :] # varför +1?
                 ke[face_dofs, face_dofs], fe[face_dofs] = Robin(Xc, Ψ[cell_dofs[face_dofs]], d[cell_dofs[face_dofs]], λ)
             end
         end
