@@ -406,8 +406,8 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     res = zeros(ndof)
     bcdof_top, bcval_top = setBCXY_both(0.0, dh0, Γ_top)
     bcdof_bot, bcval_bot = setBCXY_both(0.0, dh0, Γ_bot)
-    global bcdof = [bcdof_top; bcdof_bot]
-    global bcval = [bcval_top; bcval_bot]
+    global bcdof_o2 = [bcdof_top; bcdof_bot]
+    global bcval_o2 = [bcval_top; bcval_bot]
 
     ϵᵢⱼₖ = sortperm(bcdof)
     global bcdof = bcdof[ϵᵢⱼₖ]
@@ -421,11 +421,11 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     # Set params # // Kanske som input till solver???
     # ---------- #
 
-    bcval₀ = bcval
+    bcval₀_o2 = bcval_o2
 
     for loadstep ∈ 1 : nloadsteps
         res = res .* 0
-        bcval = bcval₀
+        bcval_o2 = bcval₀_o2
         residual = 0 * residual
         iter = 0
         λ = (1.0 / nloadsteps) * loadstep
@@ -438,12 +438,12 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
             iter += 1
             Ψ += ΔΨ
             assemGlobal!(Kψ, Fᵢₙₜ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
-            solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof, bcval)
-            bcval = bcval .* 0
+            solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof_o2, bcval_o2)
+            bcval_o2 = bcval_o2 .* 0
             res = Fᵢₙₜ #- Fₑₓₜ
-            res[bcdof] = res[bcdof] .* 0
+            res[bcdof_o2] = res[bcdof_o2] .* 0
             residual = norm(res, 2)
-            Ψ[bcdof] = bcval
+            Ψ[bcdof_o2] = bcval_o2
             println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
             postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
             #τ_c = ExtractContactTraction(Ψ, μ, coord₀)

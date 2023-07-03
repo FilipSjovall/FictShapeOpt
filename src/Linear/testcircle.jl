@@ -172,13 +172,13 @@ include("initOptLin.jl")
 ε = 1e5
 μ = 1e3
 p = 2
-testvar  = 642
+testvar  = 191
 
 sens_test = 1
 perturbation        = 1e-6
 X = getXfromCoord(coord)
 
-remesh = 1
+remesh = 2
 
 test = [0.0,0.0]
 
@@ -279,7 +279,7 @@ if sens_test==1
         p = 2
         #global X_ordered      = getXfromCoord(coord) # ta bort och byta då målfunk anropas
         #
-        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord, Δ/5, 2)
+        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord, Δ/10, 1)
         #test[pert] = a' * Fₑₓₜ
 
         test[pert]          = -a[pdofs]' * Fᵢₙₜ[pdofs]
@@ -287,7 +287,7 @@ if sens_test==1
     end
     ∂rᵤ_∂x = similar(K)
     ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
-    dr_dd = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
+    dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 
     ∂g_∂u  = zeros(size(d))
     ∂g_∂x  = zeros(size(d))
@@ -314,7 +314,6 @@ end
 
 
 g_test  = 0
-Fψ = similar(Fᵢₙₜ)
 #perturbation = 1e-5
 #testvar = 30
 if g_test == 1

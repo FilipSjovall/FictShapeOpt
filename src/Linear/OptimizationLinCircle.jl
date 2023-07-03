@@ -307,10 +307,6 @@ function Optimize(dh)
             global nloadsteps      = nloadsteps + 10
         end
 
-        if OptIter % 5 == 0
-            global dh0 = deepcopy(dh)
-        end
-
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
@@ -318,6 +314,7 @@ function Optimize(dh)
         global coord₀ = getCoord(getX(dh0), dh0) # x₀
         #Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀)
         Ψ, _, Kψ, _, λ = fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
+
         # # # # # #
         # Filter  #
         # # # # # #

@@ -769,7 +769,7 @@ function remeshBox(filename,h)
     Points = []
     append!(Points, gmsh.model.geo.add_point(bot_coords[1, 1], bot_coords[1, 2], 0.0, h*4))
     for (x, y) in eachrow(slave_coords)
-        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h)) # sätt in h = ... hur fint nät?
+        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h/2)) # sätt in h = ... hur fint nät?
     end
     append!(Points, gmsh.model.geo.add_point(bot_coords[end, 1], bot_coords[end, 2], 0.0, h*4))
     # extra point to ensure we can place boundary condition in the very middle
