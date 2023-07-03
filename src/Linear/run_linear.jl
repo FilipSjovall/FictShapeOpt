@@ -157,8 +157,8 @@ function solver_C(dh, coord, Δ, nloadsteps)
     # Set BCS    #
     # ---------- #
     # Set bcs - should be moved outside this function
-    bcdof_top, bcval_top = setBCXY(Δ/nloadsteps, dh, Γ_top)
-    bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
+    bcdof_top, bcval_top = setBCXY_both(Δ/nloadsteps, dh, Γ_top)
+    bcdof_bot, bcval_bot = setBCXY_both(0.0, dh, Γ_bot)
     bcdof = [bcdof_top; bcdof_bot]
     bcval = [bcval_top; bcval_bot]
 
@@ -217,7 +217,7 @@ end
 function fictitious_solver_C(d, dh0, coord₀)
     # allt överflödigt bör vid tillfälle flyttas utanför
     # lösare till ett "init-liknande script så att huvudsaklig kod hålls ren
-    imax = 25
+    imax = 100
     TOL = 1e-10
     residual = 0.0
     iter = 1
@@ -257,6 +257,8 @@ function fictitious_solver_C(d, dh0, coord₀)
 
     bcval₀ = bcval
 
+    ε₀ = ε
+
     for loadstep ∈ 1 : 10
         res = res .* 0
         bcval = bcval₀
@@ -267,11 +269,15 @@ function fictitious_solver_C(d, dh0, coord₀)
 
         println("Starting equilibrium iteration at loadstep: ", loadstep)
 
+        global ε = ε₀
         # # # # # # # # # #
         # Newton solve.  #
         # # # # # # # # # #
         while (iter < imax && residual > TOL) || iter < 2
             iter += 1
+            if iter % 10 == 0
+                global ε = ε * 1.2
+            end
             Ψ += ΔΨ
             assemGlobal!(Kψ, Fᵢₙₜ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin)
             solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof, bcval)
@@ -404,14 +410,14 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     global ΔΨ = zeros(dh0.ndofs.x)
     global res = zeros(dh0.ndofs.x)
     res = zeros(ndof)
-    bcdof_top, bcval_top = setBCXY_both(0.0, dh0, Γ_top)
-    bcdof_bot, bcval_bot = setBCXY_both(0.0, dh0, Γ_bot)
-    global bcdof_o2 = [bcdof_top; bcdof_bot]
-    global bcval_o2 = [bcval_top; bcval_bot]
-
-    ϵᵢⱼₖ = sortperm(bcdof)
-    global bcdof = bcdof[ϵᵢⱼₖ]
-    global bcval = bcval[ϵᵢⱼₖ]
+    #bcdof_top, bcval_top = setBCXY_both(0.0, dh0, Γ_top)
+    #bcdof_bot, bcval_bot = setBCXY_both(0.0, dh0, Γ_bot)
+    #global bcdof_o2 = [bcdof_top; bcdof_bot]
+    #global bcval_o2 = [bcval_top; bcval_bot]
+#
+    #ϵᵢⱼₖ = sortperm(bcdof)
+    #global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
+    #global bcval_o2 = bcval_o2[ϵᵢⱼₖ]
 
     # Struct - problem {dh0,bcs,mp}
 

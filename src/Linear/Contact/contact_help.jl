@@ -10,11 +10,11 @@ function create_contact_list(dh,Γs,Γm, coord_dual)
        i        += 1
        face_el   = face[1]
        face_nods = Ferrite.faces(dh.grid.cells[face_el])[face[2]]
-       push!(elements,face_el=>[face_nods[1],face_nods[2]])
-       push!(coords,face_nods[1]=>coord_dual[face_nods[1],:])
-       push!(coords,face_nods[2]=>coord_dual[face_nods[2],:])
+       push!(elements,face_el => [face_nods[1],face_nods[2]])
+       push!(coords,face_nods[1] => coord_dual[face_nods[1],:])
+       push!(coords,face_nods[2] => coord_dual[face_nods[2],:])
        push!(slave_element_ids,face_el)
-       push!(slave_elements,face_el=>[face_nods[1],face_nods[2]])
+       push!(slave_elements,face_el => [face_nods[1],face_nods[2]])
        push!(element_types, face_el => :Seg2)
     end
 
@@ -23,8 +23,8 @@ function create_contact_list(dh,Γs,Γm, coord_dual)
        face_el   = face[1]
        face_nods = Ferrite.faces(dh.grid.cells[face_el])[face[2]]
        push!(elements,face_el=>[face_nods[1],face_nods[2]])
-       push!(coords,face_nods[1]=>coord_dual[face_nods[1],:])
-       push!(coords,face_nods[2]=>coord_dual[face_nods[2],:])
+       push!(coords,face_nods[1] => coord_dual[face_nods[1],:])
+       push!(coords,face_nods[2] => coord_dual[face_nods[2],:])
        push!(master_element_ids,face_el)
        push!(element_types, face_el => :Seg2)
     end

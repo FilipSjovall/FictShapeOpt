@@ -700,7 +700,7 @@ function remeshCircle(filename,h)
     #end
     #append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, 0.1))
     append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, h*4))
-    for (x, y) in Iterators.reverse(eachrow(master_coords))
+    for (x, y) in Iterators.reverse(eachrow(master_coords[1:end-1,:]))
         append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h))
     end
     append!(Points, gmsh.model.geo.add_point(top_coords[1, 1], top_coords[1, 2], 0.0, h*4))
@@ -709,7 +709,7 @@ function remeshCircle(filename,h)
     Lines = Vector{Int32}()
     #append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
     append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
-    for (i, x) in enumerate(eachrow(master_coords[1:end, :]))
+    for (i, x) in enumerate(eachrow(master_coords[1:end-1, :]))
         append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
     end
     append!(Lines, gmsh.model.geo.add_line(Points[end-1], Points[end]))
@@ -717,7 +717,7 @@ function remeshCircle(filename,h)
 
 
     Loop = gmsh.model.geo.add_curve_loop(Lines[:])
-    # 🍌 = gmsh.model.geo.remove_all_duplicates()
+    gmsh.model.geo.remove_all_duplicates()
 
 
     Surf = gmsh.model.geo.add_plane_surface([Loop])
@@ -725,7 +725,8 @@ function remeshCircle(filename,h)
     gmsh.model.geo.synchronize()
 
     # Make physical group of slave nodes
-    gmsh.model.add_physical_group(1, Lines[2:end-2], -1, "Γ_m")
+    #gmsh.model.add_physical_group(1, Lines[2:end-2], -1, "Γ_m")
+    gmsh.model.add_physical_group(1, Lines[1:end-2], -1, "Γ_m")
     gmsh.model.add_physical_group(2, [Surf], -1, " hej ")
 
 
@@ -769,7 +770,7 @@ function remeshBox(filename,h)
     Points = []
     append!(Points, gmsh.model.geo.add_point(bot_coords[1, 1], bot_coords[1, 2], 0.0, h*4))
     for (x, y) in eachrow(slave_coords)
-        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h/2)) # sätt in h = ... hur fint nät?
+        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h*0.75)) # sätt in h = ... hur fint nät?
     end
     append!(Points, gmsh.model.geo.add_point(bot_coords[end, 1], bot_coords[end, 2], 0.0, h*4))
     # extra point to ensure we can place boundary condition in the very middle

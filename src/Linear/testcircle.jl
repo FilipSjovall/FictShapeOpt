@@ -141,8 +141,10 @@ bcdof_o = [bcdof_top_o; bcdof_bot_o]
 global bcdof_o = bcdof_o[ϵᵢⱼₖ]
 global bcval_o = bcdof_o .* 0.0
 
-bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+#bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+#bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
@@ -239,8 +241,11 @@ if remesh == 1
     global bcdof_o = bcdof_o[ϵᵢⱼₖ]
     global bcval_o = bcdof_o .* 0.0
 
-    bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-    bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+    #bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+    #bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+    bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+    bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
+
     bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
     ϵᵢⱼₖ = sortperm(bcdof_o)
     global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
