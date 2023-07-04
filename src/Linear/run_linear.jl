@@ -135,7 +135,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
     # ------------- #
     # Init-stuff    #
     # ------------- #
-    imax = 25
+    imax = 200
     TOL = 1e-8
     residual = 0.0
     iter = 1
@@ -171,6 +171,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
     global fdofs = setdiff(1:dh.ndofs.x, pdofs)
 
     bcval₀ = bcval
+    ε₀ = ε
 
     for loadstep ∈ 1 : nloadsteps
         res = res .* 0
@@ -179,14 +180,18 @@ function solver_C(dh, coord, Δ, nloadsteps)
         iter = 0
         fill!(Δa, 0.0)
         println("Starting equilibrium iteration at loadstep: ", loadstep)
+        global ε = ε₀
 
         # # # # # # # # # #
         # Newton solve.   #
         # # # # # # # # # #
-        while (iter < imax && residual > TOL) || iter < 2
+        while  residual > TOL || iter < 2
             iter += 1
+            if iter % 10 == 0
+                global ε = ε * 1.2
+                println("Penalty paremeter updated: $ε")
+            end
             a += Δa
-
             assemGlobal!(K, Fᵢₙₜ,rc, dh, mp, t, a, coord, enod, ε)
             solveq!(Δa, K, -Fᵢₙₜ, bcdof, bcval)
             bcval = 0 * bcval
@@ -257,8 +262,6 @@ function fictitious_solver_C(d, dh0, coord₀)
 
     bcval₀ = bcval
 
-    ε₀ = ε
-
     for loadstep ∈ 1 : 10
         res = res .* 0
         bcval = bcval₀
@@ -269,15 +272,13 @@ function fictitious_solver_C(d, dh0, coord₀)
 
         println("Starting equilibrium iteration at loadstep: ", loadstep)
 
-        global ε = ε₀
+
         # # # # # # # # # #
         # Newton solve.  #
         # # # # # # # # # #
         while (iter < imax && residual > TOL) || iter < 2
             iter += 1
-            if iter % 10 == 0
-                global ε = ε * 1.2
-            end
+
             Ψ += ΔΨ
             assemGlobal!(Kψ, Fᵢₙₜ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin)
             solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof, bcval)
@@ -389,7 +390,7 @@ end
 function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     # allt överflödigt bör vid tillfälle flyttas utanför
     # lösare till ett "init-liknande script så att huvudsaklig kod hålls ren
-    imax = 25
+    imax = 100
     TOL = 1e-10
     residual = 0.0
     iter = 1
@@ -429,6 +430,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
 
     bcval₀_o2 = bcval_o2
 
+
     for loadstep ∈ 1 : nloadsteps
         res = res .* 0
         bcval_o2 = bcval₀_o2
@@ -437,10 +439,12 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
         λ = (1.0 / nloadsteps) * loadstep
         fill!(ΔΨ, 0.0)
         println("Starting equilibrium iteration at loadstep: ", loadstep)
+
+
         # # # # # # # # # #
         # Newton solve.  #
         # # # # # # # # # #
-        while (iter < imax && residual > TOL) || iter < 2
+        while  residual > TOL || iter < 2
             iter += 1
             Ψ += ΔΨ
             assemGlobal!(Kψ, Fᵢₙₜ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)

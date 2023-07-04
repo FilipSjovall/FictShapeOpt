@@ -680,52 +680,37 @@ function remeshCircle(filename,h)
     gmsh.option.set_number("General.Verbosity", 2)
 
     master_coords = zeros(length(nₘ), 2)
-    top_coords = zeros(length(n_top), 2)
 
-    for (i, node) in enumerate(n_top)
-        top_coords[i, :] = dh.grid.nodes[node].x
-    end
     for (i, node) in enumerate(nₘ)
         master_coords[i, :] = dh.grid.nodes[node].x
     end
 
     # Behöver specificera sorteringen m.a.på x
     master_coords = master_coords[sortperm(master_coords[:, 1]), :]
-    top_coords = top_coords[sortperm(top_coords[:, 1]), :]
+    #top_coords = top_coords[sortperm(top_coords[:, 1]), :]
 
     Points = []
-    #append!(Points, gmsh.model.geo.add_point(top_coords[1, 1], top_coords[1, 2], 0.0, 0.1))
-    #for (x, y) in eachrow(master_coords)
-    #    append!(Points, gmsh.model.geo.add_point(x, y, 0.0, 0.1))
-    #end
-    #append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, 0.1))
-    append!(Points, gmsh.model.geo.add_point(top_coords[end, 1], top_coords[end, 2], 0.0, h*4))
-    for (x, y) in Iterators.reverse(eachrow(master_coords[1:end-1,:]))
+    for (x, y) in Iterators.reverse(eachrow(master_coords[1:end,:]))
         append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h))
     end
-    append!(Points, gmsh.model.geo.add_point(top_coords[1, 1], top_coords[1, 2], 0.0, h*4))
     append!(Points, gmsh.model.geo.add_point(0.5, 1.5, 0.0, h*4))
 
-    Lines = Vector{Int32}()
-    #append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
-    append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
-    for (i, x) in enumerate(eachrow(master_coords[1:end-1, :]))
-        append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
-    end
-    append!(Lines, gmsh.model.geo.add_line(Points[end-1], Points[end]))
-    append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
 
+    Lines = Vector{Int32}()
+
+    for (i, x) in enumerate(eachrow(master_coords[1:end, :]))
+        append!(Lines, gmsh.model.geo.add_line(Points[i], Points[i+1]))
+    end
+    append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
 
     Loop = gmsh.model.geo.add_curve_loop(Lines[:])
     gmsh.model.geo.remove_all_duplicates()
-
 
     Surf = gmsh.model.geo.add_plane_surface([Loop])
 
     gmsh.model.geo.synchronize()
 
     # Make physical group of slave nodes
-    #gmsh.model.add_physical_group(1, Lines[2:end-2], -1, "Γ_m")
     gmsh.model.add_physical_group(1, Lines[1:end-2], -1, "Γ_m")
     gmsh.model.add_physical_group(2, [Surf], -1, " hej ")
 
@@ -989,4 +974,74 @@ function reMeshGrids!(h,dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,co
 
 
 
+end
+
+
+function createBoxMeshRounded(filename, r, h)
+
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+
+    # Add the points
+    # bottom
+    p1 = gmsh.model.geo.add_point(1.0, 0.0, 0.0, h)
+    p2 = gmsh.model.geo.add_point(0.5, 0.0, 0.0, h)
+    p3 = gmsh.model.geo.add_point(0.0, 0.0, 0.0, h)
+    # rounded corners
+    p4 = gmsh.model.geo.add_point(0.0, 1.0-r, 0.0, h)
+    p5 = gmsh.model.geo.add_point(0.0+r, 1.0, 0.0, h)
+    p6 = gmsh.model.geo.add_point(1.0-r, 1.0, 0.0, h)
+    p7 = gmsh.model.geo.add_point(1.0, 1.0-r, 0.0, h)
+    # circle center
+    p8 = gmsh.model.geo.add_point(0.0+r,1.0-r, 0.0, h)
+    p9 = gmsh.model.geo.add_point(1.0-r,1.0-r, 0.0, h)
+
+
+    # Add the lines
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    l3 = gmsh.model.geo.add_line(p3, p4)
+
+    l4 = gmsh.model.geo.add_circle_arc(p4, p8, p5)
+
+    l5 = gmsh.model.geo.add_line(p5, p6)
+
+    l6 = gmsh.model.geo.add_circle_arc(p6, p9, p7)
+
+    l7 = gmsh.model.geo.add_line(p7, p1)
+
+    # Create the closed curve loop and the surface
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7])
+    surf = gmsh.model.geo.add_plane_surface([loop])
+
+    # Synchronize the model
+    gmsh.model.geo.synchronize()
+
+    # Create the physical domains
+    gmsh.model.add_physical_group(1, [l1], -1, "Γ1")
+    gmsh.model.add_physical_group(1, [l2], -1, "Γ2")
+    gmsh.model.add_physical_group(1, [l3], -1, "Γ3")
+    gmsh.model.add_physical_group(1, [l4], -1, "Γ4")
+    gmsh.model.add_physical_group(1, [l5], -1, "Γ5")
+    gmsh.model.add_physical_group(1, [l6], -1, "Γ6")
+    gmsh.model.add_physical_group(1, [l7], -1, "Γ7")
+    gmsh.model.add_physical_group(2, [surf], 1)
+
+    gmsh.model.mesh.embed(0, [p2], 2, 1)
+
+    gmsh.model.mesh.generate(2)
+
+    # Save the mesh, and read back in as a Ferrite Grid
+    grid = mktempdir() do dir
+        path = joinpath(dir, filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+
+    # Finalize the Gmsh library
+    Gmsh.finalize()
+
+    return grid
 end

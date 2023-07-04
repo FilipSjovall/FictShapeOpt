@@ -22,9 +22,9 @@ include("..//mma.jl")
 
 r₀ = 0.5
 # Create two grids
-grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.15)
+grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.075)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
-grid2 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.001, 0.05)
+grid2 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.001, 0.03)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -57,10 +57,10 @@ global nₛ = getnodeset(dh.grid, "nₛ")
 # Create slave sets #
 # ----------------- #
 
-addfaceset!(dh.grid, "Γ_master", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 && x[2] < 1.5)
+addfaceset!(dh.grid, "Γ_master", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
 global Γm = getfaceset(dh.grid, "Γ_master")
 
-addnodeset!(dh.grid, "nₘ", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 && x[2] < 1.5)
+addnodeset!(dh.grid, "nₘ", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
 global nₘ = getnodeset(dh.grid, "nₘ")
 
 #=
@@ -161,7 +161,7 @@ global ∂rψ_∂d = similar(K)
 global λᵤ = similar(a)
 global λψ = similar(a)
 global Δ = -0.1
-global nloadsteps = 0
+global nloadsteps = 5
 include("initOptLin.jl")
 
 
@@ -173,8 +173,8 @@ function Optimize(dh)
         global λᵤ   = similar(a)
         global λᵥₒₗ = similar(a)
         Vₘₐₓ        = 1.1 * volume(dh, coord, enod)
-        global ε    = 1e4
-        global μ    = 1e3
+        global ε    = 1e5
+        global μ    = 5e3
         #l    = similar(a)
         #l   .= 0.5
         tol     = 1e-6
@@ -232,8 +232,9 @@ function Optimize(dh)
         # # # # # # # # # # # # # #
         OptIter += 1
 
+        # detta ska 100% vara en rutin
         if OptIter % 5 == 0 || OptIter == 1
-            reMeshGrids!(0.08, dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
+            reMeshGrids!(0.075, dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
             # Initialize tangents
             global K  = create_sparsity_pattern(dh) # behövs
             global Kψ = create_sparsity_pattern(dh) # behövs
@@ -273,10 +274,10 @@ function Optimize(dh)
             global kktnorm = kkttol + 10 # behöver inte skrivas över
             global outit = 0 # behöver inte skrivas över
             global change = 1 # behöver inte skrivas över
-            global xmin[contact_dofs] .= -0.1 # behöver skrivas över
-            global xmax[contact_dofs] .=  0.1 # behöver skrivas över
-            global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.1 # behöver skrivas över
-            global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.1 # behöver skrivas över
+            global xmin[contact_dofs] .= -0.025 # behöver skrivas över
+            global xmax[contact_dofs] .=  0.025 # behöver skrivas över
+            global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.05 # behöver skrivas över
+            global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.05 # behöver skrivas över
             global low        = xmin # behöver skrivas över
             global upp        = xmax # behöver skrivas över
             global d .= 0
@@ -299,7 +300,7 @@ function Optimize(dh)
 
             global T               = zeros(size(a))
             global T[bcdof_bot_o] .= 1.0
-            global nloadsteps      = nloadsteps + 10
+            global nloadsteps      = nloadsteps + 5
         end
 
         # # # # # # # # # # # # # #
@@ -357,16 +358,16 @@ function Optimize(dh)
         # Full sensitivity  #
         # # # # # # # # # # #
         ∂g_∂d = (-transpose(λψ) * dr_dd)'
-        ∂g_∂d[locked_d] .= 0.0 # fulfix?
+        #∂g_∂d[locked_d] .= 0.0 # fulfix?
 
         # # # # # # # # # # #
         # Volume constraint #
         # # # # # # # # # # #
         g₁    = volume(dh,coord,enod) / Vₘₐₓ - 1
         ∂Ω_∂x = volume_sens(dh,coord)
-        solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdof_o, bcval_o.*0);
+        solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdof_o2, bcval_o2.*0);
         ∂Ω∂d  = -transpose(λᵥₒₗ)*dr_dd ./ Vₘₐₓ;
-        ∂Ω∂d[locked_d] .= 0.0
+        #∂Ω∂d[locked_d] .= 0.0
 
         # # # # #
         # M M A #
