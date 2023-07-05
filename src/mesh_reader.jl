@@ -990,10 +990,10 @@ function createBoxMeshRounded(filename, r, h)
     p2 = gmsh.model.geo.add_point(0.5, 0.0, 0.0, h)
     p3 = gmsh.model.geo.add_point(0.0, 0.0, 0.0, h)
     # rounded corners
-    p4 = gmsh.model.geo.add_point(0.0, 1.0-r, 0.0, h)
-    p5 = gmsh.model.geo.add_point(0.0+r, 1.0, 0.0, h)
-    p6 = gmsh.model.geo.add_point(1.0-r, 1.0, 0.0, h)
-    p7 = gmsh.model.geo.add_point(1.0, 1.0-r, 0.0, h)
+    p4 = gmsh.model.geo.add_point(0.0, 1.0-r, 0.0, h/2)
+    p5 = gmsh.model.geo.add_point(0.0+r, 1.0, 0.0, h/2)
+    p6 = gmsh.model.geo.add_point(1.0-r, 1.0, 0.0, h/2)
+    p7 = gmsh.model.geo.add_point(1.0, 1.0-r, 0.0, h/2)
     # circle center
     p8 = gmsh.model.geo.add_point(0.0+r,1.0-r, 0.0, h)
     p9 = gmsh.model.geo.add_point(1.0-r,1.0-r, 0.0, h)
@@ -1014,19 +1014,16 @@ function createBoxMeshRounded(filename, r, h)
 
     # Create the closed curve loop and the surface
     loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7])
+
+    gmsh.model.geo.remove_all_duplicates()
+
     surf = gmsh.model.geo.add_plane_surface([loop])
 
     # Synchronize the model
     gmsh.model.geo.synchronize()
 
     # Create the physical domains
-    gmsh.model.add_physical_group(1, [l1], -1, "Γ1")
-    gmsh.model.add_physical_group(1, [l2], -1, "Γ2")
-    gmsh.model.add_physical_group(1, [l3], -1, "Γ3")
-    gmsh.model.add_physical_group(1, [l4], -1, "Γ4")
-    gmsh.model.add_physical_group(1, [l5], -1, "Γ5")
-    gmsh.model.add_physical_group(1, [l6], -1, "Γ6")
-    gmsh.model.add_physical_group(1, [l7], -1, "Γ7")
+    gmsh.model.add_physical_group(1, [l4,l5,l6], -1, "Γ_slave")
     gmsh.model.add_physical_group(2, [surf], 1)
 
     gmsh.model.mesh.embed(0, [p2], 2, 1)
@@ -1035,7 +1032,74 @@ function createBoxMeshRounded(filename, r, h)
 
     # Save the mesh, and read back in as a Ferrite Grid
     grid = mktempdir() do dir
-        path = joinpath(dir, filename * ".msh")
+        path = joinpath( filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+
+    # Finalize the Gmsh library
+    Gmsh.finalize()
+
+    return grid
+end
+
+
+function createBoxMeshRounded_Flipped(filename, r, y₀, h)
+
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+
+    # Add the points
+    # bottom
+    p1 = gmsh.model.geo.add_point(0.0, 2.0, 0.0, h)
+    p2 = gmsh.model.geo.add_point(0.5, 2.0, 0.0, h)
+    p3 = gmsh.model.geo.add_point(1.0, 2.0, 0.0, h)
+    # rounded corners
+    p4 = gmsh.model.geo.add_point(1.0    , y₀ + r, 0.0, h / 2)
+    p5 = gmsh.model.geo.add_point(1.0 - r, y₀    , 0.0, h / 2)
+    p6 = gmsh.model.geo.add_point(0.0 + r, y₀    , 0.0, h / 2)
+    p7 = gmsh.model.geo.add_point(0.0    , y₀ + r, 0.0, h / 2)
+    # circle center
+    p8 = gmsh.model.geo.add_point(1.0 - r, 1.0 + r, 0.0, h)
+    p9 = gmsh.model.geo.add_point(r      , 1.0 + r, 0.0, h)
+
+
+    # Add the lines
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    l3 = gmsh.model.geo.add_line(p3, p4)
+
+    l4 = gmsh.model.geo.add_circle_arc(p4, p8, p5)
+
+    l5 = gmsh.model.geo.add_line(p5, p6)
+
+    l6 = gmsh.model.geo.add_circle_arc(p6, p9, p7)
+
+    l7 = gmsh.model.geo.add_line(p7, p1)
+
+    # Create the closed curve loop and the surface
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7])
+
+    gmsh.model.geo.remove_all_duplicates()
+
+    surf = gmsh.model.geo.add_plane_surface([loop])
+
+    # Synchronize the model
+    gmsh.model.geo.synchronize()
+
+    # Create the physical domains
+    gmsh.model.add_physical_group(1, [l4,l5,l6], -1, "Γ_master")
+    gmsh.model.add_physical_group(2, [surf], 1)
+
+    gmsh.model.mesh.embed(0, [p2], 2, 1)
+
+    gmsh.model.mesh.generate(2)
+
+    # Save the mesh, and read back in as a Ferrite Grid
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
         gmsh.write(path)
         togrid(path)
     end

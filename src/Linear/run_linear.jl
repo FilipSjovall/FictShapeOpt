@@ -131,6 +131,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
 
     # Define material parameters
     mp    = [175 80.769230769230759]
+    #mp = [1.0 1.0]
 
     # ------------- #
     # Init-stuff    #
@@ -198,17 +199,17 @@ function solver_C(dh, coord, Δ, nloadsteps)
             res = Fᵢₙₜ - Fₑₓₜ
             res[bcdof] = 0 * res[bcdof]
             residual = norm(res, 2)
-            println("Iteration: ", iter, " Residual: ", residual)
-
+            #println("Iteration: ", iter, " Residual: ", residual)
+            @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual Δ*loadstep/nloadsteps
             postprocess_opt(a, dh, "contact_mesh" * string(loadstep))
-            #=
+
             σx, σy = StressExtract(dh, a, mp)
             vtk_grid("contact" * string(loadstep) , dh) do vtkfile
                 vtk_point_data(vtkfile, dh, a) # displacement field
                 vtk_point_data(vtkfile, σx, "σx")
                 vtk_point_data(vtkfile, σy, "σy")
-            =#
-            #end
+
+            end
         end
     end
     fill!(Fₑₓₜ, 0.0)
@@ -436,7 +437,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
         bcval_o2 = bcval₀_o2
         residual = 0 * residual
         iter = 0
-        λ = (1.0 / nloadsteps) * loadstep
+        global λ = (1.0 / nloadsteps) * loadstep
         fill!(ΔΨ, 0.0)
         println("Starting equilibrium iteration at loadstep: ", loadstep)
 
@@ -454,8 +455,16 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
             res[bcdof_o2] = res[bcdof_o2] .* 0
             residual = norm(res, 2)
             Ψ[bcdof_o2] = bcval_o2
-            println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
+            #println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
+            @printf "Iteration: %i | Residual: %.3e | λ: %.3f \n" iter residual λ
             postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
+            σx, σy = StressExtract(dh0, Ψ, mp₀)
+            vtk_grid("fictitious" * string(loadstep), dh0) do vtkfile
+                vtk_point_data(vtkfile, dh0, Ψ) # displacement field
+                vtk_point_data(vtkfile, σx, "σx")
+                vtk_point_data(vtkfile, σy, "σy")
+                vtk_point_data(vtkfile, d, "d")
+            end
             #τ_c = ExtractContactTraction(Ψ, μ, coord₀)
         end
     end

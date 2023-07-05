@@ -4,6 +4,7 @@ using LinearSolve, SparseArrays # LinearSolvePardiso
 using IterativeSolvers, IncompleteLU    # AlgebraicMultigrid
 using SparseDiffTools
 using Plots
+using Printf
 
 include("..//mesh_reader.jl")
 include("initLin.jl") # initieras massa skit
@@ -24,7 +25,7 @@ r₀ = 0.5
 # Create two grids
 grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.075)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
-grid2 = createBoxMeshRev("box_1", 0.0, 0.0, 1.0, 1.001, 0.03)
+grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.075)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -174,7 +175,7 @@ function Optimize(dh)
         global λᵥₒₗ = similar(a)
         Vₘₐₓ        = 1.1 * volume(dh, coord, enod)
         global ε    = 1e5
-        global μ    = 5e3
+        global μ    = 1e3
         #l    = similar(a)
         #l   .= 0.5
         tol     = 1e-6
@@ -276,8 +277,8 @@ function Optimize(dh)
             global change = 1 # behöver inte skrivas över
             global xmin[contact_dofs] .= -0.025 # behöver skrivas över
             global xmax[contact_dofs] .=  0.025 # behöver skrivas över
-            global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.05 # behöver skrivas över
-            global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.05 # behöver skrivas över
+            global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.2 # behöver skrivas över
+            global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.2 # behöver skrivas över
             global low        = xmin # behöver skrivas över
             global upp        = xmax # behöver skrivas över
             global d .= 0
@@ -358,7 +359,7 @@ function Optimize(dh)
         # Full sensitivity  #
         # # # # # # # # # # #
         ∂g_∂d = (-transpose(λψ) * dr_dd)'
-        #∂g_∂d[locked_d] .= 0.0 # fulfix?
+        ∂g_∂d[locked_d] .= 0.0 # fulfix?
 
         # # # # # # # # # # #
         # Volume constraint #
@@ -367,7 +368,7 @@ function Optimize(dh)
         ∂Ω_∂x = volume_sens(dh,coord)
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdof_o2, bcval_o2.*0);
         ∂Ω∂d  = -transpose(λᵥₒₗ)*dr_dd ./ Vₘₐₓ;
-        #∂Ω∂d[locked_d] .= 0.0
+        ∂Ω∂d[locked_d] .= 0.0
 
         # # # # #
         # M M A #
