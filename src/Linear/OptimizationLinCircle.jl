@@ -25,7 +25,7 @@ r₀ = 0.5
 # Create two grids
 grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.075)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
-grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.075)
+grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.05)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -159,6 +159,8 @@ global bcval_o2 = bcdof_o2 .* 0.0
 # - For Linear solver..gmsh.model.add_physical_group(1, Lines[2:end-2], -1, "Γ_m")
 global dr_dd = similar(K)
 global ∂rψ_∂d = similar(K)
+global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
+global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ = similar(a)
 global λψ = similar(a)
 global Δ = -0.1
@@ -180,6 +182,7 @@ function Optimize(dh)
         #l   .= 0.5
         tol     = 1e-6
         OptIter = 0
+        true_iteration = 0
         global coord₀  = coord
         g_hist         = zeros(200)
         v_hist         = zeros(200)
@@ -232,10 +235,12 @@ function Optimize(dh)
             global traction
         # # # # # # # # # # # # # #
         OptIter += 1
+        true_iteration +=1
 
         # detta ska 100% vara en rutin
-        if OptIter % 5 == 0 || OptIter == 1
-            reMeshGrids!(0.075, dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
+        if OptIter % 25 == 0 #|| OptIter == 1
+            print("\n", " -------- Remeshing -------- ", "\n")
+            reMeshGrids!(0.05, dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
             # Initialize tangents
             global K  = create_sparsity_pattern(dh) # behövs
             global Kψ = create_sparsity_pattern(dh) # behövs
@@ -302,6 +307,19 @@ function Optimize(dh)
             global T               = zeros(size(a))
             global T[bcdof_bot_o] .= 1.0
             global nloadsteps      = nloadsteps + 5
+
+            # # # # # # # # # # # # # # # #
+            # Reset Optimization problem  #
+            # # # # # # # # # # # # # # # #
+            OptIter = 1
+            global xold1 = d[:]
+            global xold2 = d[:]
+            global low   = xmin
+            global upp   = xmax
+        end
+
+        if OptIter % 5 == 0
+            dh0 = deepcopy(dh)
         end
 
         # # # # # # # # # # # # # #
@@ -382,22 +400,22 @@ function Optimize(dh)
         # # # # # # # # # #
         # Postprocessing  #
         # # # # # # # # # #
-        v_hist[OptIter] = g₁
-        g_hist[OptIter] = g
+        v_hist[true_iteration] = g₁
+        g_hist[true_iteration] = g
 
         #The residual vector of the KKT conditions is calculated:
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
         kktnorm = change
-        println("Iter: ", OptIter, " Norm of change: ", kktnorm, " Objective: ", g)
+        println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
         if mod(OptIter,1) == 0
             coord = getCoord(getX(dh0), dh0)
-            postprocess_opt(Ψ, dh0, "results/Shape_with_contact_n_constraint" * string(OptIter))
+            postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
             #coord = getCoord(getX(dh), dh)
-            postprocess_opt(d, dh0, "results/design_variables" * string(OptIter))
+            postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
             #postprocess_opt(a, dh, "results/DeformationC" * string(OptIter))
         end
         println("Objective: ", g_hist, " Constraint: ", g₁)
-        if OptIter == 100
+        if true_iteration == 100
             break
         end
 

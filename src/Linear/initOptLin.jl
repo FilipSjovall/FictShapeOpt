@@ -8,14 +8,15 @@ bcdof,bcval = setBCLin(0.0,dh)
 dr_dd = similar(K)
 # Material parameters
 mp₀   = [1.0 1.0]
+#mp₀   = [2.16 1.0] # ?
 mp    = [175 80.769230769230759]
 # Optimization parameters
 global m             = 1;
 global n_mma         = length(d);
 global epsimin       = 0.0000001;
-global xval          = d[:];
-global xold1         = xval;
-global xold2         = xval;
+global xvalue        = d[:];
+global xold1         = xvalue;
+global xold2         = xvalue;
 global xmin          = -ones(n_mma)/20;
 global xmax          =  ones(n_mma)/20;
 global C             = 1000*ones(m);

@@ -180,7 +180,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
         residual = 0 * residual
         iter = 0
         fill!(Δa, 0.0)
-        println("Starting equilibrium iteration at loadstep: ", loadstep)
+        print("\n", "Starting equilibrium iteration at loadstep: ", loadstep, "\n")
         global ε = ε₀
 
         # # # # # # # # # #
@@ -208,8 +208,21 @@ function solver_C(dh, coord, Δ, nloadsteps)
                 vtk_point_data(vtkfile, dh, a) # displacement field
                 vtk_point_data(vtkfile, σx, "σx")
                 vtk_point_data(vtkfile, σy, "σy")
-
             end
+            #=
+            traction = ExtractContactTraction(a, ε, coord)
+            X_c = []
+            tract = []
+            for (key, val) ∈ traction
+                append!(X_c, coord[key, 1])
+                append!(tract, val)
+            end
+            ϵᵢⱼₖ = sortperm(X_c)
+            tract = tract[ϵᵢⱼₖ]
+            X_c = X_c[ϵᵢⱼₖ]
+            p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
+            display(p)
+            =#
         end
     end
     fill!(Fₑₓₜ, 0.0)
@@ -400,26 +413,24 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     nelm = size(enod, 1)
 
 
-
+    t = 1.0
     #  ----- #
     # Init   #
     #  ----- #
     global Kψ = create_sparsity_pattern(dh0)
     global Ψ = zeros(dh0.ndofs.x)
-    global Fᵢₙₜ = zeros(dh0.ndofs.x)
+    global FΨ = zeros(dh0.ndofs.x)
     global Fₑₓₜ = zeros(dh0.ndofs.x)
     global Ψ = zeros(dh0.ndofs.x)
     global ΔΨ = zeros(dh0.ndofs.x)
     global res = zeros(dh0.ndofs.x)
-    res = zeros(ndof)
-    #bcdof_top, bcval_top = setBCXY_both(0.0, dh0, Γ_top)
-    #bcdof_bot, bcval_bot = setBCXY_both(0.0, dh0, Γ_bot)
-    #global bcdof_o2 = [bcdof_top; bcdof_bot]
-    #global bcval_o2 = [bcval_top; bcval_bot]
-#
-    #ϵᵢⱼₖ = sortperm(bcdof)
-    #global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
-    #global bcval_o2 = bcval_o2[ϵᵢⱼₖ]
+
+    bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+    bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+    bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
+    ϵᵢⱼₖ = sortperm(bcdof_o)
+    global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
+    global bcval_o2 = bcdof_o2 .* 0.0
 
     # Struct - problem {dh0,bcs,mp}
 
@@ -439,7 +450,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
         iter = 0
         global λ = (1.0 / nloadsteps) * loadstep
         fill!(ΔΨ, 0.0)
-        println("Starting equilibrium iteration at loadstep: ", loadstep)
+        print("\n","Starting equilibrium iteration at loadstep: ", loadstep, "\n")
 
 
         # # # # # # # # # #
@@ -447,26 +458,42 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
         # # # # # # # # # #
         while  residual > TOL || iter < 2
             iter += 1
-            Ψ += ΔΨ
-            assemGlobal!(Kψ, Fᵢₙₜ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
-            solveq!(ΔΨ, Kψ, -Fᵢₙₜ, bcdof_o2, bcval_o2)
+            Ψ    += ΔΨ
+            assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
+            solveq!(ΔΨ, Kψ, -FΨ, bcdof_o2, bcval_o2)
             bcval_o2 = bcval_o2 .* 0
-            res = Fᵢₙₜ #- Fₑₓₜ
+            res      = FΨ #- Fₑₓₜ
             res[bcdof_o2] = res[bcdof_o2] .* 0
-            residual = norm(res, 2)
-            Ψ[bcdof_o2] = bcval_o2
-            #println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
-            @printf "Iteration: %i | Residual: %.3e | λ: %.3f \n" iter residual λ
+            residual      = norm(res, 2)
+            Ψ[bcdof_o2]   = bcval_o2
+
+            @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
             postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
+            postprocess_opt(d, dh0, "fictitious_d" * string(loadstep))
             σx, σy = StressExtract(dh0, Ψ, mp₀)
+
             vtk_grid("fictitious" * string(loadstep), dh0) do vtkfile
                 vtk_point_data(vtkfile, dh0, Ψ) # displacement field
                 vtk_point_data(vtkfile, σx, "σx")
                 vtk_point_data(vtkfile, σy, "σy")
-                vtk_point_data(vtkfile, d, "d")
+                vtk_point_data(vtkfile, d,  "d")
             end
-            #τ_c = ExtractContactTraction(Ψ, μ, coord₀)
+
+            #=
+            traction = ExtractContactTraction(Ψ, μ, coord₀)
+            X_c = []
+            tract = []
+            for (key, val) ∈ traction
+                append!(X_c, coord[key, 1])
+                append!(tract, val)
+            end
+            ϵᵢⱼₖ = sortperm(X_c)
+            tract = tract[ϵᵢⱼₖ]
+            X_c = X_c[ϵᵢⱼₖ]
+            p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
+            display(p)
+            =#
         end
     end
-    return Ψ, dh0, Kψ, Fᵢₙₜ, λ
+    return Ψ, dh0, Kψ, FΨ, λ
 end

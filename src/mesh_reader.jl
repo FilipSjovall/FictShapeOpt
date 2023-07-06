@@ -956,8 +956,8 @@ function reMeshGrids!(h,dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,co
     # boundary conditions for contact analysis
     bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
     bcdof_bot_o, _ = setBCXY( 0.0, dh, Γ_bot)
-    bcdof_o = [bcdof_top_o; bcdof_bot_o]
-    ϵᵢⱼₖ = sortperm(bcdof_o)
+    bcdof_o        = [bcdof_top_o; bcdof_bot_o]
+    ϵᵢⱼₖ           = sortperm(bcdof_o)
     global bcdof_o = bcdof_o[ϵᵢⱼₖ]
     global bcval_o = bcdof_o .* 0.0
 
@@ -968,11 +968,8 @@ function reMeshGrids!(h,dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,co
 
     global dh0    = deepcopy(dh)
     global coord₀ = deepcopy(coord)
-    global d   = zeros(size(a))
-    global d .= 0.0
-
-
-
+    global d      = zeros(size(a))
+    global d     .= 0.0
 
 end
 

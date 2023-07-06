@@ -160,6 +160,7 @@ function assemGlobal!(Kψ, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_rob
         cell_dofs = celldofs(cell)
         kₑ        = zeros(6, 6)
         fₑ        = zeros(6)
+
         kₑ, fₑ    = assemElem(coord₀[enod[ie][2:end], :], Ψ[cell_dofs], mp₀, t)
         ke        = zeros(6, 6)
         fe        = zeros(6)
@@ -167,7 +168,7 @@ function assemGlobal!(Kψ, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_rob
             if (cellid(cell), face) in Γ_robin
                 face_nods = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
                 face_dofs = [face_nods[1] * 2 - 1; face_nods[1] * 2; face_nods[2] * 2 - 1; face_nods[2] * 2]
-                Xc = coord₀[enod[ie][face_nods.+1], :] # varför +1?
+                Xc = coord₀[enod[ie][face_nods.+1], :] #  +1 för att första kolumnen i enod motsvarar elementnummer
                 ke[face_dofs, face_dofs], fe[face_dofs] = Robin(Xc, Ψ[cell_dofs[face_dofs]], d[cell_dofs[face_dofs]], λ)
             end
         end

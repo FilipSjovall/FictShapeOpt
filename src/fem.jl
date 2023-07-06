@@ -2,7 +2,7 @@
 #
 #   Solveq - Try different solvers
 #
-function solveq!(a,K,f,bcdof,bcval)
+function solveq!(x,K,f,bcdof,bcval)
     nd       = size(K,1)
     pdofs    = bcdof
     fdofs    = setdiff(1:nd,pdofs)
@@ -16,23 +16,23 @@ function solveq!(a,K,f,bcdof,bcval)
     #    MKLPardisoIterate(),
     #    UMFPACKFactorization(),
     #    KLUFactorization())
-    #a[fdofs] = solve(prob, LUFactorization()).u
-    a[fdofs] = solve(prob, UMFPACKFactorization()).u
+    #x[fdofs] = solve(prob, LUFactorization()).u
+    x[fdofs] = solve(prob, UMFPACKFactorization()).u
 
     # Algebraic multigrid
-    #ml = ruge_stuben(K[fdofs,fdofs]) # Construct a Ruge-Stuben solver
+    #ml = ruge_stuben(K[fdofs,fdofs]) # Construct x Ruge-Stuben solver
     #pl = aspreconditioner(ml)
-    #@time a[fdofs] = solve(prob, KrylovJL_GMRES(), Pl = pl).u
+    #@time x[fdofs] = solve(prob, KrylovJL_GMRES(), Pl = pl).u
 
     # Incomplete LU
     #pl = ilu(K[fdofs,fdofs], τ = 0.01) # τ needs to be tuned per problem
-    #@time a[fdofs] = solve(prob, KrylovJL_GMRES(), Pl = pl).u
+    #@time x[fdofs] = solve(prob, KrylovJL_GMRES(), Pl = pl).u
 
     # Conjugate gradient
-    #IterativeSolvers.cg!(a[fdofs], K[fdofs,fdofs], f[fdofs] - K[fdofs,pdofs]*bcval; maxiter=1000)
+    #IterativeSolvers.cg!(x[fdofs], K[fdofs,fdofs], f[fdofs] - K[fdofs,pdofs]*bcval; maxiter=1000)
 
     # Naive attempt
-    a[pdofs] = bcval
+    x[pdofs] = bcval
 
 end
 
