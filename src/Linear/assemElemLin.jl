@@ -300,7 +300,7 @@ function dΩ(X)
     dVol = 0.0
     for gp ∈ 1 : ngp
         Jᵀ[:,2:3]   = transpose(dNᵣ[:,index[gp,:]]) * X
-        detJ        = det(Jᵀ)
+        detJ        = -det(Jᵀ)
         dVol       += detJ * w[gp]*t/2
     end
     return dVol
@@ -310,7 +310,7 @@ function ∂dΩ∂x(X)
     dVole = zeros(6)
     for gp ∈ 1 : ngp
         @inbounds Jᵀ[:,2:3]     = transpose(dNᵣ[:,index[gp,:]]) * X
-        detJ                    = det(Jᵀ)
+        detJ                    = -det(Jᵀ)
         J⁻                      = inv(Jᵀ)
         dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
         dX = init_∂X();

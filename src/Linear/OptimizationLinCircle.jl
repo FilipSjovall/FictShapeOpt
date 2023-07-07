@@ -25,7 +25,7 @@ r₀ = 0.5
 # Create two grids
 grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.075)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
-grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.05)
+grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.03)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -139,8 +139,8 @@ global Δa = zeros(dh.ndofs.x)
 global res = zeros(dh.ndofs.x)
 
 # boundary conditions for contact analysis
-bcdof_top_o, _ = setBCXY_both(-0.01, dh, Γ_top)
-bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
+bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o = [bcdof_top_o; bcdof_bot_o]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o = bcdof_o[ϵᵢⱼₖ]
@@ -148,8 +148,8 @@ global bcval_o = bcdof_o .* 0.0
 
 #bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
 #bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
@@ -171,13 +171,13 @@ include("initOptLin.jl")
 function Optimize(dh)
 
     # Flytta allt nedan till init_opt?
-        global dh0  = deepcopy(dh)
-        global λψ   = similar(a)
-        global λᵤ   = similar(a)
-        global λᵥₒₗ = similar(a)
-        Vₘₐₓ        = 1.1 * volume(dh, coord, enod)
-        global ε    = 1e5
-        global μ    = 1e3
+        global dh0   = deepcopy(dh)
+        global λψ    = similar(a)
+        global λᵤ    = similar(a)
+        global λᵥₒₗ  = similar(a)
+        Vₘₐₓ        = 1.5 #1.1 * volume(dh, coord, enod)
+        global ε     = 1e5
+        global μ     = 1e3
         #l    = similar(a)
         #l   .= 0.5
         tol     = 1e-6
@@ -238,7 +238,7 @@ function Optimize(dh)
         true_iteration +=1
 
         # detta ska 100% vara en rutin
-        if OptIter % 25 == 0 #|| OptIter == 1
+        if OptIter % 100 == 0 #|| OptIter == 1
             print("\n", " -------- Remeshing -------- ", "\n")
             reMeshGrids!(0.05, dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
             # Initialize tangents
@@ -282,14 +282,14 @@ function Optimize(dh)
             global change = 1 # behöver inte skrivas över
             global xmin[contact_dofs] .= -0.025 # behöver skrivas över
             global xmax[contact_dofs] .=  0.025 # behöver skrivas över
-            global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.2 # behöver skrivas över
-            global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.2 # behöver skrivas över
+            global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.1 # behöver skrivas över
+            global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.1 # behöver skrivas över
             global low        = xmin # behöver skrivas över
             global upp        = xmax # behöver skrivas över
             global d .= 0
             #global d[free_d] .= 0.05
-            global bcdof_top_o, _ = setBCXY_both(-0.01, dh, Γ_top)
-            global bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
+            global bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+            global bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
             global bcdof_o = [bcdof_top_o; bcdof_bot_o]
             ϵᵢⱼₖ = sortperm(bcdof_o)
             global bcdof_o = bcdof_o[ϵᵢⱼₖ]
@@ -297,8 +297,8 @@ function Optimize(dh)
 
             #bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
             #bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-            bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-            bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+            bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+            bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
             bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
             ϵᵢⱼₖ = sortperm(bcdof_o)
             global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
@@ -320,6 +320,12 @@ function Optimize(dh)
 
         if OptIter % 5 == 0
             dh0 = deepcopy(dh)
+            global d          = zeros(dh.ndofs.x)
+            global xold1      = d[:]
+            global xold2      = d[:]
+            global low        = xmin
+            global upp        = xmax
+            global nloadsteps = nloadsteps + 10
         end
 
         # # # # # # # # # # # # # #

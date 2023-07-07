@@ -888,7 +888,7 @@ function reMeshGrids!(h,dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,co
 
     # Extract CALFEM-style matrices
     global coord, enod = getTopology(dh)
-    global register    = index_nod_to_grid(dh, coord)
+    global register    = getNodeDofs(dh)
 
     addfaceset!(dh.grid, "Γ_slave", x -> x ∈ eachrow(slaves))
     global Γs = getfaceset(dh.grid, "Γ_slave")

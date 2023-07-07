@@ -158,8 +158,8 @@ function solver_C(dh, coord, Δ, nloadsteps)
     # Set BCS    #
     # ---------- #
     # Set bcs - should be moved outside this function
-    bcdof_top, bcval_top = setBCXY_both(Δ/nloadsteps, dh, Γ_top)
-    bcdof_bot, bcval_bot = setBCXY_both(0.0, dh, Γ_bot)
+    bcdof_top, bcval_top = setBCXY(Δ/nloadsteps, dh, Γ_top)
+    bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
     bcdof = [bcdof_top; bcdof_bot]
     bcval = [bcval_top; bcval_bot]
 
@@ -181,15 +181,15 @@ function solver_C(dh, coord, Δ, nloadsteps)
         iter = 0
         fill!(Δa, 0.0)
         print("\n", "Starting equilibrium iteration at loadstep: ", loadstep, "\n")
-        global ε = ε₀
+        #global ε = ε₀
 
         # # # # # # # # # #
         # Newton solve.   #
         # # # # # # # # # #
         while  residual > TOL || iter < 2
             iter += 1
-            if iter % 10 == 0
-                global ε = ε * 1.2
+            if iter % 10 == 0 || norm(res) > 1e3
+                global ε = ε * 0.75
                 println("Penalty paremeter updated: $ε")
             end
             a += Δa
@@ -425,8 +425,8 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     global ΔΨ = zeros(dh0.ndofs.x)
     global res = zeros(dh0.ndofs.x)
 
-    bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-    bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+    bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+    bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
     bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
     ϵᵢⱼₖ = sortperm(bcdof_o)
     global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
