@@ -182,47 +182,60 @@ function solver_C(dh, coord, Δ, nloadsteps)
         fill!(Δa, 0.0)
         print("\n", "Starting equilibrium iteration at loadstep: ", loadstep, "\n")
         #global ε = ε₀
+        a_old = a
+
 
         # # # # # # # # # #
         # Newton solve.   #
         # # # # # # # # # #
-        while  residual > TOL || iter < 2
-            iter += 1
-            if iter % 10 == 0 || norm(res) > 1e3
-                global ε = ε * 0.75
-                println("Penalty paremeter updated: $ε")
-            end
-            a += Δa
-            assemGlobal!(K, Fᵢₙₜ,rc, dh, mp, t, a, coord, enod, ε)
-            solveq!(Δa, K, -Fᵢₙₜ, bcdof, bcval)
-            bcval = 0 * bcval
-            res = Fᵢₙₜ - Fₑₓₜ
-            res[bcdof] = 0 * res[bcdof]
-            residual = norm(res, 2)
-            #println("Iteration: ", iter, " Residual: ", residual)
-            @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual Δ*loadstep/nloadsteps
-            postprocess_opt(a, dh, "contact_mesh" * string(loadstep))
+        let β = 1.0
+            while  residual > TOL || iter < 2
+                iter += 1
+                if iter % 10 == 0 || norm(res) > 1e3
+                    a = a_old
+                    bcval = bcval₀
+                    #global ε = ε * 0.5
+                    β = β * 0.5
+                    Δ_remaining = (Δ*nloadsteps - β * Δ - loadstep * Δ)/nloadsteps
+                    remaining_steps = nloadsteps - loadstep
+                    global nloadsteps = loadstep + remaining_steps
+                    fill!(Δa, 0.0)
+                    println("Penalty paremeter updated: $ε, and β $β ")
+                    println("Detta är inte helt konsekvent, ökningen kanske inte motsvarar rätt antal steg extra - borde justeras")
+                end
 
-            σx, σy = StressExtract(dh, a, mp)
-            vtk_grid("contact" * string(loadstep) , dh) do vtkfile
-                vtk_point_data(vtkfile, dh, a) # displacement field
-                vtk_point_data(vtkfile, σx, "σx")
-                vtk_point_data(vtkfile, σy, "σy")
+                a += β * Δa
+                assemGlobal!(K, Fᵢₙₜ,rc, dh, mp, t, a, coord, enod, ε)
+                solveq!(Δa, K, -Fᵢₙₜ, bcdof, bcval)
+                bcval = 0 * bcval
+                res = Fᵢₙₜ - Fₑₓₜ
+                res[bcdof] = 0 * res[bcdof]
+                residual = norm(res, 2)
+                #println("Iteration: ", iter, " Residual: ", residual)
+                @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof[2]]
+                postprocess_opt(a, dh, "contact_mesh" * string(loadstep))
+
+                σx, σy = StressExtract(dh, a, mp)
+                vtk_grid("contact" * string(loadstep) , dh) do vtkfile
+                    vtk_point_data(vtkfile, dh, a) # displacement field
+                    vtk_point_data(vtkfile, σx, "σx")
+                    vtk_point_data(vtkfile, σy, "σy")
+                end
+                #=
+                traction = ExtractContactTraction(a, ε, coord)
+                X_c = []
+                tract = []
+                for (key, val) ∈ traction
+                    append!(X_c, coord[key, 1])
+                    append!(tract, val)
+                end
+                ϵᵢⱼₖ = sortperm(X_c)
+                tract = tract[ϵᵢⱼₖ]
+                X_c = X_c[ϵᵢⱼₖ]
+                p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
+                display(p)
+                =#
             end
-            #=
-            traction = ExtractContactTraction(a, ε, coord)
-            X_c = []
-            tract = []
-            for (key, val) ∈ traction
-                append!(X_c, coord[key, 1])
-                append!(tract, val)
-            end
-            ϵᵢⱼₖ = sortperm(X_c)
-            tract = tract[ϵᵢⱼₖ]
-            X_c = X_c[ϵᵢⱼₖ]
-            p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
-            display(p)
-            =#
         end
     end
     fill!(Fₑₓₜ, 0.0)
@@ -458,6 +471,10 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
         # # # # # # # # # #
         while  residual > TOL || iter < 2
             iter += 1
+            if iter % 10 == 0 || norm(res) > 1e3
+                #global μ = μ * 1.1
+                println("Penalty paremeter updated: $μ")
+            end
             Ψ    += ΔΨ
             assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
             solveq!(ΔΨ, Kψ, -FΨ, bcdof_o2, bcval_o2)

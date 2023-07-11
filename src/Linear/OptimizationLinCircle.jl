@@ -23,9 +23,9 @@ include("..//mma.jl")
 
 r₀ = 0.5
 # Create two grids
-grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.075)
+grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.1)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
-grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.03)
+grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.05)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -163,8 +163,8 @@ global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ = similar(a)
 global λψ = similar(a)
-global Δ = -0.1
-global nloadsteps = 5
+global Δ = -0.05
+global nloadsteps = 10
 include("initOptLin.jl")
 
 
@@ -175,7 +175,7 @@ function Optimize(dh)
         global λψ    = similar(a)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
-        Vₘₐₓ        = 1.5 #1.1 * volume(dh, coord, enod)
+        Vₘₐₓ         = 1.5 #1.1 * volume(dh, coord, enod)
         global ε     = 1e5
         global μ     = 1e3
         #l    = similar(a)
@@ -280,8 +280,8 @@ function Optimize(dh)
             global kktnorm = kkttol + 10 # behöver inte skrivas över
             global outit = 0 # behöver inte skrivas över
             global change = 1 # behöver inte skrivas över
-            global xmin[contact_dofs] .= -0.025 # behöver skrivas över
-            global xmax[contact_dofs] .=  0.025 # behöver skrivas över
+            global xmin[contact_dofs] .= -0.005 # behöver skrivas över
+            global xmax[contact_dofs] .= 0.005 # behöver skrivas över
             global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.1 # behöver skrivas över
             global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.1 # behöver skrivas över
             global low        = xmin # behöver skrivas över
@@ -325,9 +325,8 @@ function Optimize(dh)
             global xold2      = d[:]
             global low        = xmin
             global upp        = xmax
-            global nloadsteps = nloadsteps + 10
         end
-
+        global nloadsteps = 10
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
@@ -363,7 +362,7 @@ function Optimize(dh)
         #∂g_∂x = -(T' * ∂rᵤ_∂x)'
         #∂g_∂u = -(T' * K)'
         # Compliance
-        g = -a[pdofs]' * Fᵢₙₜ[pdofs]
+        g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
         ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
         ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
         # Max/Min λ
@@ -420,7 +419,7 @@ function Optimize(dh)
             postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
             #postprocess_opt(a, dh, "results/DeformationC" * string(OptIter))
         end
-        println("Objective: ", g_hist, " Constraint: ", g₁)
+        println("Objective: ", g_hist, " Constraint: ", v_hist)
         if true_iteration == 100
             break
         end
