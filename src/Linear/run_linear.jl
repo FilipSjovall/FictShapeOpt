@@ -173,7 +173,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
 
     bcval₀ = bcval
     ε₀ = ε
-
+    global β = 1.0
     for loadstep ∈ 1 : nloadsteps
         res = res .* 0
         bcval = bcval₀
@@ -188,14 +188,14 @@ function solver_C(dh, coord, Δ, nloadsteps)
         # # # # # # # # # #
         # Newton solve.   #
         # # # # # # # # # #
-        let β = 1.0
+
             while  residual > TOL || iter < 2
                 iter += 1
                 if iter % 10 == 0 || norm(res) > 1e3
                     a = a_old
                     bcval = bcval₀
                     #global ε = ε * 0.5
-                    β = β * 0.5
+                    global β = β * 0.5
                     Δ_remaining = (Δ*nloadsteps - β * Δ - loadstep * Δ)/nloadsteps
                     remaining_steps = nloadsteps - loadstep
                     global nloadsteps = loadstep + remaining_steps
@@ -236,7 +236,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
                 display(p)
                 =#
             end
-        end
+
     end
     fill!(Fₑₓₜ, 0.0)
     Fₑₓₜ[bcdof] = -Fᵢₙₜ[bcdof]
