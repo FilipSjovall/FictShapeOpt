@@ -174,7 +174,12 @@ function solver_C(dh, coord, Δ, nloadsteps)
     bcval₀ = bcval
     ε₀ = ε
     global β = 1.0
-    for loadstep ∈ 1 : nloadsteps
+    #for loadstep ∈ 1 : nloadsteps
+    ##
+    loadstep = 0
+    while loadstep < nloadsteps
+        loadstep += 1
+    ##
         res = res .* 0
         bcval = bcval₀
         residual = 0 * residual
@@ -189,8 +194,10 @@ function solver_C(dh, coord, Δ, nloadsteps)
         # Newton solve.   #
         # # # # # # # # # #
 
+        @show β
             while  residual > TOL || iter < 2
                 iter += 1
+
                 if iter % 10 == 0 || norm(res) > 1e3
                     a = a_old
                     bcval = bcval₀
@@ -198,13 +205,17 @@ function solver_C(dh, coord, Δ, nloadsteps)
                     global β = β * 0.5
                     Δ_remaining = (Δ*nloadsteps - β * Δ - loadstep * Δ)/nloadsteps
                     remaining_steps = nloadsteps - loadstep
-                    global nloadsteps = loadstep + remaining_steps
+                    nloadsteps = loadstep + 2remaining_steps + 1
                     fill!(Δa, 0.0)
-                    println("Penalty paremeter updated: $ε, and β $β ")
-                    println("Detta är inte helt konsekvent, ökningen kanske inte motsvarar rätt antal steg extra - borde justeras")
+                    # println("Penalty paremeter updated: $ε, and β $β ")
+                    # println("Detta är inte helt konsekvent, ökningen kanske inte motsvarar rätt antal steg extra - borde justeras")
+                    # Set bcs - should be moved outside this function
+                    bcval = bcval .* β
+                    bcval₀= bcval
                 end
 
-                a += β * Δa
+                #a += β * Δa
+                a += Δa
                 assemGlobal!(K, Fᵢₙₜ,rc, dh, mp, t, a, coord, enod, ε)
                 solveq!(Δa, K, -Fᵢₙₜ, bcdof, bcval)
                 bcval = 0 * bcval
@@ -221,7 +232,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
                     vtk_point_data(vtkfile, σx, "σx")
                     vtk_point_data(vtkfile, σy, "σy")
                 end
-                #=
+
                 traction = ExtractContactTraction(a, ε, coord)
                 X_c = []
                 tract = []
@@ -234,7 +245,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
                 X_c = X_c[ϵᵢⱼₖ]
                 p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
                 display(p)
-                =#
+
             end
 
     end
@@ -421,7 +432,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     TOL = 1e-10
     residual = 0.0
     iter = 1
-    global λ
+    global λ = 0
     ndof = size(coord₀, 1) * 2
     nelm = size(enod, 1)
 
@@ -454,26 +465,39 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     # ---------- #
 
     bcval₀_o2 = bcval_o2
+    Δλ = (1.0 / nloadsteps)
 
-
-    for loadstep ∈ 1 : nloadsteps
+    #for loadstep ∈ 1 : nloadsteps
+    ##
+    loadstep = 0
+    while loadstep < nloadsteps
+        loadstep +=1
+    ##
         res = res .* 0
         bcval_o2 = bcval₀_o2
         residual = 0 * residual
         iter = 0
-        global λ = (1.0 / nloadsteps) * loadstep
+        global λ += Δλ #* loadstep
         fill!(ΔΨ, 0.0)
         print("\n","Starting equilibrium iteration at loadstep: ", loadstep, "\n")
 
-
+        Ψ_old = Ψ
         # # # # # # # # # #
         # Newton solve.  #
         # # # # # # # # # #
         while  residual > TOL || iter < 2
             iter += 1
             if iter % 10 == 0 || norm(res) > 1e3
+                Ψ = Ψ_old
                 #global μ = μ * 1.1
-                println("Penalty paremeter updated: $μ")
+                global λ -= Δλ #* loadstep
+
+                remaining_steps = nloadsteps - loadstep
+                nloadsteps = loadstep + 2remaining_steps + 1
+                Δλ        = Δλ/2
+                global λ += Δλ  #* loadstep
+                fill!(ΔΨ, 0.0)
+                println("Step length updated: $Δλ")
             end
             Ψ    += ΔΨ
             assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)

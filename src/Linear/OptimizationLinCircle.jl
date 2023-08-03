@@ -23,9 +23,9 @@ include("..//mma.jl")
 
 r₀ = 0.5
 # Create two grids
-grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.1)
+grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.075)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
-grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.05)
+grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.04)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -119,11 +119,7 @@ global free_d = []
 for jnod in n_robin
     append!(free_d, register[jnod, 2] )
 end
-
 global locked_d = setdiff(1:dh.ndofs.x,free_d)
-
-
-
 
 # Initialize tangents
 global K = create_sparsity_pattern(dh)
@@ -155,7 +151,6 @@ bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
 global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
 global bcval_o2 = bcdof_o2 .* 0.0
 
-
 # - For Linear solver..gmsh.model.add_physical_group(1, Lines[2:end-2], -1, "Γ_m")
 global dr_dd = similar(K)
 global ∂rψ_∂d = similar(K)
@@ -163,13 +158,12 @@ global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ = similar(a)
 global λψ = similar(a)
-global Δ = -0.05
+global Δ = -0.1
 global nloadsteps = 10
 include("initOptLin.jl")
 
 
 function Optimize(dh)
-
     # Flytta allt nedan till init_opt?
         global dh0   = deepcopy(dh)
         global λψ    = similar(a)
@@ -177,7 +171,7 @@ function Optimize(dh)
         global λᵥₒₗ  = similar(a)
         Vₘₐₓ         = 1.5 #1.1 * volume(dh, coord, enod)
         global ε     = 1e5
-        global μ     = 1e3
+        global μ     = 1e4
         #l    = similar(a)
         #l   .= 0.5
         tol     = 1e-6
@@ -325,6 +319,7 @@ function Optimize(dh)
             global xold2      = d[:]
             global low        = xmin
             global upp        = xmax
+            OptIter           = 1
         end
         global nloadsteps = 10
         # # # # # # # # # # # # # #
@@ -338,6 +333,7 @@ function Optimize(dh)
         # # # # # #
         # Filter  #
         # # # # # #
+        global nloadsteps = 10
         global dh    = deepcopy(dh0)
         updateCoords!(dh, Ψ) # x₀ + Ψ = x
         global coord = getCoord(getX(dh), dh)
@@ -361,16 +357,18 @@ function Optimize(dh)
         #g     = - T' * Fᵢₙₜ
         #∂g_∂x = -(T' * ∂rᵤ_∂x)'
         #∂g_∂u = -(T' * K)'
+
         # Compliance
-        g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
-        ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
-        ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
+        #g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
+        #∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
+        #∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
+
         # Max/Min λ
-        #p = 2
-        #X_ordered = getXfromCoord(coord)
-        #g         = contact_pnorm(X_ordered, a, ε, p)
-        #∂g_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
-        #∂g_∂u     = ForwardDiff.gradient(u -> contact_pnorm(X_ordered, u, ε, p), a)
+        p = 2
+        X_ordered = getXfromCoord(coord)
+        g         = contact_pnorm_s(X_ordered, a, ε, p)
+        ∂g_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
+        ∂g_∂u     = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
 
         # # # # # # #
         # Adjoints  #
@@ -423,10 +421,7 @@ function Optimize(dh)
         if true_iteration == 100
             break
         end
-
-
     end
-
     return g_hist, v_hist, OptIter, traction
 end
 

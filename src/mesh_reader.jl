@@ -544,7 +544,6 @@ function setBCXY(bc_load, dh, nodes)
     for node in nodes
         xdof = nodeDofs[node, 1]
         ydof = nodeDofs[node, 2]
-
         append!(bc_dof, ydof)
         append!(bc_val, bc_load)
         if dh.grid.nodes[node].x[1] ≈ 0.5

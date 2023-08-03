@@ -171,3 +171,64 @@ function contact_pnorm_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε,
 
     return r_c
 end
+
+function contact_pnorm_s(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) where {T1,T2}
+
+    # Order displacements according to nodes and not dofs
+    a_ordered = getDisplacementsOrdered(dh, a)
+
+    # Scaling
+    κ = gap_scaling(X)
+
+    # convert X to Real for compatibility with ForwardDiff
+    #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+    X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+
+    # Extract the coordinate vector (nbr_nodes x 2 )
+    coordu = getCoordfromX(X_float)
+
+    # Create dictionaries that are needed for the Mortar2D package
+    elements, element_types, slave_elements, slave_element_ids, master_element_ids, coords = create_contact_list(dh, Γs, Γm, coordu)
+
+    # Compute nodal normals
+    normals = Mortar2D.calculate_normals(elements, element_types, coords)
+
+    # Compute the projected gap function
+    g = gap_function(X_float)
+
+    #println("norm(scaling): ",norm(κ))
+    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
+    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
+
+    # ---------------- #
+    # (∑ₐ λₐᵖ )^(1/p)  #
+    # ---------------- #
+
+    # Loop over master side dofs
+    g₀ = 0.0
+    Ω  = 0.0
+    for (i, A) in enumerate(slave_dofs)
+        λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
+        g₀ += λ_A^p * (1 / κ[i])
+        Ω += (penalty(g[i, :] ⋅ normals[slave_dofs[i]], 1.0)) / κ[i]
+    end
+
+    g₀ = g₀/Ω
+
+    # ---------------------------------- #
+    # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods #
+    # ---------------------------------- #
+    return (g₀)^(1 / p)
+end
+
+function contact_pnorm_ordered_s(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) where {T1,T2}
+
+    # Order  X
+    X_ordered = getX_from_Dof_To_Node_order(dh, X)
+
+    #X_ordered = getXinDofOrder(dh, X, coord)
+
+    r_c = contact_pnorm_s(X_ordered, a, ε, p)
+
+    return r_c
+end
