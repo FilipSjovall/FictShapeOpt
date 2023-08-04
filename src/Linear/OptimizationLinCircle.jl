@@ -23,9 +23,9 @@ include("..//mma.jl")
 
 r₀ = 0.5
 # Create two grids
-grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.075)
+grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.1)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
-grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.04)
+grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.1)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -181,7 +181,7 @@ function Optimize(dh)
         g_hist         = zeros(200)
         v_hist         = zeros(200)
         global T = zeros(size(a))
-        global T[bcdof_bot_o] .= 1.0
+        global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= 1.0
     #
     while kktnorm > tol || OptIter < 3 #&& OptIter < 50
 
@@ -321,7 +321,13 @@ function Optimize(dh)
             global upp        = xmax
             OptIter           = 1
         end
+
+        # # # # #
+        # test  #
+        # # # # #
         global nloadsteps = 10
+        global μ = 1e4
+
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
@@ -333,10 +339,15 @@ function Optimize(dh)
         # # # # # #
         # Filter  #
         # # # # # #
-        global nloadsteps = 10
         global dh    = deepcopy(dh0)
         updateCoords!(dh, Ψ) # x₀ + Ψ = x
         global coord = getCoord(getX(dh), dh)
+
+        # # # # #
+        # test  #
+        # # # # #
+        global nloadsteps = 10
+        global ε = 1e5 # eller?
 
         # # # # # # # # #
         # Equillibrium  #
@@ -354,9 +365,9 @@ function Optimize(dh)
         # Objective #
         # # # # # # #
         # Max reaction force
-        #g     = - T' * Fᵢₙₜ
-        #∂g_∂x = -(T' * ∂rᵤ_∂x)'
-        #∂g_∂u = -(T' * K)'
+        g     = - T' * Fᵢₙₜ
+        ∂g_∂x = -(T' * ∂rᵤ_∂x)'
+        ∂g_∂u = -(T' * K)'
 
         # Compliance
         #g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
@@ -364,11 +375,17 @@ function Optimize(dh)
         #∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
 
         # Max/Min λ
-        p = 2
-        X_ordered = getXfromCoord(coord)
-        g         = contact_pnorm_s(X_ordered, a, ε, p)
-        ∂g_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
-        ∂g_∂u     = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
+        #p = 2
+        #X_ordered = getXfromCoord(coord)
+        #g         = contact_pnorm_s(X_ordered, a, ε, p)
+        #∂g_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
+        #∂g_∂u     = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
+
+        # Max area
+        #X_ordered = getXfromCoord(coord)
+        #g         = contact_area(X_ordered, a)
+        #∂g_∂x     = ForwardDiff.gradient(x -> contact_area_ordered(x, a), getXinDofOrder(dh, X_ordered, coord))
+        #∂g_∂u     = ForwardDiff.gradient(u -> contact_area(X_ordered, u), a)
 
         # # # # # # #
         # Adjoints  #

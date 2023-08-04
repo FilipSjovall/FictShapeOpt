@@ -198,19 +198,22 @@ function solver_C(dh, coord, Δ, nloadsteps)
             while  residual > TOL || iter < 2
                 iter += 1
 
-                if iter % 10 == 0 || norm(res) > 1e3
+                if iter % 10 == 0 || norm(res) > 1e5
                     a = a_old
                     bcval = bcval₀
                     #global ε = ε * 0.5
                     global β = β * 0.5
+                    if β == 0.25 || β == 0.25/2
+                        global ε = ε * 10
+                    end
                     Δ_remaining = (Δ*nloadsteps - β * Δ - loadstep * Δ)/nloadsteps
                     remaining_steps = nloadsteps - loadstep
-                    nloadsteps = loadstep + 2remaining_steps + 1
+                    nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
                     fill!(Δa, 0.0)
-                    # println("Penalty paremeter updated: $ε, and β $β ")
+                    println("Penalty paremeter and updated: $ε, and step length $β ")
                     # println("Detta är inte helt konsekvent, ökningen kanske inte motsvarar rätt antal steg extra - borde justeras")
                     # Set bcs - should be moved outside this function
-                    bcval = bcval .* β
+                    bcval = bcval ./2 #
                     bcval₀= bcval
                 end
 
@@ -232,22 +235,20 @@ function solver_C(dh, coord, Δ, nloadsteps)
                     vtk_point_data(vtkfile, σx, "σx")
                     vtk_point_data(vtkfile, σy, "σy")
                 end
-
-                traction = ExtractContactTraction(a, ε, coord)
-                X_c = []
-                tract = []
-                for (key, val) ∈ traction
-                    append!(X_c, coord[key, 1])
-                    append!(tract, val)
-                end
-                ϵᵢⱼₖ = sortperm(X_c)
-                tract = tract[ϵᵢⱼₖ]
-                X_c = X_c[ϵᵢⱼₖ]
-                p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
-                display(p)
-
             end
-
+            # Plot traction , can be moved to function...
+            traction = ExtractContactTraction(a, ε, coord)
+            X_c = []
+            tract = []
+            for (key, val) ∈ traction
+                append!(X_c, coord[key, 1])
+                append!(tract, val)
+            end
+            ϵᵢⱼₖ = sortperm(X_c)
+            tract = tract[ϵᵢⱼₖ]
+            X_c = X_c[ϵᵢⱼₖ]
+            p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
+            display(p)
     end
     fill!(Fₑₓₜ, 0.0)
     Fₑₓₜ[bcdof] = -Fᵢₙₜ[bcdof]
@@ -492,10 +493,12 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
                 #global μ = μ * 1.1
                 global λ -= Δλ #* loadstep
 
-                remaining_steps = nloadsteps - loadstep
-                nloadsteps = loadstep + 2remaining_steps + 1
                 Δλ        = Δλ/2
                 global λ += Δλ  #* loadstep
+
+                remaining_steps = nloadsteps - loadstep
+                nloadsteps = loadstep + 2remaining_steps + ((1.0 / nloadsteps) / Δλ - 1)
+
                 fill!(ΔΨ, 0.0)
                 println("Step length updated: $Δλ")
             end

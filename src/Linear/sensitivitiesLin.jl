@@ -1,3 +1,4 @@
+# Sensitivity of fictious material with respect to design parameter 'd'
 function drψ(dr_dd,dh,Ψ,λ,d,Γ_robin,coord₀)
     assembler = start_assemble(dr_dd)
     ie = 0
@@ -18,6 +19,7 @@ function drψ(dr_dd,dh,Ψ,λ,d,Γ_robin,coord₀)
     return dr_dd
 end
 
+# Shape sensitivity of equillibrium residual
 function drᵤ_dx(dr,dh,mp,t,a,coord,enod,τ, Γt)
     assembler = start_assemble(dr)
     ie = 0
@@ -40,6 +42,7 @@ function drᵤ_dx(dr,dh,mp,t,a,coord,enod,τ, Γt)
     return dr
 end
 
+# Shape sensitivity of external forces
 function dFext_dx(dF,dh,mp,t,a,coord,enod,τ, Γt)
     assembler = start_assemble(dF)
     ie = 0
@@ -60,6 +63,7 @@ function dFext_dx(dF,dh,mp,t,a,coord,enod,τ, Γt)
     return dF
 end
 
+# Shape sensitivity of equillibrium residual including contact
 function drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
     assembler = start_assemble(∂rᵤ_∂x)
     ie = 0
@@ -80,6 +84,7 @@ function drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
     return ∂rᵤ_∂x
 end
 
+# Shape sensitivity of fictitious residual including contact
 function drΨ_dx_c(∂rΨ_∂x, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
     assembler = start_assemble(∂rΨ_∂x)
     ie = 0
@@ -113,7 +118,7 @@ function drΨ_dx_c(∂rΨ_∂x, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_rob
     return ∂rΨ_∂x
 end
 
-
+# Objective function for p-norm of contact pressure
 function contact_pnorm(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) where {T1,T2}
 
    # Order displacements according to nodes and not dofs
@@ -160,6 +165,7 @@ function contact_pnorm(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) wher
    return (g₀)^(1/p)
 end
 
+# Objective function for p-norm of contact pressure | ordered
 function contact_pnorm_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε,p) where {T1,T2}
 
     # Order  X
@@ -172,6 +178,7 @@ function contact_pnorm_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε,
     return r_c
 end
 
+# Objective function for p-norm of contact pressure | Other version
 function contact_pnorm_s(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) where {T1,T2}
 
     # Order displacements according to nodes and not dofs
@@ -221,7 +228,63 @@ function contact_pnorm_s(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) wh
     return (g₀)^(1 / p)
 end
 
+# Objective function for p-norm of contact pressure | Other version |
 function contact_pnorm_ordered_s(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) where {T1,T2}
+
+    # Order  X
+    X_ordered = getX_from_Dof_To_Node_order(dh, X)
+
+    #X_ordered = getXinDofOrder(dh, X, coord)
+
+    r_c = contact_pnorm_s(X_ordered, a, ε, p)
+
+    return r_c
+end
+
+# Compute total contact area
+function contact_area(X::AbstractVector{T1}, a::AbstractVector{T2}) where {T1,T2}
+
+    # Order displacements according to nodes and not dofs
+    a_ordered = getDisplacementsOrdered(dh, a)
+
+    # Scaling
+    κ = gap_scaling(X)
+
+    # convert X to Real for compatibility with ForwardDiff
+    #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+    X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+
+    # Extract the coordinate vector (nbr_nodes x 2 )
+    coordu = getCoordfromX(X_float)
+
+    # Create dictionaries that are needed for the Mortar2D package
+    elements, element_types, slave_elements, slave_element_ids, master_element_ids, coords = create_contact_list(dh, Γs, Γm, coordu)
+
+    # Compute nodal normals
+    normals = Mortar2D.calculate_normals(elements, element_types, coords)
+
+    # Compute the projected gap function
+    g = gap_function(X_float)
+
+    #println("norm(scaling): ",norm(κ))
+    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
+    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
+
+    # ---------------- #
+    # (∑ₐ λₐᵖ )^(1/p)  #
+    # ---------------- #
+
+    # Loop over master side dofs
+    Ω = 0.0
+    for (i, A) in enumerate(slave_dofs)
+        Ω += (penalty(g[i, :] ⋅ normals[slave_dofs[i]], 1.0)) / κ[i]
+    end
+
+    return Ω
+end
+
+# Compute total contact area | input-dofs ordered to suit AD
+function contact_area_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}) where {T1,T2}
 
     # Order  X
     X_ordered = getX_from_Dof_To_Node_order(dh, X)
