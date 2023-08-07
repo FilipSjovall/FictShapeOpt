@@ -7,8 +7,6 @@ function solveq!(x,K,f,bcdof,bcval)
     pdofs    = bcdof
     fdofs    = setdiff(1:nd,pdofs)
 
-
-
     prob = LinearProblem(K[fdofs,fdofs], f[fdofs] - K[fdofs,pdofs]*bcval)
 
     # Solvers

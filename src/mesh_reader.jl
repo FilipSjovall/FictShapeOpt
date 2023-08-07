@@ -404,8 +404,8 @@ function createCircleMesh(filename, x₀, y₀, r, h)
 
 
     p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
-    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h/4)
-    p3 = gmsh.model.geo.add_point(x₀ - r, y₀, 0.0, h/4)
+    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h/2)
+    p3 = gmsh.model.geo.add_point(x₀ - r, y₀, 0.0, h/2)
     p4 = gmsh.model.geo.add_point(x₀, y₀ - r, 0.0, h/4 )
 
     # Add lines
@@ -414,6 +414,54 @@ function createCircleMesh(filename, x₀, y₀, r, h)
     l2 = gmsh.model.geo.add_circle_arc(p4, p1, p3)
     l3 = gmsh.model.geo.add_line(p3, p1)
     l4 = gmsh.model.geo.add_line(p1, p2)
+
+    # Create the closed curve loop and the surface
+    loop = gmsh.model.geo.add_curve_loop([l4, l3, l2, l1])
+    surf = gmsh.model.geo.add_plane_surface([loop])
+
+    # Synchronize the model
+    gmsh.model.geo.synchronize()
+
+    # Create the physical domains
+    gmsh.model.add_physical_group(1, [l1], -1, "Γ")
+    gmsh.model.add_physical_group(1, [l2], -1, "Γ2")
+    gmsh.model.add_physical_group(1, [l3], -1, "Γ3")
+    gmsh.model.add_physical_group(1, [l4], -1, "Γ3")
+    gmsh.model.add_physical_group(2, [surf])
+
+    gmsh.model.mesh.generate(2)
+
+    # Save the mesh, and read back in as a Ferrite Grid
+    grid = mktempdir() do dir
+        path = joinpath(dir, filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+
+    # Finalize the Gmsh library
+    Gmsh.finalize()
+
+    return grid
+end
+
+function createCircleMeshUp(filename, x₀, y₀, r, h)
+
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h/2)
+    p3 = gmsh.model.geo.add_point(x₀ - r, y₀, 0.0, h/2)
+    p4 = gmsh.model.geo.add_point(x₀, y₀ + r, 0.0, h/4 )
+
+    # Add lines
+    #    # Start - Center - End
+    l1 = gmsh.model.geo.add_line(p2, p1)
+    l2 = gmsh.model.geo.add_line(p1, p3)
+    l3 = gmsh.model.geo.add_circle_arc(p3, p1, p4)
+    l4 = gmsh.model.geo.add_circle_arc(p4, p1, p2)
 
     # Create the closed curve loop and the surface
     loop = gmsh.model.geo.add_curve_loop([l4, l3, l2, l1])

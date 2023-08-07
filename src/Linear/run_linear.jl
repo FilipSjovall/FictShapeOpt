@@ -198,12 +198,12 @@ function solver_C(dh, coord, Δ, nloadsteps)
             while  residual > TOL || iter < 2
                 iter += 1
 
-                if iter % 10 == 0 || norm(res) > 1e5
+                if iter % 10 == 0 || norm(res) > 1e3
                     a = a_old
                     bcval = bcval₀
                     #global ε = ε * 0.5
                     global β = β * 0.5
-                    if β == 0.25 || β == 0.25/2
+                    if β == 0.25
                         global ε = ε * 10
                     end
                     Δ_remaining = (Δ*nloadsteps - β * Δ - loadstep * Δ)/nloadsteps
@@ -236,6 +236,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
                     vtk_point_data(vtkfile, σy, "σy")
                 end
             end
+            #=
             # Plot traction , can be moved to function...
             traction = ExtractContactTraction(a, ε, coord)
             X_c = []
@@ -249,6 +250,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
             X_c = X_c[ϵᵢⱼₖ]
             p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
             display(p)
+            =#
     end
     fill!(Fₑₓₜ, 0.0)
     Fₑₓₜ[bcdof] = -Fᵢₙₜ[bcdof]

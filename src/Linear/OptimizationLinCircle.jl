@@ -23,9 +23,13 @@ include("..//mma.jl")
 
 r₀ = 0.5
 # Create two grids
-grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.1)
+#grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.1)
+#grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.1)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
-grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.1)
+
+case  = "circle"
+grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.1)
+grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.15) # inte rätt
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -44,33 +48,34 @@ close!(dh)
 global coord, enod = getTopology(dh)
 global register = index_nod_to_grid(dh, coord)
 
+if case == "box"
+    # ------------------ #
+    # Create master sets #
+    # ------------------ #
+    addfaceset!(dh.grid, "Γ_slave", x -> x[2] ≈ 1.001)
+    global Γs = getfaceset(dh.grid, "Γ_slave")
 
-# ------------------ #
-# Create master sets #
-# ------------------ #
-addfaceset!(dh.grid, "Γ_slave", x -> x[2] ≈ 1.001)
-global Γs = getfaceset(dh.grid, "Γ_slave")
+    addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ 1.001)
+    global nₛ = getnodeset(dh.grid, "nₛ")
+else
+    # ------------------ #
+    # Create master sets #
+    # ------------------ #
+    addfaceset!(dh.grid, "Γ_slave", x -> ((x[1] - r₀)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2 )
+    global Γs = getfaceset(dh.grid, "Γ_slave")
 
-addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ 1.001)
-global nₛ = getnodeset(dh.grid, "nₛ")
+    addnodeset!(dh.grid, "nₛ", x -> ((x[1] - r₀)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2 )
+    global nₛ = getnodeset(dh.grid, "nₛ")
+end
 
 # ----------------- #
 # Create slave sets #
 # ----------------- #
-
 addfaceset!(dh.grid, "Γ_master", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
 global Γm = getfaceset(dh.grid, "Γ_master")
 
 addnodeset!(dh.grid, "nₘ", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
 global nₘ = getnodeset(dh.grid, "nₘ")
-
-#=
-addfaceset!(dh.grid, "Γ_master", x -> x[2]≈1.0)
-global Γm = getfaceset(dh.grid, "Γ_master")
-
-addnodeset!(dh.grid, "nₘ", x -> x[2] ≈ 1.0)
-global nₘ = getnodeset(dh.grid, "nₘ")
-=#
 
 # Extract all nbr nodes and dofs
 global contact_dofs = getContactDofs(nₛ, nₘ)
@@ -87,13 +92,21 @@ global Γ_top = getnodeset(dh.grid, "Γ_top")
 
 addnodeset!(dh.grid, "n_top", x -> x[2] ≈ 1.5)
 global n_top = getnodeset(dh.grid, "n_top")
+if case == "box"
+    # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
+    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
+    global Γ_bot = getnodeset(dh.grid, "Γ_bot")
 
-# Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
-addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
-global Γ_bot = getnodeset(dh.grid, "Γ_bot")
+    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.0)
+    global n_bot = getnodeset(dh.grid, "n_bot")
+else
+    # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
+    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.5001)
+    global Γ_bot = getnodeset(dh.grid, "Γ_bot")
 
-addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.0)
-global n_bot = getnodeset(dh.grid, "n_bot")
+    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.5001)
+    global n_bot = getnodeset(dh.grid, "n_bot")
+end
 
 # Final preparations for contact
 global register = getNodeDofs(dh)
@@ -158,7 +171,7 @@ global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ = similar(a)
 global λψ = similar(a)
-global Δ = -0.1
+global Δ = -0.05
 global nloadsteps = 10
 include("initOptLin.jl")
 
@@ -170,8 +183,8 @@ function Optimize(dh)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
         Vₘₐₓ         = 1.5 #1.1 * volume(dh, coord, enod)
-        global ε     = 1e5
-        global μ     = 1e4
+        global ε     = 1e8
+        global μ     = 5e5
         #l    = similar(a)
         #l   .= 0.5
         tol     = 1e-6
@@ -183,7 +196,7 @@ function Optimize(dh)
         global T = zeros(size(a))
         global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= 1.0
     #
-    while kktnorm > tol || OptIter < 3 #&& OptIter < 50
+    while kktnorm > tol || OptIter < 50
 
         # # # # # # # # # # # # # #
         #       Definitions       #
@@ -312,7 +325,7 @@ function Optimize(dh)
             global upp   = xmax
         end
 
-        if OptIter % 5 == 0
+        if OptIter % 5 == 0 || kktnorm < 1e-5
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -320,13 +333,15 @@ function Optimize(dh)
             global low        = xmin
             global upp        = xmax
             OptIter           = 1
+
+
         end
 
         # # # # #
         # test  #
         # # # # #
-        global nloadsteps = 10
-        global μ = 1e4
+            #global nloadsteps = 10
+            #global μ = 1e4 # var μ = 1e4
 
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
@@ -346,8 +361,8 @@ function Optimize(dh)
         # # # # #
         # test  #
         # # # # #
-        global nloadsteps = 10
-        global ε = 1e5 # eller?
+            #global nloadsteps = 10
+            #global ε = 1e5 # eller?
 
         # # # # # # # # #
         # Equillibrium  #
