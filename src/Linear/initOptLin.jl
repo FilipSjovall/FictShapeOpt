@@ -7,8 +7,8 @@ bcdof,bcval = setBCLin(0.0,dh)
 
 dr_dd = similar(K)
 # Material parameters
+#mp₀   = [1.0 1.0]
 mp₀   = [1.0 1.0]
-#mp₀   = [2.16 1.0] # ?
 mp    = [175 80.769230769230759]
 # Optimization parameters
 global m             = 1;

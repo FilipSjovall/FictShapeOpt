@@ -256,6 +256,10 @@ if remesh == 1
     global nloadsteps =  10
 end
 
+using JLD2
+
+@load "steg9.jld2"
+testvar = 678
 
 if sens_test==1
     # Test sensitivity

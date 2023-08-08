@@ -5,6 +5,8 @@ using IterativeSolvers, IncompleteLU    # AlgebraicMultigrid
 using SparseDiffTools
 using Plots
 using Printf
+using JLD2
+
 
 include("..//mesh_reader.jl")
 include("initLin.jl") # initieras massa skit
@@ -148,17 +150,19 @@ global Δa = zeros(dh.ndofs.x)
 global res = zeros(dh.ndofs.x)
 
 # boundary conditions for contact analysis
-bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
-bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+bcdof_top_o, _ = setBCXY_both(-0.01, dh, Γ_top)
+bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
+#bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+#bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o = [bcdof_top_o; bcdof_bot_o]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o = bcdof_o[ϵᵢⱼₖ]
 global bcval_o = bcdof_o .* 0.0
 
-#bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-#bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
-bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
+bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+#bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+#bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
@@ -183,20 +187,21 @@ function Optimize(dh)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
         Vₘₐₓ         = 1.5 #1.1 * volume(dh, coord, enod)
-        global ε     = 1e8
-        global μ     = 5e5
+        global ε     = 1e6
+        global μ     = 1e4
         #l    = similar(a)
         #l   .= 0.5
         tol     = 1e-6
         OptIter = 0
         true_iteration = 0
-        global coord₀  = coord
+        global coord₀
         g_hist         = zeros(200)
         v_hist         = zeros(200)
+        historia = zeros(100,4)
         global T = zeros(size(a))
         global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= 1.0
     #
-    while kktnorm > tol || OptIter < 50
+    while kktnorm > tol || OptIter < 100
 
         # # # # # # # # # # # # # #
         #       Definitions       #
@@ -245,7 +250,7 @@ function Optimize(dh)
         true_iteration +=1
 
         # detta ska 100% vara en rutin
-        if OptIter % 100 == 0 #|| OptIter == 1
+        if OptIter % 1000 == 0 #|| OptIter == 1
             print("\n", " -------- Remeshing -------- ", "\n")
             reMeshGrids!(0.05, dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
             # Initialize tangents
@@ -325,7 +330,7 @@ function Optimize(dh)
             global upp   = xmax
         end
 
-        if OptIter % 5 == 0 || kktnorm < 1e-5
+        if OptIter % 10 == 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -334,14 +339,13 @@ function Optimize(dh)
             global upp        = xmax
             OptIter           = 1
 
-
         end
 
         # # # # #
         # test  #
         # # # # #
-            #global nloadsteps = 10
-            #global μ = 1e4 # var μ = 1e4
+        global nloadsteps = 10
+        global μ = 1e4 # var μ = 1e4
 
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
@@ -361,8 +365,8 @@ function Optimize(dh)
         # # # # #
         # test  #
         # # # # #
-            #global nloadsteps = 10
-            #global ε = 1e5 # eller?
+        global nloadsteps = 10
+        global ε = 1e5 # eller?
 
         # # # # # # # # #
         # Equillibrium  #
@@ -411,7 +415,7 @@ function Optimize(dh)
         # # # # # # # # # # #
         # Full sensitivity  #
         # # # # # # # # # # #
-        ∂g_∂d = (-transpose(λψ) * dr_dd)'
+        ∂g_∂d            = (-transpose(λψ) * dr_dd)'
         ∂g_∂d[locked_d] .= 0.0 # fulfix?
 
         # # # # # # # # # # #
@@ -438,6 +442,8 @@ function Optimize(dh)
         v_hist[true_iteration] = g₁
         g_hist[true_iteration] = g
 
+        historia[true_iteration,:] = [∂g_∂d[677] ∂g_∂d[678] coord[273,1] coord[273,2]]
+
         #The residual vector of the KKT conditions is calculated:
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
         kktnorm = change
@@ -445,23 +451,36 @@ function Optimize(dh)
         if mod(OptIter,1) == 0
             coord = getCoord(getX(dh0), dh0)
             postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
-            #coord = getCoord(getX(dh), dh)
             postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
-            #postprocess_opt(a, dh, "results/DeformationC" * string(OptIter))
         end
-        println("Objective: ", g_hist, " Constraint: ", v_hist)
-        if true_iteration == 100
+
+        println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
+        if true_iteration == 97
+            g_ini = 0
+            n     = 0
+            xval  = 0
+            @save "steg97.jld2"
+        elseif true_iteration == 100
+            @save "steg100.jld2"
             break
         end
     end
-    return g_hist, v_hist, OptIter, traction
+    return g_hist, v_hist, OptIter, traction, historia
 end
 
+# plot(coord[collect(n_robin),1], ∂g_∂d[free_d], seriestype=:scatter)
+g_hist, v_hist, OptIter, traction, historia = Optimize(dh)
+
+@gif for i=1:20
+    plot(historia[1:i,3], historia[1:i,4], label = "")
+    scatter!((historia[i,3], historia[i,4]), color = 1, label = "")
+end
+
+plot(1:100,historia[:,2], seriestype=:scatter)
+
+plot(1:100,g_hist[1:100], seriestype=:scatter)
 
 
-#Optimize(dh)
-
-#=
 
 X_c = []
 tract = []
@@ -476,4 +495,3 @@ Plots.plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
 OptIter = 2
 Plots.plot(collect(1:OptIter), g_hist[1:OptIter],lc =:red, label="Objective",linewidth=3)
 Plots.plot!(collect(1:OptIter), v_hist[1:OptIter], lc = :blue, label="Constraint",linewidth=3)
-=#
