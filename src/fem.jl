@@ -2,35 +2,35 @@
 #
 #   Solveq - Try different solvers
 #
-function solveq!(x,K,f,bcdof,bcval)
-    nd       = size(K,1)
-    pdofs    = bcdof
-    fdofs    = setdiff(1:nd,pdofs)
+function solveq!(x,K,f,bcdofs_in,bcval_in)
+    nd          = size(K,1)
+    pdofs_in    = bcdofs_in
+    fdofs_in    = setdiff(1:nd,pdofs_in)
 
-    prob = LinearProblem(K[fdofs,fdofs], f[fdofs] - K[fdofs,pdofs]*bcval)
+    prob = LinearProblem(K[fdofs_in,fdofs_in], f[fdofs_in] - K[fdofs_in,pdofs_in]*bcval_in)
 
     # Solvers
     #    MKLPardisoFactorize(),
     #    MKLPardisoIterate(),
     #    UMFPACKFactorization(),
     #    KLUFactorization())
-    #x[fdofs] = solve(prob, LUFactorization()).u
-    x[fdofs] = solve(prob, UMFPACKFactorization()).u
+    #x[fdofs_in] = solve(prob, LUFactorization()).u
+    x[fdofs_in] = solve(prob, UMFPACKFactorization()).u
 
     # Algebraic multigrid
-    #ml = ruge_stuben(K[fdofs,fdofs]) # Construct x Ruge-Stuben solver
+    #ml = ruge_stuben(K[fdofs_in,fdofs_in]) # Construct x Ruge-Stuben solver
     #pl = aspreconditioner(ml)
-    #@time x[fdofs] = solve(prob, KrylovJL_GMRES(), Pl = pl).u
+    #@time x[fdofs_in] = solve(prob, KrylovJL_GMRES(), Pl = pl).u
 
     # Incomplete LU
-    #pl = ilu(K[fdofs,fdofs], τ = 0.01) # τ needs to be tuned per problem
-    #@time x[fdofs] = solve(prob, KrylovJL_GMRES(), Pl = pl).u
+    #pl = ilu(K[fdofs_in,fdofs_in], τ = 0.01) # τ needs to be tuned per problem
+    #@time x[fdofs_in] = solve(prob, KrylovJL_GMRES(), Pl = pl).u
 
     # Conjugate gradient
-    #IterativeSolvers.cg!(x[fdofs], K[fdofs,fdofs], f[fdofs] - K[fdofs,pdofs]*bcval; maxiter=1000)
+    #IterativeSolvers.cg!(x[fdofs_in], K[fdofs_in,fdofs_in], f[fdofs_in] - K[fdofs_in,pdofs_in]*bcval_in; maxiter=1000)
 
     # Naive attempt
-    x[pdofs] = bcval
+    x[pdofs_in] = bcval_in
 
 end
 

@@ -30,8 +30,8 @@ r₀ = 0.5
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 case  = "circle"
-grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.1)
-grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.15) # inte rätt
+grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.02)
+grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.02) # inte rätt
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -45,7 +45,7 @@ global dh = DofHandler(grid_tot)
 add!(dh, :u, 2)
 close!(dh)
 
-
+println("Number of dofs ", dh.ndofs)
 # Extract CALFEM-style matrices
 global coord, enod = getTopology(dh)
 global register = index_nod_to_grid(dh, coord)
@@ -150,10 +150,10 @@ global Δa = zeros(dh.ndofs.x)
 global res = zeros(dh.ndofs.x)
 
 # boundary conditions for contact analysis
-bcdof_top_o, _ = setBCXY_both(-0.01, dh, Γ_top)
-bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
-#bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
-#bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+#bcdof_top_o, _ = setBCXY_both(-0.01, dh, Γ_top)
+#bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
+bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o = [bcdof_top_o; bcdof_bot_o]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o = bcdof_o[ϵᵢⱼₖ]
@@ -175,7 +175,7 @@ global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ = similar(a)
 global λψ = similar(a)
-global Δ = -0.05
+global Δ = -0.1
 global nloadsteps = 10
 include("initOptLin.jl")
 
@@ -186,9 +186,9 @@ function Optimize(dh)
         global λψ    = similar(a)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
-        Vₘₐₓ         = 1.5 #1.1 * volume(dh, coord, enod)
-        global ε     = 1e6
-        global μ     = 1e4
+        Vₘₐₓ         = 0.9 #1.1 * volume(dh, coord, enod)
+       # global ε     = 1e6
+       # global μ     = 1e3
         #l    = similar(a)
         #l   .= 0.5
         tol     = 1e-6
@@ -197,11 +197,11 @@ function Optimize(dh)
         global coord₀
         g_hist         = zeros(200)
         v_hist         = zeros(200)
-        historia = zeros(100,4)
+        historia = zeros(200,4)
         global T = zeros(size(a))
         global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= 1.0
     #
-    while kktnorm > tol || OptIter < 100
+    while kktnorm > tol || OptIter < 200
 
         # # # # # # # # # # # # # #
         #       Definitions       #
@@ -330,7 +330,7 @@ function Optimize(dh)
             global upp   = xmax
         end
 
-        if OptIter % 10 == 0
+        if OptIter % 5 == 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -338,35 +338,37 @@ function Optimize(dh)
             global low        = xmin
             global upp        = xmax
             OptIter           = 1
-
         end
 
+       # if true_iteration % 5 != 0
+
+            # # # # #
+            # test  #
+            # # # # #
+            global nloadsteps = 10
+            global μ = 1e4 # var μ = 1e4
+
+            # # # # # # # # # # # # # #
+            # Fictitious equillibrium #
+            # # # # # # # # # # # # # #
+            global coord₀ = getCoord(getX(dh0), dh0) # x₀
+            Ψ, _, Kψ, _, λ = fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
+
+            # # # # # #
+            # Filter  #
+            # # # # # #
+            global dh    = deepcopy(dh0)
+            updateCoords!(dh, Ψ) # x₀ + Ψ = x
+            global coord = getCoord(getX(dh), dh)
+       # else
+       #     λ = 1.0
+       # end
+
         # # # # #
         # test  #
         # # # # #
         global nloadsteps = 10
-        global μ = 1e4 # var μ = 1e4
-
-        # # # # # # # # # # # # # #
-        # Fictitious equillibrium #
-        # # # # # # # # # # # # # #
-
-        global coord₀ = getCoord(getX(dh0), dh0) # x₀
-        #Ψ, _, Kψ, _, λ = fictitious_solver_C(d, dh0, coord₀)
-        Ψ, _, Kψ, _, λ = fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
-
-        # # # # # #
-        # Filter  #
-        # # # # # #
-        global dh    = deepcopy(dh0)
-        updateCoords!(dh, Ψ) # x₀ + Ψ = x
-        global coord = getCoord(getX(dh), dh)
-
-        # # # # #
-        # test  #
-        # # # # #
-        global nloadsteps = 10
-        global ε = 1e5 # eller?
+        global ε = 5e5 # eller?
 
         # # # # # # # # #
         # Equillibrium  #
@@ -399,12 +401,6 @@ function Optimize(dh)
         #g         = contact_pnorm_s(X_ordered, a, ε, p)
         #∂g_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
         #∂g_∂u     = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
-
-        # Max area
-        #X_ordered = getXfromCoord(coord)
-        #g         = contact_area(X_ordered, a)
-        #∂g_∂x     = ForwardDiff.gradient(x -> contact_area_ordered(x, a), getXinDofOrder(dh, X_ordered, coord))
-        #∂g_∂u     = ForwardDiff.gradient(u -> contact_area(X_ordered, u), a)
 
         # # # # # # #
         # Adjoints  #
@@ -442,7 +438,7 @@ function Optimize(dh)
         v_hist[true_iteration] = g₁
         g_hist[true_iteration] = g
 
-        historia[true_iteration,:] = [∂g_∂d[677] ∂g_∂d[678] coord[273,1] coord[273,2]]
+        #historia[true_iteration,:] = [∂g_∂d[677] ∂g_∂d[678] coord[273,1] coord[273,2]]
 
         #The residual vector of the KKT conditions is calculated:
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
@@ -455,12 +451,15 @@ function Optimize(dh)
         end
 
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
-        if true_iteration == 97
+        if true_iteration == 1
             g_ini = 0
             n     = 0
             xval  = 0
-            @save "steg97.jld2"
-        elseif true_iteration == 100
+            #@save "stegett.jld2"
+        elseif true_iteration == 20
+            @save "tjugo.jld2"
+            break
+        elseif true_iteration == 200
             @save "steg100.jld2"
             break
         end
@@ -476,11 +475,16 @@ g_hist, v_hist, OptIter, traction, historia = Optimize(dh)
     scatter!((historia[i,3], historia[i,4]), color = 1, label = "")
 end
 
+
+
 plot(1:100,historia[:,2], seriestype=:scatter)
 
 plot(1:100,g_hist[1:100], seriestype=:scatter)
 
+Plots.plot(collect(1:10), g_hist[1:10],lc =:red, label="Objective",linewidth=3)
+Plots.plot!(collect(1:10), v_hist[1:10], lc = :blue, label="Constraint",linewidth=3)
 
+plot(coord[contact_nods,1], ∂g_∂d[free_d], seriestype=:scatter)
 
 X_c = []
 tract = []
@@ -493,5 +497,3 @@ tract = tract[ϵᵢⱼₖ]
 X_c = X_c[ϵᵢⱼₖ]
 Plots.plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
 OptIter = 2
-Plots.plot(collect(1:OptIter), g_hist[1:OptIter],lc =:red, label="Objective",linewidth=3)
-Plots.plot!(collect(1:OptIter), v_hist[1:OptIter], lc = :blue, label="Constraint",linewidth=3)

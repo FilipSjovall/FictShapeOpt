@@ -158,10 +158,10 @@ function solver_C(dh, coord, Δ, nloadsteps)
     # Set BCS    #
     # ---------- #
     # Set bcs - should be moved outside this function
-    bcdof_top, bcval_top = setBCXY_both(Δ / nloadsteps, dh, Γ_top)
-    bcdof_bot, bcval_bot = setBCXY_both(0.0, dh, Γ_bot)
-    #bcdof_top, bcval_top = setBCXY(Δ/nloadsteps, dh, Γ_top)
-    #bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
+    #bcdof_top, bcval_top = setBCXY_both(Δ / nloadsteps, dh, Γ_top)
+    #bcdof_bot, bcval_bot = setBCXY_both(0.0, dh, Γ_bot)
+    bcdof_top, bcval_top = setBCXY(Δ/nloadsteps, dh, Γ_top)
+    bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
     bcdof = [bcdof_top; bcdof_bot]
     bcval = [bcval_top; bcval_bot]
 
@@ -174,7 +174,6 @@ function solver_C(dh, coord, Δ, nloadsteps)
     global fdofs = setdiff(1:dh.ndofs.x, pdofs)
 
     bcval₀ = bcval
-    ε₀ = ε
     global β = 1.0
     #for loadstep ∈ 1 : nloadsteps
     ##
@@ -203,7 +202,6 @@ function solver_C(dh, coord, Δ, nloadsteps)
                 if iter % 10 == 0 || norm(res) > 1e3
                     a = a_old
                     bcval = bcval₀
-                    #global ε = ε * 0.5
                     global β = β * 0.5
                     if β == 0.25
                         global ε = ε * 10
@@ -213,8 +211,6 @@ function solver_C(dh, coord, Δ, nloadsteps)
                     nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
                     fill!(Δa, 0.0)
                     println("Penalty paremeter and updated: $ε, and step length $β ")
-                    # println("Detta är inte helt konsekvent, ökningen kanske inte motsvarar rätt antal steg extra - borde justeras")
-                    # Set bcs - should be moved outside this function
                     bcval = bcval ./2 #
                     bcval₀= bcval
                 end
@@ -229,13 +225,13 @@ function solver_C(dh, coord, Δ, nloadsteps)
                 residual = norm(res, 2)
                 #println("Iteration: ", iter, " Residual: ", residual)
                 @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof[2]]
-                postprocess_opt(a, dh, "contact_mesh" * string(loadstep))
-
-                σx, σy = StressExtract(dh, a, mp)
-                vtk_grid("contact" * string(loadstep) , dh) do vtkfile
-                    vtk_point_data(vtkfile, dh, a) # displacement field
-                    vtk_point_data(vtkfile, σx, "σx")
-                    vtk_point_data(vtkfile, σy, "σy")
+                if iter < 11
+                    σx, σy = StressExtract(dh, a, mp)
+                    vtk_grid("contact" * string(loadstep) , dh) do vtkfile
+                        vtk_point_data(vtkfile, dh, a) # displacement field
+                        vtk_point_data(vtkfile, σx, "σx")
+                        vtk_point_data(vtkfile, σy, "σy")
+                    end
                 end
             end
             #=
@@ -459,7 +455,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
     bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
     bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
-    ϵᵢⱼₖ = sortperm(bcdof_o)
+    ϵᵢⱼₖ = sortperm(bcdof_o2)
     global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
     global bcval_o2 = bcdof_o2 .* 0.0
 
@@ -467,6 +463,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
 
     global pdofs = bcdof
     global fdofs = setdiff(1:ndof, pdofs)
+
     # ---------- #
     # Set params # // Kanske som input till solver???
     # ---------- #
@@ -494,41 +491,30 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
         # # # # # # # # # #
         while  residual > TOL || iter < 2
             iter += 1
-            if iter % 10 == 0 || norm(res) > 1e3
+            if iter % 10 == 0 || norm(res) > 1e3 #&& Δλ > 1/16
                 Ψ = Ψ_old
-                #global μ = μ * 1.1
                 global λ -= Δλ #* loadstep
-
                 Δλ        = Δλ/2
                 global λ += Δλ  #* loadstep
-
                 remaining_steps = nloadsteps - loadstep
                 nloadsteps = loadstep + 2remaining_steps + ((1.0 / nloadsteps) / Δλ - 1)
-
                 fill!(ΔΨ, 0.0)
                 println("Step length updated: $Δλ")
             end
             Ψ    += ΔΨ
             assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
             solveq!(ΔΨ, Kψ, -FΨ, bcdof_o2, bcval_o2)
-            bcval_o2 = bcval_o2 .* 0
-            res      = FΨ #- Fₑₓₜ
+            bcval_o2      = bcval_o2 .* 0
+            res           = FΨ #- Fₑₓₜ
             res[bcdof_o2] = res[bcdof_o2] .* 0
             residual      = norm(res, 2)
             Ψ[bcdof_o2]   = bcval_o2
 
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
+            if iter < 11
             postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
-            postprocess_opt(d, dh0, "fictitious_d" * string(loadstep))
-            σx, σy = StressExtract(dh0, Ψ, mp₀)
-
-            vtk_grid("fictitious" * string(loadstep), dh0) do vtkfile
-                vtk_point_data(vtkfile, dh0, Ψ) # displacement field
-                vtk_point_data(vtkfile, σx, "σx")
-                vtk_point_data(vtkfile, σy, "σy")
-                vtk_point_data(vtkfile, d,  "d")
             end
-
+            #postprocess_opt(d, dh0, "fictitious_d" * string(loadstep))
             #=
             traction = ExtractContactTraction(Ψ, μ, coord₀)
             X_c = []

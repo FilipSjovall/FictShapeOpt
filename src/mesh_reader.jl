@@ -403,10 +403,10 @@ function createCircleMesh(filename, x₀, y₀, r, h)
     gmsh.option.set_number("General.Verbosity", 2)
 
 
-    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
-    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h/2)
-    p3 = gmsh.model.geo.add_point(x₀ - r, y₀, 0.0, h/2)
-    p4 = gmsh.model.geo.add_point(x₀, y₀ - r, 0.0, h/4 )
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, 2h)
+    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ - r, y₀, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀, y₀ - r, 0.0, h)
 
     # Add lines
     #    # Start - Center - End
@@ -451,10 +451,10 @@ function createCircleMeshUp(filename, x₀, y₀, r, h)
     gmsh.option.set_number("General.Verbosity", 2)
 
 
-    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
-    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h/2)
-    p3 = gmsh.model.geo.add_point(x₀ - r, y₀, 0.0, h/2)
-    p4 = gmsh.model.geo.add_point(x₀, y₀ + r, 0.0, h/4 )
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, 2h)
+    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ - r, y₀, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀, y₀ + r, 0.0, h )
 
     # Add lines
     #    # Start - Center - End

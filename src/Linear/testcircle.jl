@@ -177,7 +177,7 @@ p = 2
 testvar  = 191
 
 sens_test = 1
-perturbation        = 1e-6
+
 X = getXfromCoord(coord)
 
 remesh = 2
@@ -258,8 +258,10 @@ end
 
 using JLD2
 
-@load "steg9.jld2"
-testvar = 678
+@load "tio.jld2"
+testvar      = 362
+perturbation = 1e-6
+
 
 if sens_test==1
     # Test sensitivity
@@ -288,7 +290,7 @@ if sens_test==1
         p = 2
         #global X_ordered      = getXfromCoord(coord) # ta bort och byta då målfunk anropas
         #
-        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord, Δ/10, 1)
+        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord, Δ, 10)
         #test[pert] = a' * Fₑₓₜ
 
         test[pert]          = -a[pdofs]' * Fᵢₙₜ[pdofs]
