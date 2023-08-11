@@ -162,27 +162,28 @@ function solver_C(dh, coord, Δ, nloadsteps)
     #bcdof_bot, bcval_bot = setBCXY_both(0.0, dh, Γ_bot)
     bcdof_top, bcval_top = setBCXY(Δ/nloadsteps, dh, Γ_top)
     bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
-    bcdof = [bcdof_top; bcdof_bot]
-    bcval = [bcval_top; bcval_bot]
+    bcdofs = [bcdof_top; bcdof_bot]
+    bcvals = [bcval_top; bcval_bot]
 
-    ϵᵢⱼₖ  = sortperm(bcdof)
-    global bcdof = bcdof[ϵᵢⱼₖ]
-    global bcval = bcval[ϵᵢⱼₖ]
+    ϵᵢⱼₖ  = sortperm(bcdofs)
+    global bcdofs = bcdofs[ϵᵢⱼₖ]
+    global bcvals = bcvals[ϵᵢⱼₖ]
 
     # - For Linear solver..
-    global pdofs = bcdof
+    global pdofs = bcdofs
     global fdofs = setdiff(1:dh.ndofs.x, pdofs)
 
-    bcval₀ = bcval
+    bcval₀ = bcvals
     global β = 1.0
     #for loadstep ∈ 1 : nloadsteps
     ##
     loadstep = 0
     while loadstep < nloadsteps
         loadstep += 1
+        global ε = ε * 1.1
     ##
         res = res .* 0
-        bcval = bcval₀
+        bcvals = bcval₀
         residual = 0 * residual
         iter = 0
         fill!(Δa, 0.0)
@@ -201,30 +202,30 @@ function solver_C(dh, coord, Δ, nloadsteps)
 
                 if iter % 10 == 0 || norm(res) > 1e3
                     a = a_old
-                    bcval = bcval₀
+                    bcvals = bcval₀
                     global β = β * 0.5
-                    if β == 0.25
-                        global ε = ε * 10
-                    end
+                    #if β == 0.25
+                    #    global ε = ε * 10
+                    #end
                     Δ_remaining = (Δ*nloadsteps - β * Δ - loadstep * Δ)/nloadsteps
                     remaining_steps = nloadsteps - loadstep
                     nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
                     fill!(Δa, 0.0)
                     println("Penalty paremeter and updated: $ε, and step length $β ")
-                    bcval = bcval ./2 #
-                    bcval₀= bcval
+                    bcvals = bcvals ./2 #
+                    bcval₀= bcvals
                 end
 
                 #a += β * Δa
                 a += Δa
                 assemGlobal!(K, Fᵢₙₜ,rc, dh, mp, t, a, coord, enod, ε)
-                solveq!(Δa, K, -Fᵢₙₜ, bcdof, bcval)
-                bcval = 0 * bcval
+                solveq!(Δa, K, -Fᵢₙₜ, bcdofs, bcvals)
+                bcvals = 0 * bcvals
                 res = Fᵢₙₜ - Fₑₓₜ
-                res[bcdof] = 0 * res[bcdof]
+                res[bcdofs] = 0 * res[bcdofs]
                 residual = norm(res, 2)
                 #println("Iteration: ", iter, " Residual: ", residual)
-                @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof[2]]
+                @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdofs[2]]
                 if iter < 11
                     σx, σy = StressExtract(dh, a, mp)
                     vtk_grid("contact" * string(loadstep) , dh) do vtkfile
@@ -251,7 +252,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
             =#
     end
     fill!(Fₑₓₜ, 0.0)
-    Fₑₓₜ[bcdof] = -Fᵢₙₜ[bcdof]
+    Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
     τ_c         = ExtractContactTraction(a, ε, coord)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
 
@@ -476,6 +477,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     loadstep = 0
     while loadstep < nloadsteps
         loadstep +=1
+        global μ = μ * 1.1
     ##
         res = res .* 0
         bcval_o2 = bcval₀_o2

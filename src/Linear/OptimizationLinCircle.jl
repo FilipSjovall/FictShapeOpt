@@ -25,13 +25,14 @@ include("..//mma.jl")
 
 r₀ = 0.5
 # Create two grids
-#grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.1)
-#grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.1)
+case = "box"
+grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.03)
+grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.1)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
-case  = "circle"
-grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.02)
-grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.02) # inte rätt
+#case  = "circle"
+#grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.02)
+#grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.02) # inte rätt
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -41,11 +42,9 @@ grid2 = nothing
 
 # Create dofhandler with displacement field u
 global dh = DofHandler(grid_tot)
-
 add!(dh, :u, 2)
 close!(dh)
 
-println("Number of dofs ", dh.ndofs)
 # Extract CALFEM-style matrices
 global coord, enod = getTopology(dh)
 global register = index_nod_to_grid(dh, coord)
@@ -186,7 +185,7 @@ function Optimize(dh)
         global λψ    = similar(a)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
-        Vₘₐₓ         = 0.9 #1.1 * volume(dh, coord, enod)
+        Vₘₐₓ         = 1.78 #1.1 * volume(dh, coord, enod)
        # global ε     = 1e6
        # global μ     = 1e3
         #l    = similar(a)
@@ -215,6 +214,7 @@ function Optimize(dh)
             global ∂rᵤ_∂x
             global dr_dd
             global ∂rψ_∂d
+            global ∂g_∂d
             global mp
             global mp₀
             global t
@@ -346,7 +346,7 @@ function Optimize(dh)
             # test  #
             # # # # #
             global nloadsteps = 10
-            global μ = 1e4 # var μ = 1e4
+            global μ = 1e3 # var μ = 1e4
 
             # # # # # # # # # # # # # #
             # Fictitious equillibrium #
@@ -368,7 +368,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 5e5 # eller?
+        global ε = 5e4 # eller?
 
         # # # # # # # # #
         # Equillibrium  #
@@ -456,9 +456,8 @@ function Optimize(dh)
             n     = 0
             xval  = 0
             #@save "stegett.jld2"
-        elseif true_iteration == 20
-            @save "tjugo.jld2"
-            break
+        elseif true_iteration == 2
+            @save "tva.jld2"
         elseif true_iteration == 200
             @save "steg100.jld2"
             break
