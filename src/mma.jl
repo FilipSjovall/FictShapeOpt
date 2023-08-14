@@ -156,8 +156,11 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   #
   P = spzeros(m,n);
   Q = spzeros(m,n);
-  P = max.(dfdx',0);
-  Q = max.(-dfdx',0);
+  #P = max.(dfdx',0.0);
+  #Q = max.(-dfdx',0.0);
+  P = max.(dfdx, 0.0)
+  Q = max.(-dfdx, 0.0)
+  @show size(P) size(Q) size(raa0 * eeem * xmamiinv') size(dfdx)
   PQ = 0.001*(P + Q) + raa0*eeem*xmamiinv';
   P = P + PQ;
   Q = Q + PQ;

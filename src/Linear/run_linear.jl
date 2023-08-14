@@ -200,7 +200,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
             while  residual > TOL || iter < 2
                 iter += 1
 
-                if iter % 10 == 0 || norm(res) > 1e3
+                if iter % 20 == 0 || norm(res) > 1e3
                     a = a_old
                     bcvals = bcval₀
                     global β = β * 0.5
@@ -219,7 +219,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
                 #a += β * Δa
                 a += Δa
                 assemGlobal!(K, Fᵢₙₜ,rc, dh, mp, t, a, coord, enod, ε)
-                solveq!(Δa, K, -Fᵢₙₜ, bcdofs, bcvals)
+                solveq!(Δa,  K, -Fᵢₙₜ, bcdofs, bcvals)
                 bcvals = 0 * bcvals
                 res = Fᵢₙₜ - Fₑₓₜ
                 res[bcdofs] = 0 * res[bcdofs]
@@ -235,7 +235,8 @@ function solver_C(dh, coord, Δ, nloadsteps)
                     end
                 end
             end
-            #=
+
+
             # Plot traction , can be moved to function...
             traction = ExtractContactTraction(a, ε, coord)
             X_c = []
@@ -249,7 +250,8 @@ function solver_C(dh, coord, Δ, nloadsteps)
             X_c = X_c[ϵᵢⱼₖ]
             p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
             display(p)
-            =#
+
+
     end
     fill!(Fₑₓₜ, 0.0)
     Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
@@ -451,10 +453,10 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     global ΔΨ = zeros(dh0.ndofs.x)
     global res = zeros(dh0.ndofs.x)
 
-    #bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
-    #bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
-    bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-    bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+    bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+    bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
+    #bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+    #bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
     bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
     ϵᵢⱼₖ = sortperm(bcdof_o2)
     global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
@@ -477,7 +479,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     loadstep = 0
     while loadstep < nloadsteps
         loadstep +=1
-        global μ = μ * 1.1
+    #  global μ = μ * 1.1
     ##
         res = res .* 0
         bcval_o2 = bcval₀_o2

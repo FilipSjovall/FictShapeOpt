@@ -9,7 +9,7 @@ using JLD2
 
 
 include("..//mesh_reader.jl")
-include("initLin.jl") # initieras massa skit
+#include("initLin.jl") # initieras massa skit
 include("Contact//contact_help.jl")
 include("assemLin.jl")
 include("assemElemLin.jl")
@@ -26,8 +26,8 @@ include("..//mma.jl")
 r₀ = 0.5
 # Create two grids
 case = "box"
-grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.03)
-grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.1)
+grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.1)
+grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.3)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
@@ -50,6 +50,7 @@ global coord, enod = getTopology(dh)
 global register = index_nod_to_grid(dh, coord)
 
 if case == "box"
+
     # ------------------ #
     # Create master sets #
     # ------------------ #
@@ -58,6 +59,26 @@ if case == "box"
 
     addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ 1.001)
     global nₛ = getnodeset(dh.grid, "nₛ")
+
+    # ------------------ #
+    # Create left | sets #
+    # ------------------ #
+    addfaceset!(dh.grid, "Γ_left", x -> x[2] < 1.001 && x[1] ≈ 0.0)
+    global Γ_left = getfaceset(dh.grid, "Γ_left")
+
+    addnodeset!(dh.grid, "nₗ", x -> x[2] < 1.001 && x[1] ≈ 0.0)
+    global n_left = getnodeset(dh.grid, "nₗ")
+
+    # ------------------ #
+    # Create right  sets #
+    # ------------------ #
+    addfaceset!(dh.grid, "Γ_right", x -> x[2] < 1.001 && x[1] ≈ 1.0)
+    global Γ_right = getfaceset(dh.grid, "Γ_right")
+
+    addnodeset!(dh.grid, "nᵣ", x -> x[2] < 1.001 && x[1] ≈ 1.0)
+    global n_right = getnodeset(dh.grid, "nᵣ")
+
+
 else
     # ------------------ #
     # Create master sets #
@@ -93,6 +114,7 @@ global Γ_top = getnodeset(dh.grid, "Γ_top")
 
 addnodeset!(dh.grid, "n_top", x -> x[2] ≈ 1.5)
 global n_top = getnodeset(dh.grid, "n_top")
+
 if case == "box"
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
     addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
@@ -114,39 +136,47 @@ global register = getNodeDofs(dh)
 global X = getX(dh)
 global coord = getCoordfromX(X)
 
-# Init fictious
-
+# # # # # # # # #
+# Init fictious #
+# # # # # # # # #
 global coord₀ = deepcopy(coord)
 global Γ_robin = union(
     getfaceset(dh.grid, "Γ_slave"),
-    getfaceset(dh.grid, "Γ_master")
+    getfaceset(dh.grid, "Γ_master"),
+    getfaceset(dh.grid, "Γ_left"),
+    getfaceset(dh.grid, "Γ_right")
 )
 global n_robin = union(
     getnodeset(dh.grid, "nₛ"),
-    getnodeset(dh.grid, "nₘ")
+    getnodeset(dh.grid, "nₘ"),
+    getnodeset(dh.grid, "nₗ"),
+    getnodeset(dh.grid, "nᵣ")
 )
 
-#for inod in nodx
-#   append!(free_d,register[inod,2]*2-1)
-#end
+
 global free_d = []
 for jnod in n_robin
-    append!(free_d, register[jnod, 2] )
+    if in(jnod,n_left) || in(jnod,n_right)
+        append!(free_d, register[jnod, 1] )
+    else
+        append!(free_d, register[jnod, 1] )
+        append!(free_d, register[jnod, 2] )
+    end
 end
 global locked_d = setdiff(1:dh.ndofs.x,free_d)
 
 # Initialize tangents
-global K = create_sparsity_pattern(dh)
-global Kψ = create_sparsity_pattern(dh)
-global a = zeros(dh.ndofs.x)
-global d = zeros(dh.ndofs.x)
-global Ψ = zeros(dh.ndofs.x)
+global K    = create_sparsity_pattern(dh)
+global Kψ   = create_sparsity_pattern(dh)
+global a    = zeros(dh.ndofs.x)
+global d    = zeros(dh.ndofs.x)
+global Ψ    = zeros(dh.ndofs.x)
 global Fᵢₙₜ = zeros(dh.ndofs.x)
-global rc = zeros(dh.ndofs.x)
+global rc   = zeros(dh.ndofs.x)
 global Fₑₓₜ = zeros(dh.ndofs.x)
-global a = zeros(dh.ndofs.x)
-global Δa = zeros(dh.ndofs.x)
-global res = zeros(dh.ndofs.x)
+global a    = zeros(dh.ndofs.x)
+global Δa   = zeros(dh.ndofs.x)
+global res  = zeros(dh.ndofs.x)
 
 # boundary conditions for contact analysis
 #bcdof_top_o, _ = setBCXY_both(-0.01, dh, Γ_top)
@@ -158,23 +188,25 @@ bcdof_o = [bcdof_top_o; bcdof_bot_o]
 global bcdof_o = bcdof_o[ϵᵢⱼₖ]
 global bcval_o = bcdof_o .* 0.0
 
-bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-#bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
-#bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
+#bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+#bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
 global bcval_o2 = bcdof_o2 .* 0.0
 
 # - For Linear solver..gmsh.model.add_physical_group(1, Lines[2:end-2], -1, "Γ_m")
-global dr_dd = similar(K)
-global ∂rψ_∂d = similar(K)
-global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
-global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
-global λᵤ = similar(a)
-global λψ = similar(a)
-global Δ = -0.1
+global dr_dd      = similar(K)
+global ∂rψ_∂d     = similar(K)
+global ∂g_∂x      = zeros(size(a)) # behövs inte om vi har lokal funktion?
+global ∂g_∂u      = zeros(size(d)) # behövs inte om vi har lokal funktion?
+global ∂g₂_∂x      = zeros(size(a)) # behövs inte om vi har lokal funktion?
+global ∂g₂_∂u      = zeros(size(d)) # behövs inte om vi har lokal funktion?
+global λᵤ         = similar(a)
+global λψ         = similar(a)
+global Δ          = -0.05
 global nloadsteps = 10
 include("initOptLin.jl")
 
@@ -398,9 +430,9 @@ function Optimize(dh)
         # Max/Min λ
         #p = 2
         #X_ordered = getXfromCoord(coord)
-        #g         = contact_pnorm_s(X_ordered, a, ε, p)
-        #∂g_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
-        #∂g_∂u     = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
+        #g₂         = -contact_pnorm_s(X_ordered, a, ε, p)
+        #∂g₂_∂x     = -ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
+        #∂g₂_∂u     = -ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
 
         # # # # # # #
         # Adjoints  #
@@ -412,21 +444,38 @@ function Optimize(dh)
         # Full sensitivity  #
         # # # # # # # # # # #
         ∂g_∂d            = (-transpose(λψ) * dr_dd)'
-        ∂g_∂d[locked_d] .= 0.0 # fulfix?
+        #∂g_∂d[locked_d] .= 0.0 # fulfix?
 
         # # # # # # # # # # #
         # Volume constraint #
         # # # # # # # # # # #
-        g₁    = volume(dh,coord,enod) / Vₘₐₓ - 1
+        g₁    = volume(dh,coord,enod) / Vₘₐₓ - 1.0
         ∂Ω_∂x = volume_sens(dh,coord)
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdof_o2, bcval_o2.*0);
-        ∂Ω∂d  = -transpose(λᵥₒₗ)*dr_dd ./ Vₘₐₓ;
-        ∂Ω∂d[locked_d] .= 0.0
+        ∂Ω∂d  = Real.( -transpose(λᵥₒₗ)*dr_dd ./ Vₘₐₓ) ;
+        #∂Ω∂d[locked_d] .= 0.0
 
+        # # # # # # # # # # # #
+        # Pressure constraint #
+        # # # # # # # # # # # #
+        p = 2
+        X_ordered = getXfromCoord(coord)
+        g₂         = contact_pnorm_s(X_ordered, a, ε, p) / 100.0
+        ∂g₂_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
+        ∂g₂_∂u     = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
+
+        solveq!(λᵤ, K',  ∂g₂_∂u, bcdof_o, bcval_o)
+        solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
+        ∂g₂_∂d            = Real.( (-transpose(λψ) * dr_dd)' ./ 100.0 )'
+
+
+        @show size(vcat([∂Ω∂d; ∂g₂_∂d]))
+        @show size(vcat([∂Ω∂d, ∂g₂_∂d]))
+        @show hcat([g₁ g₂])
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, -10 * g, -10 * ∂g_∂d, g₁, ∂Ω∂d', low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, -10 * g, -10 * ∂g_∂d, hcat([g₁ g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
         d      = d_new

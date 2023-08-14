@@ -11,7 +11,7 @@ mp₀   = [1.0 1.0]
 #mp₀   = [0.0 1.0]
 mp    = [175 80.769230769230759]
 # Optimization parameters
-global m             = 1;
+global m             = 2;
 global n_mma         = length(d);
 global epsimin       = 0.0000001;
 global xvalue        = d[:];
@@ -31,7 +31,11 @@ global outit         = 0;
 global change        = 1;
 #global xmin[contact_dofs] .= -0.01 # behöver skrivas över
 #global xmax[contact_dofs] .=  0.01 # behöver skrivas över
-global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.05 # behöver skrivas över
-global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.05 # behöver skrivas över
+#global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.01 # behöver skrivas över
+#global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.01 # behöver skrivas över
+global xmin[free_d] .= -0.001 # behöver skrivas över
+global xmax[free_d] .=  0.001 # behöver skrivas över
+global xmin[free_d[findall(x -> x % 2 == 0, free_d)]] .= -0.005 # behöver skrivas över
+global xmax[free_d[findall(x -> x % 2 == 0, free_d)]] .=  0.005 # behöver skrivas över
 global low           = xmin;
 global upp           = xmax;
