@@ -1,5 +1,9 @@
 # Solution vector
-K    = create_sparsity_pattern(dh)
+ip = Lagrange{2,RefTetrahedron,1}()
+qr = QuadratureRule{2,RefTetrahedron}(1)
+qr_face = QuadratureRule{1,RefTetrahedron}(1)
+cv = CellVectorValues(qr, ip)
+fv = FaceVectorValues(qr_face, ip)
 # Optimization norm
 kktnorm = 1.0
 # Boundary values and associated dofs
@@ -10,6 +14,8 @@ dr_dd = similar(K)
 mp₀   = [1.0 1.0]
 #mp₀   = [0.0 1.0]
 mp    = [175 80.769230769230759]
+
+t = 1.0
 # Optimization parameters
 global m             = 2;
 global n_mma         = length(d);
@@ -29,13 +35,16 @@ global changetol     = 0.001;
 global kktnorm       = kkttol + 10;
 global outit         = 0;
 global change        = 1;
+
 #global xmin[contact_dofs] .= -0.01 # behöver skrivas över
 #global xmax[contact_dofs] .=  0.01 # behöver skrivas över
 #global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.01 # behöver skrivas över
 #global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.01 # behöver skrivas över
-global xmin[free_d] .= -0.001 # behöver skrivas över
-global xmax[free_d] .=  0.001 # behöver skrivas över
-global xmin[free_d[findall(x -> x % 2 == 0, free_d)]] .= -0.005 # behöver skrivas över
-global xmax[free_d[findall(x -> x % 2 == 0, free_d)]] .=  0.005 # behöver skrivas över
+
+#global xmin[free_d] .= -0.01 # behöver skrivas över
+#global xmax[free_d] .=  0.01 # behöver skrivas över
+global xmin[free_d[findall(x -> x % 2 == 0, free_d)]] .= -0.1 # behöver skrivas över
+global xmax[free_d[findall(x -> x % 2 == 0, free_d)]] .=  0.1 # behöver skrivas över
+
 global low           = xmin;
 global upp           = xmax;

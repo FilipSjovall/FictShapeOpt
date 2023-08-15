@@ -49,7 +49,7 @@ dh0      = deepcopy(dh)
 function index_nod_to_grid(dh,coord)
     coord = getCoord(getX(dh),dh);
     X = getX(dh)
-    X_nods = reshape_to_nodes(dh, X, :u)[1:2,:] 
+    X_nods = reshape_to_nodes(dh, X, :u)[1:2,:]
     index_register = zeros(Int,length(dh.grid.nodes),2)
     for ii in 1:length(coord[:,1])
         temp2 = X_nods[:,ii]
@@ -78,7 +78,7 @@ for jnod in nody
    append!(free_d,register[jnod,2]*2)
 end
 
-d         = 0*ones(size(coord,1)*2) 
+d         = 0*ones(size(coord,1)*2)
 d[free_d].= 0.1
 
 function postprocess_opt(Ψ, dh, str)

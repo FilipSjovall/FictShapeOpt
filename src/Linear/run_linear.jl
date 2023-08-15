@@ -160,10 +160,11 @@ function solver_C(dh, coord, Δ, nloadsteps)
     # Set bcs - should be moved outside this function
     #bcdof_top, bcval_top = setBCXY_both(Δ / nloadsteps, dh, Γ_top)
     #bcdof_bot, bcval_bot = setBCXY_both(0.0, dh, Γ_bot)
-    bcdof_top, bcval_top = setBCXY(Δ/nloadsteps, dh, Γ_top)
-    bcdof_bot, bcval_bot = setBCXY(0.0, dh, Γ_bot)
-    bcdofs = [bcdof_top; bcdof_bot]
-    bcvals = [bcval_top; bcval_bot]
+    bcdof_top, bcval_top   = setBCXY(Δ/nloadsteps, dh, Γ_top)
+    bcdof_bot, bcval_bot   = setBCXY(0.0, dh, Γ_bot)
+    bcdof_left, bcval_left = setBCX(0.0, dh, n_left)
+    bcdofs = [bcdof_top; bcdof_bot; bcdof_left]
+    bcvals = [bcval_top; bcval_bot; bcval_left]
 
     ϵᵢⱼₖ  = sortperm(bcdofs)
     global bcdofs = bcdofs[ϵᵢⱼₖ]
@@ -453,14 +454,15 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     global ΔΨ = zeros(dh0.ndofs.x)
     global res = zeros(dh0.ndofs.x)
 
-    bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
-    bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
     #bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
     #bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-    bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
-    ϵᵢⱼₖ = sortperm(bcdof_o2)
-    global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
-    global bcval_o2 = bcdof_o2 .* 0.0
+    bcdof_top_o2, _  = setBCXY(0.0, dh, Γ_top)
+    bcdof_bot_o2, _  = setBCXY(0.0, dh, Γ_bot)
+    bcdof_left_o2, _ = setBCX(0.0, dh, n_left)
+    bcdof_o2         = [bcdof_top_o2; bcdof_bot_o2; bcdof_left_o2]
+    ϵᵢⱼₖ            = sortperm(bcdof_o2)
+    global bcdof_o2  = bcdof_o2[ϵᵢⱼₖ]
+    global bcval_o2  = bcdof_o2 .* 0.0
 
     # Struct - problem {dh0,bcs,mp}
 

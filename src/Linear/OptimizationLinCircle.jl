@@ -26,8 +26,8 @@ include("..//mma.jl")
 r₀ = 0.5
 # Create two grids
 case = "box"
-grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.1)
-grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.3)
+grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.025)
+grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.15)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
@@ -141,25 +141,25 @@ global coord = getCoordfromX(X)
 # # # # # # # # #
 global coord₀ = deepcopy(coord)
 global Γ_robin = union(
-    getfaceset(dh.grid, "Γ_slave"),
-    getfaceset(dh.grid, "Γ_master"),
-    getfaceset(dh.grid, "Γ_left"),
-    getfaceset(dh.grid, "Γ_right")
+    #getfaceset(dh.grid, "Γ_slave"),
+    ###getfaceset(dh.grid, "Γ_left"),
+    ###getfaceset(dh.grid, "Γ_right"),
+    getfaceset(dh.grid, "Γ_master")
 )
 global n_robin = union(
-    getnodeset(dh.grid, "nₛ"),
-    getnodeset(dh.grid, "nₘ"),
-    getnodeset(dh.grid, "nₗ"),
-    getnodeset(dh.grid, "nᵣ")
+    #getnodeset(dh.grid, "nₛ"),
+    ###getnodeset(dh.grid, "nₗ"),
+    ###getnodeset(dh.grid, "nᵣ"),
+    getnodeset(dh.grid, "nₘ")
 )
 
 
 global free_d = []
 for jnod in n_robin
     if in(jnod,n_left) || in(jnod,n_right)
-        append!(free_d, register[jnod, 1] )
+        #append!(free_d, register[jnod, 1] )
     else
-        append!(free_d, register[jnod, 1] )
+        #append!(free_d, register[jnod, 1] )
         append!(free_d, register[jnod, 2] )
     end
 end
@@ -188,10 +188,10 @@ bcdof_o = [bcdof_top_o; bcdof_bot_o]
 global bcdof_o = bcdof_o[ϵᵢⱼₖ]
 global bcval_o = bcdof_o .* 0.0
 
-#bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-#bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
-bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
+bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+#bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+#bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
@@ -226,11 +226,14 @@ function Optimize(dh)
         OptIter = 0
         true_iteration = 0
         global coord₀
-        g_hist         = zeros(200)
         v_hist         = zeros(200)
+        p_hist         = zeros(200)
+        g_hist         = zeros(200)
         historia = zeros(200,4)
         global T = zeros(size(a))
         global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= 1.0
+        g₁ = 0.0
+        g₂ = 0.0
     #
     while kktnorm > tol || OptIter < 200
 
@@ -362,7 +365,7 @@ function Optimize(dh)
             global upp   = xmax
         end
 
-        if OptIter % 5 == 0
+        if OptIter % 10 == 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -460,22 +463,18 @@ function Optimize(dh)
         # # # # # # # # # # # #
         p = 2
         X_ordered = getXfromCoord(coord)
-        g₂         = contact_pnorm_s(X_ordered, a, ε, p) / 100.0
+        g₂         = contact_pnorm_s(X_ordered, a, ε, p) / 0.5 - 1.0
         ∂g₂_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
         ∂g₂_∂u     = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
 
         solveq!(λᵤ, K',  ∂g₂_∂u, bcdof_o, bcval_o)
         solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
-        ∂g₂_∂d            = Real.( (-transpose(λψ) * dr_dd)' ./ 100.0 )'
+        ∂g₂_∂d            = Real.( (-transpose(λψ) * dr_dd)' ./ 0.5 )'
 
-
-        @show size(vcat([∂Ω∂d; ∂g₂_∂d]))
-        @show size(vcat([∂Ω∂d, ∂g₂_∂d]))
-        @show hcat([g₁ g₂])
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, -10 * g, -10 * ∂g_∂d, hcat([g₁ g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, -10 * g, -10 * ∂g_∂d, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
         d      = d_new
@@ -485,6 +484,7 @@ function Optimize(dh)
         # Postprocessing  #
         # # # # # # # # # #
         v_hist[true_iteration] = g₁
+        p_hist[true_iteration] = g₂
         g_hist[true_iteration] = g
 
         #historia[true_iteration,:] = [∂g_∂d[677] ∂g_∂d[678] coord[273,1] coord[273,2]]
@@ -499,7 +499,7 @@ function Optimize(dh)
             postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
         end
 
-        println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
+        println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration] , p_hist[1:true_iteration])
         if true_iteration == 1
             g_ini = 0
             n     = 0
