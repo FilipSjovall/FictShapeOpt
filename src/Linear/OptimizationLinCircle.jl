@@ -143,14 +143,14 @@ global coord = getCoordfromX(X)
 global coord₀ = deepcopy(coord)
 global Γ_robin = union(
     getfaceset(dh.grid, "Γ_slave"),
-    getfaceset(dh.grid, "Γ_left"),
-    getfaceset(dh.grid, "Γ_right"),
+    #getfaceset(dh.grid, "Γ_left"),
+    #getfaceset(dh.grid, "Γ_right"),
     getfaceset(dh.grid, "Γ_master")
 )
 global n_robin = union(
     getnodeset(dh.grid, "nₛ"),
-    getnodeset(dh.grid, "nₗ"),
-    getnodeset(dh.grid, "nᵣ"),
+    #getnodeset(dh.grid, "nₗ"),
+    #getnodeset(dh.grid, "nᵣ"),
     getnodeset(dh.grid, "nₘ")
 )
 
