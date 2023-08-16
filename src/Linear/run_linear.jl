@@ -236,6 +236,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
                     end
                 end
             # Plot traction , can be moved to function...
+            τ_c = ExtractContactTraction(a, ε, coord)
             traction = ExtractContactTraction(a, ε, coord)
             X_c = []
             tract = []
@@ -251,10 +252,11 @@ function solver_C(dh, coord, Δ, nloadsteps)
 
             fill!(Fₑₓₜ, 0.0)
             Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
-            τ_c = ExtractContactTraction(a, ε, coord)
+
             end
 
     end
+    τ_c = ExtractContactTraction(a, ε, coord)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
 end
 
