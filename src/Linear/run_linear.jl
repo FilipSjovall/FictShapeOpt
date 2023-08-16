@@ -235,24 +235,25 @@ function solver_C(dh, coord, Δ, nloadsteps)
                         vtk_point_data(vtkfile, σy, "σy")
                     end
                 end
+            # Plot traction , can be moved to function...
+            traction = ExtractContactTraction(a, ε, coord)
+            X_c = []
+            tract = []
+            for (key, val) ∈ traction
+                append!(X_c, coord[key, 1])
+                append!(tract, val)
             end
-        # Plot traction , can be moved to function...
-        traction = ExtractContactTraction(a, ε, coord)
-        X_c = []
-        tract = []
-        for (key, val) ∈ traction
-            append!(X_c, coord[key, 1])
-            append!(tract, val)
-        end
-        ϵᵢⱼₖ = sortperm(X_c)
-        tract = tract[ϵᵢⱼₖ]
-        X_c = X_c[ϵᵢⱼₖ]
-        p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
-        display(p)
+            ϵᵢⱼₖ = sortperm(X_c)
+            tract = tract[ϵᵢⱼₖ]
+            X_c = X_c[ϵᵢⱼₖ]
+            p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
+            display(p)
 
-        fill!(Fₑₓₜ, 0.0)
-        Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
-        τ_c = ExtractContactTraction(a, ε, coord)
+            fill!(Fₑₓₜ, 0.0)
+            Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
+            τ_c = ExtractContactTraction(a, ε, coord)
+            end
+
     end
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
 end
