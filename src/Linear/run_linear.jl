@@ -158,13 +158,13 @@ function solver_C(dh, coord, Δ, nloadsteps)
     # Set BCS    #
     # ---------- #
     # Set bcs - should be moved outside this function
-    #bcdof_top, bcval_top = setBCXY_both(Δ / nloadsteps, dh, Γ_top)
-    #bcdof_bot, bcval_bot = setBCXY_both(0.0, dh, Γ_bot)
-    bcdof_top, bcval_top   = setBCXY(Δ/nloadsteps, dh, Γ_top)
-    bcdof_bot, bcval_bot   = setBCXY(0.0, dh, Γ_bot)
-    bcdof_left, bcval_left = setBCX(0.0, dh, n_left)
-    bcdofs = [bcdof_top; bcdof_bot; bcdof_left]
-    bcvals = [bcval_top; bcval_bot; bcval_left]
+    bcdof_top, bcval_top = setBCXY_both(Δ / nloadsteps, dh, Γ_top)
+    bcdof_bot, bcval_bot = setBCXY_both(0.0, dh, Γ_bot)
+    #bcdof_top, bcval_top   = setBCXY(Δ/nloadsteps, dh, Γ_top)
+    #bcdof_bot, bcval_bot   = setBCXY(0.0, dh, Γ_bot)
+    #bcdof_left, bcval_left = setBCX(0.0, dh, n_left)
+    bcdofs = [bcdof_top; bcdof_bot]
+    bcvals = [bcval_top; bcval_bot]
 
     ϵᵢⱼₖ  = sortperm(bcdofs)
     global bcdofs = bcdofs[ϵᵢⱼₖ]
@@ -236,29 +236,25 @@ function solver_C(dh, coord, Δ, nloadsteps)
                     end
                 end
             end
+        # Plot traction , can be moved to function...
+        traction = ExtractContactTraction(a, ε, coord)
+        X_c = []
+        tract = []
+        for (key, val) ∈ traction
+            append!(X_c, coord[key, 1])
+            append!(tract, val)
+        end
+        ϵᵢⱼₖ = sortperm(X_c)
+        tract = tract[ϵᵢⱼₖ]
+        X_c = X_c[ϵᵢⱼₖ]
+        p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
+        display(p)
 
-
-            # Plot traction , can be moved to function...
-            traction = ExtractContactTraction(a, ε, coord)
-            X_c = []
-            tract = []
-            for (key, val) ∈ traction
-                append!(X_c, coord[key, 1])
-                append!(tract, val)
-            end
-            ϵᵢⱼₖ = sortperm(X_c)
-            tract = tract[ϵᵢⱼₖ]
-            X_c = X_c[ϵᵢⱼₖ]
-            p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
-            display(p)
-
-
+        fill!(Fₑₓₜ, 0.0)
+        Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
+        τ_c = ExtractContactTraction(a, ε, coord)
     end
-    fill!(Fₑₓₜ, 0.0)
-    Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
-    τ_c         = ExtractContactTraction(a, ε, coord)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
-
 end
 
 # Fictitious equillibrium for shape optimization of problem with contact
@@ -454,12 +450,12 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     global ΔΨ = zeros(dh0.ndofs.x)
     global res = zeros(dh0.ndofs.x)
 
-    #bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-    #bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-    bcdof_top_o2, _  = setBCXY(0.0, dh, Γ_top)
-    bcdof_bot_o2, _  = setBCXY(0.0, dh, Γ_bot)
-    bcdof_left_o2, _ = setBCX(0.0, dh, n_left)
-    bcdof_o2         = [bcdof_top_o2; bcdof_bot_o2; bcdof_left_o2]
+    bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+    bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+    #bcdof_top_o2, _  = setBCXY(0.0, dh, Γ_top)
+    #bcdof_bot_o2, _  = setBCXY(0.0, dh, Γ_bot)
+    #bcdof_left_o2, _ = setBCX(0.0, dh, n_left)
+    bcdof_o2         = [bcdof_top_o2; bcdof_bot_o2]
     ϵᵢⱼₖ            = sortperm(bcdof_o2)
     global bcdof_o2  = bcdof_o2[ϵᵢⱼₖ]
     global bcval_o2  = bcdof_o2 .* 0.0
@@ -497,7 +493,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
         # # # # # # # # # #
         while  residual > TOL || iter < 2
             iter += 1
-            if iter % 10 == 0 || norm(res) > 1e3 #&& Δλ > 1/16
+            if iter % 10 == 0 || norm(res) > 1e2 #&& Δλ > 1/16
                 Ψ = Ψ_old
                 global λ -= Δλ #* loadstep
                 Δλ        = Δλ/2

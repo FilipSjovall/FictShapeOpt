@@ -6,6 +6,7 @@ using SparseDiffTools
 using Plots
 using Printf
 using JLD2
+using Statistics # för var(λ)
 
 
 include("..//mesh_reader.jl")
@@ -26,8 +27,8 @@ include("..//mma.jl")
 r₀ = 0.5
 # Create two grids
 case = "box"
-grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.025)
-grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.15)
+grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.05)
+grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.2)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
@@ -141,15 +142,15 @@ global coord = getCoordfromX(X)
 # # # # # # # # #
 global coord₀ = deepcopy(coord)
 global Γ_robin = union(
-    #getfaceset(dh.grid, "Γ_slave"),
-    ###getfaceset(dh.grid, "Γ_left"),
-    ###getfaceset(dh.grid, "Γ_right"),
+    getfaceset(dh.grid, "Γ_slave"),
+    getfaceset(dh.grid, "Γ_left"),
+    getfaceset(dh.grid, "Γ_right"),
     getfaceset(dh.grid, "Γ_master")
 )
 global n_robin = union(
-    #getnodeset(dh.grid, "nₛ"),
-    ###getnodeset(dh.grid, "nₗ"),
-    ###getnodeset(dh.grid, "nᵣ"),
+    getnodeset(dh.grid, "nₛ"),
+    getnodeset(dh.grid, "nₗ"),
+    getnodeset(dh.grid, "nᵣ"),
     getnodeset(dh.grid, "nₘ")
 )
 
@@ -179,10 +180,10 @@ global Δa   = zeros(dh.ndofs.x)
 global res  = zeros(dh.ndofs.x)
 
 # boundary conditions for contact analysis
-#bcdof_top_o, _ = setBCXY_both(-0.01, dh, Γ_top)
-#bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
-bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
-bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+bcdof_top_o, _ = setBCXY_both(-0.01, dh, Γ_top)
+bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
+#bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+#bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o = [bcdof_top_o; bcdof_bot_o]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o = bcdof_o[ϵᵢⱼₖ]
@@ -202,8 +203,8 @@ global dr_dd      = similar(K)
 global ∂rψ_∂d     = similar(K)
 global ∂g_∂x      = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g_∂u      = zeros(size(d)) # behövs inte om vi har lokal funktion?
-global ∂g₂_∂x      = zeros(size(a)) # behövs inte om vi har lokal funktion?
-global ∂g₂_∂u      = zeros(size(d)) # behövs inte om vi har lokal funktion?
+global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion?
+global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ         = similar(a)
 global λψ         = similar(a)
 global Δ          = -0.05
@@ -365,7 +366,7 @@ function Optimize(dh)
             global upp   = xmax
         end
 
-        if OptIter % 10 == 0
+        if OptIter % 5 == 0 && g₂ < 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -500,6 +501,14 @@ function Optimize(dh)
         end
 
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration] , p_hist[1:true_iteration])
+
+
+        p2 = plot(1:true_iteration,[p_hist[1:true_iteration],g_hist[1:true_iteration]],label = ["Constraint" "Objective"])
+        display(p2)
+
+        #p3 = plot(1:true_iteration,g_hist[1:true_iteration],legend=false, marker=3, reuse = false, lc =:darkgreen)
+        #display(p3)
+
         if true_iteration == 1
             g_ini = 0
             n     = 0

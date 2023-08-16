@@ -224,7 +224,8 @@ function contact_pnorm_s(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) wh
         end
     end
 
-    g₀ = (g₀/length(p_mean) - mean(p_mean)^2)
+    #g₀ = (g₀/length(p_mean) - mean(p_mean)^2)
+    g₀ = var(p_mean)
 
     # ---------------------------------- #
     # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods #

@@ -43,8 +43,8 @@ global change        = 1;
 
 #global xmin[free_d] .= -0.01 # behöver skrivas över
 #global xmax[free_d] .=  0.01 # behöver skrivas över
-global xmin[free_d[findall(x -> x % 2 == 0, free_d)]] .= -0.1 # behöver skrivas över
-global xmax[free_d[findall(x -> x % 2 == 0, free_d)]] .=  0.1 # behöver skrivas över
+global xmin[free_d[findall(x -> x % 2 == 0, free_d)]] .= -0.05 # behöver skrivas över
+global xmax[free_d[findall(x -> x % 2 == 0, free_d)]] .=  0.05 # behöver skrivas över
 
 global low           = xmin;
 global upp           = xmax;
