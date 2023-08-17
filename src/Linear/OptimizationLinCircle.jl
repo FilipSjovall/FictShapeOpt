@@ -27,8 +27,8 @@ include("..//mma.jl")
 r₀ = 0.5
 # Create two grids
 case = "box"
-grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.05)
-grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.2)
+grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.03)
+grid2 = createBoxMeshRev("box_2",  0.0, 0.0, 1.0, 1.001, 0.1)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
@@ -142,13 +142,13 @@ global coord = getCoordfromX(X)
 # # # # # # # # #
 global coord₀ = deepcopy(coord)
 global Γ_robin = union(
-    getfaceset(dh.grid, "Γ_slave"),
+    #getfaceset(dh.grid, "Γ_slave"),
     #getfaceset(dh.grid, "Γ_left"),
     #getfaceset(dh.grid, "Γ_right"),
     getfaceset(dh.grid, "Γ_master")
 )
 global n_robin = union(
-    getnodeset(dh.grid, "nₛ"),
+    #getnodeset(dh.grid, "nₛ"),
     #getnodeset(dh.grid, "nₗ"),
     #getnodeset(dh.grid, "nᵣ"),
     getnodeset(dh.grid, "nₘ")
@@ -366,7 +366,7 @@ function Optimize(dh)
             global upp   = xmax
         end
 
-        if OptIter % 5 == 0 && g₂ < 0
+        if OptIter % 5 == 0 
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -382,7 +382,7 @@ function Optimize(dh)
             # test  #
             # # # # #
             global nloadsteps = 10
-            global μ = 1e3 # var μ = 1e4
+            global μ = 1e4 # var μ = 1e4
 
             # # # # # # # # # # # # # #
             # Fictitious equillibrium #
