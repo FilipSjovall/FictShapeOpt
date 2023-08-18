@@ -235,6 +235,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
                         vtk_point_data(vtkfile, σy, "σy")
                     end
                 end
+            end
             # Plot traction , can be moved to function...
             τ_c = ExtractContactTraction(a, ε, coord)
             traction = ExtractContactTraction(a, ε, coord)
@@ -252,9 +253,6 @@ function solver_C(dh, coord, Δ, nloadsteps)
 
             fill!(Fₑₓₜ, 0.0)
             Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
-
-            end
-
     end
     τ_c = ExtractContactTraction(a, ε, coord)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c

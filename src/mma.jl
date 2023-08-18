@@ -91,7 +91,7 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   albefa = 0.1;
 
   #asyinit = 0.5;# FOR COMPLIANT
-  asyinit = 0.01;
+  asyinit = 0.05;
 
   asyincr = 1.2;
   asydecr = 0.7;

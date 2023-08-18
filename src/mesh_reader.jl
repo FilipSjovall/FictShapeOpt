@@ -1079,7 +1079,6 @@ function reMeshGrids!(h,dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,co
 
 end
 
-
 function createBoxMeshRounded(filename, r, h)
 
     # Initialize gmsh
@@ -1145,7 +1144,6 @@ function createBoxMeshRounded(filename, r, h)
 
     return grid
 end
-
 
 function createBoxMeshRounded_Flipped(filename, r, y₀, h)
 

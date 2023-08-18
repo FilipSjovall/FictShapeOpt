@@ -27,8 +27,12 @@ include("..//mma.jl")
 r₀ = 0.5
 # Create two grids
 case = "box"
-grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.03)
-grid2 = createBoxMeshRev("box_2",  0.0, 0.0, 1.0, 1.001, 0.1)
+
+xₗ =  0.0
+Δx =  1.0
+
+grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.05)
+grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.2)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
@@ -64,19 +68,19 @@ if case == "box"
     # ------------------ #
     # Create left | sets #
     # ------------------ #
-    addfaceset!(dh.grid, "Γ_left", x -> x[2] < 1.001 && x[1] ≈ 0.0)
+    addfaceset!(dh.grid, "Γ_left", x -> x[2] < 1.001 && x[1] ≈ xₗ)
     global Γ_left = getfaceset(dh.grid, "Γ_left")
 
-    addnodeset!(dh.grid, "nₗ", x -> x[2] < 1.001 && x[1] ≈ 0.0)
+    addnodeset!(dh.grid, "nₗ", x -> x[2] < 1.001 && x[1] ≈ xₗ)
     global n_left = getnodeset(dh.grid, "nₗ")
 
     # ------------------ #
     # Create right  sets #
     # ------------------ #
-    addfaceset!(dh.grid, "Γ_right", x -> x[2] < 1.001 && x[1] ≈ 1.0)
+    addfaceset!(dh.grid, "Γ_right", x -> x[2] < 1.001 && x[1] ≈ xₗ + Δx)
     global Γ_right = getfaceset(dh.grid, "Γ_right")
 
-    addnodeset!(dh.grid, "nᵣ", x -> x[2] < 1.001 && x[1] ≈ 1.0)
+    addnodeset!(dh.grid, "nᵣ", x -> x[2] < 1.001 && x[1] ≈ xₗ + Δx)
     global n_right = getnodeset(dh.grid, "nᵣ")
 
 
@@ -142,15 +146,15 @@ global coord = getCoordfromX(X)
 # # # # # # # # #
 global coord₀ = deepcopy(coord)
 global Γ_robin = union(
-    #getfaceset(dh.grid, "Γ_slave"),
-    #getfaceset(dh.grid, "Γ_left"),
-    #getfaceset(dh.grid, "Γ_right"),
+    getfaceset(dh.grid, "Γ_slave"),
+    getfaceset(dh.grid, "Γ_left"),
+    getfaceset(dh.grid, "Γ_right"),
     getfaceset(dh.grid, "Γ_master")
 )
 global n_robin = union(
-    #getnodeset(dh.grid, "nₛ"),
-    #getnodeset(dh.grid, "nₗ"),
-    #getnodeset(dh.grid, "nᵣ"),
+    getnodeset(dh.grid, "nₛ"),
+    getnodeset(dh.grid, "nₗ"),
+    getnodeset(dh.grid, "nᵣ"),
     getnodeset(dh.grid, "nₘ")
 )
 
@@ -158,9 +162,9 @@ global n_robin = union(
 global free_d = []
 for jnod in n_robin
     if in(jnod,n_left) || in(jnod,n_right)
-        #append!(free_d, register[jnod, 1] )
+        append!(free_d, register[jnod, 1] )
     else
-        #append!(free_d, register[jnod, 1] )
+        append!(free_d, register[jnod, 1] )
         append!(free_d, register[jnod, 2] )
     end
 end
@@ -366,7 +370,7 @@ function Optimize(dh)
             global upp   = xmax
         end
 
-        if OptIter % 5 == 0 
+        if OptIter % 5 == 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -382,7 +386,7 @@ function Optimize(dh)
             # test  #
             # # # # #
             global nloadsteps = 10
-            global μ = 1e4 # var μ = 1e4
+            global μ = 1e5 # var μ = 1e4
 
             # # # # # # # # # # # # # #
             # Fictitious equillibrium #
