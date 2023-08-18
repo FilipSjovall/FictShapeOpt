@@ -201,20 +201,25 @@ function solver_C(dh, coord, Δ, nloadsteps)
             while  residual > TOL || iter < 2
                 iter += 1
 
-                if iter % 20 == 0 || norm(res) > 1e3
+                if iter % 10 == 0 || norm(res) > 1e3
                     a = a_old
                     bcvals = bcval₀
-                    global β = β * 0.5
+                    if β > 1/8
+                        global β = β * 0.5
+
                     #if β == 0.25
                     #    global ε = ε * 10
                     #end
                     Δ_remaining = (Δ*nloadsteps - β * Δ - loadstep * Δ)/nloadsteps
                     remaining_steps = nloadsteps - loadstep
                     nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
-                    fill!(Δa, 0.0)
-                    println("Penalty paremeter and updated: $ε, and step length $β ")
                     bcvals = bcvals ./2 #
                     bcval₀= bcvals
+                    else
+                        global ε = ε * 0.9
+                    end
+                    fill!(Δa, 0.0)
+                    println("Penalty paremeter and updated: $ε, and step length $β ")
                 end
 
                 #a += β * Δa
@@ -478,7 +483,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     loadstep = 0
     while loadstep < nloadsteps
         loadstep +=1
-    #  global μ = μ * 1.1
+        global μ = μ * 1.1
     ##
         res = res .* 0
         bcval_o2 = bcval₀_o2
@@ -496,11 +501,15 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
             iter += 1
             if iter % 10 == 0 || norm(res) > 1e2 #&& Δλ > 1/16
                 Ψ = Ψ_old
-                global λ -= Δλ #* loadstep
-                Δλ        = Δλ/2
-                global λ += Δλ  #* loadstep
-                remaining_steps = nloadsteps - loadstep
-                nloadsteps = loadstep + 2remaining_steps + ((1.0 / nloadsteps) / Δλ - 1)
+                if Δλ > 1/8
+                    global λ -= Δλ #* loadstep
+                    Δλ        = Δλ/2
+                    global λ += Δλ  #* loadstep
+                    remaining_steps = nloadsteps - loadstep
+                    nloadsteps = loadstep + 2remaining_steps + ((1.0 / nloadsteps) / Δλ - 1)
+                else
+                    global μ = μ * 0.9
+                end
                 fill!(ΔΨ, 0.0)
                 println("Step length updated: $Δλ")
             end
@@ -515,7 +524,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
 
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
             if iter < 11
-            postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
+                postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
             end
             #postprocess_opt(d, dh0, "fictitious_d" * string(loadstep))
             #=

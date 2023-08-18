@@ -32,7 +32,7 @@ xₗ =  0.0
 Δx =  1.0
 
 grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.05)
-grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.2)
+grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.15)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
@@ -222,7 +222,8 @@ function Optimize(dh)
         global λψ    = similar(a)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
-        Vₘₐₓ         = 1.78 #1.1 * volume(dh, coord, enod)
+        #Vₘₐₓ         = 1.78 #1.1 * volume(dh, coord, enod)
+        Vₘₐₓ         = 1.78
        # global ε     = 1e6
        # global μ     = 1e3
         #l    = similar(a)
@@ -370,7 +371,7 @@ function Optimize(dh)
             global upp   = xmax
         end
 
-        if OptIter % 5 == 0
+        if OptIter % 10 == 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -386,7 +387,7 @@ function Optimize(dh)
             # test  #
             # # # # #
             global nloadsteps = 10
-            global μ = 1e5 # var μ = 1e4
+            global μ = 1e4 # var μ = 1e4
 
             # # # # # # # # # # # # # #
             # Fictitious equillibrium #
@@ -507,7 +508,7 @@ function Optimize(dh)
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration] , p_hist[1:true_iteration])
 
 
-        p2 = plot(1:true_iteration,[p_hist[1:true_iteration],g_hist[1:true_iteration]],label = ["Constraint" "Objective"])
+        p2 = plot(1:true_iteration,[v_hist[1:true_iteration],p_hist[1:true_iteration],g_hist[1:true_iteration]],label = ["Volume Constraint" "Uniform pressure Constraint" "Objective"])
         display(p2)
 
         #p3 = plot(1:true_iteration,g_hist[1:true_iteration],legend=false, marker=3, reuse = false, lc =:darkgreen)
