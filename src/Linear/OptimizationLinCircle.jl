@@ -36,10 +36,9 @@ grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.15)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
-#grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.02)
-#grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.02) # inte rätt
-
-# Merge into one grid
+#grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.05)
+#grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.05) # inte rätt
+## Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
 
 grid1 = nothing
