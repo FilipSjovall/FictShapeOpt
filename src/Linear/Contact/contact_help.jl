@@ -167,8 +167,8 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε::Numb
    end
 
    # ---------------------------------- #
-   # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #
-   # ---------------------------------- #
+   # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods #
+   # ----------------------------------#
    return r_c
 end
 

@@ -85,7 +85,8 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   epsimin = 10^(-7);
   raa0 = 0.00001;
 
-  move = 0.5;# "standard"
+   move = 0.1;# "standard"
+ # move = 0.5;# "standard"
   # move = 1.0;
 
   albefa = 0.1;

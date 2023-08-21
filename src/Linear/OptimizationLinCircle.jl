@@ -28,11 +28,11 @@ r₀ = 0.5
 # Create two grids
 case = "box"
 
-xₗ =  0.0
-Δx =  1.0
+xₗ = 0.0
+Δx = 1.0
 
-grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.05)
-grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.15)
+grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.045)
+grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.09)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
@@ -162,6 +162,7 @@ global free_d = []
 for jnod in n_robin
     if in(jnod,n_left) || in(jnod,n_right)
         append!(free_d, register[jnod, 1] )
+        append!(free_d, register[jnod, 2] ) ## Fundera på om detta skall vara med
     else
         append!(free_d, register[jnod, 1] )
         append!(free_d, register[jnod, 2] )
@@ -183,7 +184,7 @@ global Δa   = zeros(dh.ndofs.x)
 global res  = zeros(dh.ndofs.x)
 
 # boundary conditions for contact analysis
-bcdof_top_o, _ = setBCXY_both(-0.01, dh, Γ_top)
+bcdof_top_o, _ = setBCXY_both(0.0, dh, Γ_top)
 bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
 #bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
 #bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
@@ -210,7 +211,7 @@ global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion
 global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ         = similar(a)
 global λψ         = similar(a)
-global Δ          = -0.05
+global Δ          = -0.1
 global nloadsteps = 10
 include("initOptLin.jl")
 
@@ -227,18 +228,18 @@ function Optimize(dh)
        # global μ     = 1e3
         #l    = similar(a)
         #l   .= 0.5
-        tol     = 1e-6
-        OptIter = 0
+        tol            = 1e-6
+        OptIter        = 0
         true_iteration = 0
         global coord₀
         v_hist         = zeros(200)
         p_hist         = zeros(200)
         g_hist         = zeros(200)
-        historia = zeros(200,4)
-        global T = zeros(size(a))
+        historia       = zeros(200,4)
+        global T       = zeros(size(a))
         global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= 1.0
-        g₁ = 0.0
-        g₂ = 0.0
+        g₁             = 0.0
+        g₂             = 0.0
     #
     while kktnorm > tol || OptIter < 200
 
@@ -370,7 +371,13 @@ function Optimize(dh)
             global upp   = xmax
         end
 
-        if OptIter % 10 == 0
+        # # # # #
+        # test  #
+        # # # # #
+        global nloadsteps = 10
+        global μ = 1e4 # var μ = 1e4
+
+        if OptIter % 5 == 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -378,28 +385,22 @@ function Optimize(dh)
             global low        = xmin
             global upp        = xmax
             OptIter           = 1
+            global μ          = 1e0
         end
 
-       # if true_iteration % 5 != 0
+        # # # # # # # # # # # # # #
+        # Fictitious equillibrium #
+        # # # # # # # # # # # # # #
+        global coord₀ = getCoord(getX(dh0), dh0) # x₀
+        Ψ, _, Kψ, _, λ = fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
 
-            # # # # #
-            # test  #
-            # # # # #
-            global nloadsteps = 10
-            global μ = 1e4 # var μ = 1e4
+        # # # # # #
+        # Filter  #
+        # # # # # #
+        global dh    = deepcopy(dh0)
+        updateCoords!(dh, Ψ) # x₀ + Ψ = x
+        global coord = getCoord(getX(dh), dh)
 
-            # # # # # # # # # # # # # #
-            # Fictitious equillibrium #
-            # # # # # # # # # # # # # #
-            global coord₀ = getCoord(getX(dh0), dh0) # x₀
-            Ψ, _, Kψ, _, λ = fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
-
-            # # # # # #
-            # Filter  #
-            # # # # # #
-            global dh    = deepcopy(dh0)
-            updateCoords!(dh, Ψ) # x₀ + Ψ = x
-            global coord = getCoord(getX(dh), dh)
        # else
        #     λ = 1.0
        # end
@@ -408,7 +409,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 5e4 # eller?
+        global ε = 5e5 # eller?
 
         # # # # # # # # #
         # Equillibrium  #

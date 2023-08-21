@@ -346,11 +346,11 @@ function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
 
 
     # Add the points
-    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
-    p2 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, h)
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, 2h)
+    p2 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, 2h)
     p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h/4)
     p4 = gmsh.model.geo.add_point(x₀, y₀ + Δy, 0.0, h/4)
-    p5 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀, 0.0, h)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀, 0.0, 2h)
     p6 = gmsh.model.geo.add_point(x₀ + Δx / 2, y₀ + Δy, 0.0, h/4)
 
     # Add the lines

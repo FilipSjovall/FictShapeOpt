@@ -27,7 +27,7 @@ include("..//mma.jl")
 r₀ = 0.5
 # Create two grids
 case = "box"
-grid1 = createBoxMeshRev("box_1", 0.25, 1.0, 0.5, 0.5, 0.05)
+grid1 = createBoxMeshRev("box_1",  0.0, 1.0, 1.0, 0.5, 0.1)
 grid2 = createBoxMeshRev("box_2",  0.0, 0.0, 1.0, 0.99, 0.1)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
@@ -186,7 +186,7 @@ global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion
 global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ         = similar(a)
 global λψ         = similar(a)
-global Δ          = -0.025
+global Δ          = -0.05
 global nloadsteps = 10
 include("initOptLin.jl")
 

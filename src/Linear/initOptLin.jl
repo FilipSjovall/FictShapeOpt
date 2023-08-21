@@ -41,10 +41,10 @@ global change        = 1;
 #global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.01 # behöver skrivas över
 #global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.01 # behöver skrivas över
 
-global xmin[free_d] .= -.05 # behöver skrivas över
-global xmax[free_d] .=  .05 # behöver skrivas över
-global xmin[free_d[findall(x -> x % 2 == 0, free_d)]] .= -.1 # behöver skrivas över
-global xmax[free_d[findall(x -> x % 2 == 0, free_d)]] .=  .1 # behöver skrivas över
+global xmin[free_d] .= -.01 # behöver skrivas över
+global xmax[free_d] .=  .01 # behöver skrivas över
+global xmin[free_d[findall(x -> x % 2 == 0, free_d)]] .= -.05 # behöver skrivas över
+global xmax[free_d[findall(x -> x % 2 == 0, free_d)]] .=  .05 # behöver skrivas över
 
 global low           = xmin;
 global upp           = xmax;
