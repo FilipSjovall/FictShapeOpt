@@ -28,11 +28,11 @@ r₀ = 0.5
 # Create two grids
 case = "box"
 
-xₗ = 0.0
-Δx = 1.0
+xₗ = 0.
+Δx = 1.
 
-grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.045)
-grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.09)
+grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.05)
+grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.175)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
@@ -211,7 +211,7 @@ global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion
 global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ         = similar(a)
 global λψ         = similar(a)
-global Δ          = -0.1
+global Δ          = -0.05
 global nloadsteps = 10
 include("initOptLin.jl")
 
@@ -223,7 +223,7 @@ function Optimize(dh)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
         #Vₘₐₓ         = 1.78 #1.1 * volume(dh, coord, enod)
-        Vₘₐₓ         = 1.78
+        Vₘₐₓ         = 1.78 # 2.5 ?
        # global ε     = 1e6
        # global μ     = 1e3
         #l    = similar(a)
@@ -311,6 +311,9 @@ function Optimize(dh)
             global ∂rψ_∂d = similar(K) # behövs inte om vi har lokal funktion?
             global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
             global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
+            global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion?
+            global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
+            global ∂g₂_∂d     = zeros(size(d)) # behövs inte om vi har lokal funktion?
             global ∂rᵤ_∂x = similar(K) # behövs inte om vi har lokal funktion?
             global λᵤ = similar(a) # behövs inte om vi har lokal funktion?
             global λψ = similar(a) # behövs inte om vi har lokal funktion?
@@ -333,25 +336,28 @@ function Optimize(dh)
             global kktnorm = kkttol + 10 # behöver inte skrivas över
             global outit = 0 # behöver inte skrivas över
             global change = 1 # behöver inte skrivas över
-            global xmin[contact_dofs] .= -0.005 # behöver skrivas över
-            global xmax[contact_dofs] .= 0.005 # behöver skrivas över
+            global xmin[contact_dofs] .= -.01 # behöver skrivas över
+            global xmax[contact_dofs] .=  .01 # behöver skrivas över
             global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.1 # behöver skrivas över
             global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.1 # behöver skrivas över
             global low        = xmin # behöver skrivas över
             global upp        = xmax # behöver skrivas över
             global d .= 0
             #global d[free_d] .= 0.05
-            global bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
-            global bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
-            global bcdof_o = [bcdof_top_o; bcdof_bot_o]
+            # boundary conditions for contact analysis
+            bcdof_top_o, _ = setBCXY_both(0.0, dh, Γ_top)
+            bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
+            #bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+            #bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+            bcdof_o = [bcdof_top_o; bcdof_bot_o]
             ϵᵢⱼₖ = sortperm(bcdof_o)
             global bcdof_o = bcdof_o[ϵᵢⱼₖ]
             global bcval_o = bcdof_o .* 0.0
 
-            #bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-            #bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-            bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
-            bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
+            bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+            bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+            #bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+            #bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
             bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
             ϵᵢⱼₖ = sortperm(bcdof_o)
             global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
@@ -375,9 +381,9 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global μ = 1e4 # var μ = 1e4
+        global μ = 1e3 # var μ = 1e4
 
-        if OptIter % 5 == 0
+        if OptIter % 10 == 0 && g₂ < 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -385,7 +391,6 @@ function Optimize(dh)
             global low        = xmin
             global upp        = xmax
             OptIter           = 1
-            global μ          = 1e0
         end
 
         # # # # # # # # # # # # # #
@@ -409,7 +414,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 5e5 # eller?
+        global ε = 1e5 # eller?
 
         # # # # # # # # #
         # Equillibrium  #

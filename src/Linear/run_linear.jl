@@ -483,7 +483,9 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     loadstep = 0
     while loadstep < nloadsteps
         loadstep +=1
-        global μ = μ * 1.1
+        if Δλ >  0.1 * 1/8
+            global μ = μ * 1.1
+        end
     ##
         res = res .* 0
         bcval_o2 = bcval₀_o2
