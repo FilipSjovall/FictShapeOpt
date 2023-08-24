@@ -346,12 +346,12 @@ function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
 
 
     # Add the points
-    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, 2h)
-    p2 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, 2h)
-    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h/4)
-    p4 = gmsh.model.geo.add_point(x₀, y₀ + Δy, 0.0, h/4)
-    p5 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀, 0.0, 2h)
-    p6 = gmsh.model.geo.add_point(x₀ + Δx / 2, y₀ + Δy, 0.0, h/4)
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀, y₀ + Δy, 0.0, h)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀, 0.0, h)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx / 2, y₀ + Δy, 0.0, h)
 
     # Add the lines
     l1 = gmsh.model.geo.add_line(p1, p4)
@@ -403,7 +403,7 @@ function createCircleMesh(filename, x₀, y₀, r, h)
     gmsh.option.set_number("General.Verbosity", 2)
 
 
-    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, 8h)
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
     p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h)
     p3 = gmsh.model.geo.add_point(x₀ - r, y₀, 0.0, h)
     p4 = gmsh.model.geo.add_point(x₀, y₀ - r, 0.0, h)

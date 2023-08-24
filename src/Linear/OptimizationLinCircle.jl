@@ -26,18 +26,18 @@ include("..//mma.jl")
 
 r₀ = 0.5
 # Create two grids
+
+xₗ = -0.25
+Δx =  1.5
+
 case = "box"
-
-xₗ = 0.
-Δx = 1.
-
 grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.05)
-grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.175)
+grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.045)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
 #grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.05)
-#grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.05) # inte rätt
+#grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.06) # inte rätt
 ## Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
 
@@ -119,6 +119,8 @@ global Γ_top = getnodeset(dh.grid, "Γ_top")
 addnodeset!(dh.grid, "n_top", x -> x[2] ≈ 1.5)
 global n_top = getnodeset(dh.grid, "n_top")
 
+
+
 if case == "box"
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
     addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
@@ -184,19 +186,19 @@ global Δa   = zeros(dh.ndofs.x)
 global res  = zeros(dh.ndofs.x)
 
 # boundary conditions for contact analysis
-bcdof_top_o, _ = setBCXY_both(0.0, dh, Γ_top)
-bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
-#bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
-#bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+#bcdof_top_o, _ = setBCXY_both(0.0, dh, Γ_top)
+#bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
+bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o = [bcdof_top_o; bcdof_bot_o]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o = bcdof_o[ϵᵢⱼₖ]
 global bcval_o = bcdof_o .* 0.0
 
-bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-#bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
-#bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
+#bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+#bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
@@ -211,7 +213,7 @@ global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion
 global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ         = similar(a)
 global λψ         = similar(a)
-global Δ          = -0.05
+global Δ          = -0.1
 global nloadsteps = 10
 include("initOptLin.jl")
 
@@ -222,8 +224,8 @@ function Optimize(dh)
         global λψ    = similar(a)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
-        #Vₘₐₓ         = 1.78 #1.1 * volume(dh, coord, enod)
-        Vₘₐₓ         = 1.78 # 2.5 ?
+        #Vₘₐₓ         = 1.78 #
+        Vₘₐₓ         = 2.5  #
        # global ε     = 1e6
        # global μ     = 1e3
         #l    = similar(a)
@@ -383,7 +385,7 @@ function Optimize(dh)
         global nloadsteps = 10
         global μ = 1e3 # var μ = 1e4
 
-        if OptIter % 10 == 0 && g₂ < 0
+        if OptIter % 10 == 0 #&& g₂ < 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -433,11 +435,6 @@ function Optimize(dh)
         # # # # # # #
         # Max reaction force
         g     = - T' * Fᵢₙₜ
-        ∂g_∂x = -(T' * ∂rᵤ_∂x)'
-        ∂g_∂u = -(T' * K)'
-
-        # Compliance
-        #g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
         #∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
         #∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
 
@@ -485,7 +482,7 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, -10 * g, -10 * ∂g_∂d, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, -10 * g, -10 * ∂g_∂d, hcat([g₁*100; g₂]), vcat([∂Ω∂d.*100; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
         d      = d_new

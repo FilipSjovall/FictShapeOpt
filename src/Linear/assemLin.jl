@@ -40,15 +40,15 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γt,τ)
     end
 end
 
-function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,Ψ,coord,enod,λ,d,Γ_robin)
+function assemGlobal!(K,Fᵢₙₜ,dh0, mp₀,t,Ψ,coord,enod,λ,d,Γ_robin)
     assembler = start_assemble(K,Fᵢₙₜ)
     ie = 0
-    for cell in CellIterator(dh)
+    for cell in CellIterator(dh0)
         ie += 1
         cell_dofs = celldofs(cell)
         kₑ        = zeros(6,6)
         fₑ        = zeros(6)
-        kₑ, fₑ    = assemElem(coord[enod[ie][2:end],:],Ψ[cell_dofs],mp,t)
+        kₑ, fₑ    = assemElem(coord[enod[ie][2:end],:], Ψ[cell_dofs], mp₀, t)
         ke        = zeros(6,6)
         fe        = zeros(6)
         for face in 1:nfaces(cell)
@@ -161,7 +161,7 @@ function assemGlobal!(Kψ, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_rob
         kₑ        = zeros(6, 6)
         fₑ        = zeros(6)
 
-        kₑ, fₑ    = assemElem(coord₀[enod[ie][2:end], :], Ψ[cell_dofs], mp₀, t)
+        kₑ, fₑ    = assemElem(coord₀[cell.nodes, :], Ψ[cell_dofs], mp₀, t)
         ke        = zeros(6, 6)
         fe        = zeros(6)
         for face in 1:nfaces(cell)
@@ -193,7 +193,7 @@ function volume(dh,coord,enod)
     for cell in CellIterator(dh)
         ie  += 1
         #println(cellid(cell))
-        Ω   += dΩ(coord[enod[ie][2:end],:])
+        Ω   += dΩ(coord[cell.nodes,:])
     end
     return Ω
 end
@@ -211,7 +211,7 @@ function StressExtract(dh,a,mp)
         ie += 1
         cell_dofs = celldofs(cell)
         for gp in 1 : 3
-            cauchy[gp,:,:] = assemS(coord[enod[ie][2:end], :], a[cell_dofs], mp, t, gp)
+            cauchy[gp,:,:] = assemS(coord[cell.nodes, :], a[cell_dofs], mp, t, gp)
         end
         σxe                     = [cauchy[1, 1, 1] cauchy[2, 1, 1] cauchy[3, 1, 1]]
         σye                     = [cauchy[1, 2, 2] cauchy[2, 2, 2] cauchy[3, 2, 2]]

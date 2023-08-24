@@ -28,6 +28,7 @@ function neohooke1(defgrad,mp)
     Stress   = Kₘ/2.0 * (J^2 - 1.0).*C⁻¹ + Gₘ*(J^(-2/3)).*( I(3) - tr(C)/3.0.*C⁻¹ )
     S        = [Stress[1,1]; Stress[2,2]; Stress[3,3]; Stress[1,2]]
     return S
+
 end
 
 function neohookeS!(Sₑ,eff,mp)

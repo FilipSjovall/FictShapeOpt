@@ -158,10 +158,10 @@ function solver_C(dh, coord, Δ, nloadsteps)
     # Set BCS    #
     # ---------- #
     # Set bcs - should be moved outside this function
-    bcdof_top, bcval_top = setBCXY_both(Δ / nloadsteps, dh, Γ_top)
-    bcdof_bot, bcval_bot = setBCXY_both(0.0, dh, Γ_bot)
-    #bcdof_top, bcval_top   = setBCXY(Δ/nloadsteps, dh, Γ_top)
-    #bcdof_bot, bcval_bot   = setBCXY(0.0, dh, Γ_bot)
+    #bcdof_top, bcval_top = setBCXY_both(Δ / nloadsteps, dh, Γ_top)
+    #bcdof_bot, bcval_bot = setBCXY_both(0.0, dh, Γ_bot)
+    bcdof_top, bcval_top   = setBCXY(Δ/nloadsteps, dh, Γ_top)
+    bcdof_bot, bcval_bot   = setBCXY(0.0, dh, Γ_bot)
     #bcdof_left, bcval_left = setBCX(0.0, dh, n_left)
     bcdofs = [bcdof_top; bcdof_bot]
     bcvals = [bcval_top; bcval_bot]
@@ -201,21 +201,16 @@ function solver_C(dh, coord, Δ, nloadsteps)
             while  residual > TOL || iter < 2
                 iter += 1
 
-                if iter % 10 == 0 || norm(res) > 1e3
+                if iter % 20 == 0 || norm(res) > 1e3
                     a = a_old
                     bcvals = bcval₀
                     if β > 1/8
                         global β = β * 0.5
-                        #if β == 0.25
-                        #    global ε = ε * 10
-                        #end
                         Δ_remaining = (Δ*nloadsteps - β * Δ - loadstep * Δ)/nloadsteps
                         remaining_steps = nloadsteps - loadstep
                         nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
                         bcvals = bcvals ./2 #
                         bcval₀= bcvals
-                    else
-                        global ε = ε * 0.9
                     end
                     fill!(Δa, 0.0)
                     println("Penalty paremeter and updated: $ε, and step length $β ")
@@ -455,10 +450,10 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     global ΔΨ = zeros(dh0.ndofs.x)
     global res = zeros(dh0.ndofs.x)
 
-    bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-    bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-    #bcdof_top_o2, _  = setBCXY(0.0, dh, Γ_top)
-    #bcdof_bot_o2, _  = setBCXY(0.0, dh, Γ_bot)
+    #bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+    #bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+    bcdof_top_o2, _  = setBCXY(0.0, dh, Γ_top)
+    bcdof_bot_o2, _  = setBCXY(0.0, dh, Γ_bot)
     #bcdof_left_o2, _ = setBCX(0.0, dh, n_left)
     bcdof_o2         = [bcdof_top_o2; bcdof_bot_o2]
     ϵᵢⱼₖ            = sortperm(bcdof_o2)
@@ -525,12 +520,17 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
             residual      = norm(res, 2)
             Ψ[bcdof_o2]   = bcval_o2
             if iter < 11
+                #postprocess_opt(Ψ, dh0, "fictitious" * string(iter))
                 postprocess_opt(Ψ, dh0, "fictitious" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
-            if iter < 11
-                postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
-            end
+
+
+            #if iter < 11
+            #    postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
+            #end
+
+
             #postprocess_opt(d, dh0, "fictitious_d" * string(loadstep))
             #=
             traction = ExtractContactTraction(Ψ, μ, coord₀)

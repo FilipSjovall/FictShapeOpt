@@ -82,6 +82,10 @@ function assemGP(coord,ed,gp,mp,t)
     B₀           = Bₗ₀ + A*H₀
 
     # Deformation gradient F = I + ∇u
+    #eff[1, 1] = dNₓ[1, :]' * ed[1:2:5] + 1.0
+    #eff[1, 2] = dNₓ[2, :]' * ed[1:2:5]
+    #eff[2, 1] = dNₓ[1, :]' * ed[2:2:6]
+    #eff[2, 2] = dNₓ[2, :]' * ed[2:2:6] + 1.0
     eff[1,1]     = A_temp[1] + 1.0
     eff[1,2]     = A_temp[2]
     eff[2,1]     = A_temp[3]
