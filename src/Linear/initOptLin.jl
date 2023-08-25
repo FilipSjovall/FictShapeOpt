@@ -11,8 +11,8 @@ bcdof,bcval = setBCLin(0.0,dh)
 
 dr_dd = similar(K)
 # Material parameters
+#mp₀   = [1.0 1.0]
 mp₀   = [1.0 1.0]
-#mp₀   = [0.0 1.0]
 mp    = [175 80.769230769230759]
 
 t = 1.0
@@ -41,17 +41,17 @@ global change        = 1;
 #global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.01 # behöver skrivas över
 #global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.01 # behöver skrivas över
 
-#global xmin[free_d] .= -1 # behöver skrivas över
-#global xmax[free_d] .=  1 # behöver skrivas över
+global xmin[free_d] .= -.1 # behöver skrivas över
+global xmax[free_d] .=  .1 # behöver skrivas över
 global xmin[free_d[findall(x -> x % 2 == 0, free_d)]] .= -.1 # behöver skrivas över
 global xmax[free_d[findall(x -> x % 2 == 0, free_d)]] .=  .1 # behöver skrivas över
 
 
 # Gränser sfär
-#lobal xmin[register[collect(nₘ),1]] .= -1.
-#lobal xmax[register[collect(nₘ),1]] .=  1.
-global xmin[register[collect(nₘ),2]] .= -1.
-global xmax[register[collect(nₘ),2]] .=  1.
+#global xmin[register[collect(nₘ),1]] .= -1.
+#global xmax[register[collect(nₘ),1]] .=  1.
+#global xmin[register[collect(nₘ),2]] .= -1.
+#global xmax[register[collect(nₘ),2]] .=  1.
 
 global low           = xmin;
 global upp           = xmax;

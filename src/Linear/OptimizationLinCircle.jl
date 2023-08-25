@@ -27,8 +27,8 @@ include("..//mma.jl")
 r₀ = 0.5
 # Create two grids
 
-xₗ = -0.25
-Δx =  1.5
+xₗ =  0.
+Δx =  1.
 
 case = "box"
 grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.05)
@@ -58,11 +58,11 @@ if case == "box"
     # ------------------ #
     # Create master sets #
     # ------------------ #
-    addfaceset!(dh.grid, "Γ_slave", x -> x[2] ≈ 1.001)
-    global Γs = getfaceset(dh.grid, "Γ_slave")
+    addfaceset!(dh.grid, "Γ_master", x -> x[2] ≈ 1.001)
+    global Γs = getfaceset(dh.grid, "Γ_master")
 
-    addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ 1.001)
-    global nₛ = getnodeset(dh.grid, "nₛ")
+    addnodeset!(dh.grid, "nₘ", x -> x[2] ≈ 1.001)
+    global nₛ = getnodeset(dh.grid, "nₘ")
 
     # ------------------ #
     # Create left | sets #
@@ -87,21 +87,21 @@ else
     # ------------------ #
     # Create master sets #
     # ------------------ #
-    addfaceset!(dh.grid, "Γ_slave", x -> ((x[1] - r₀)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2 )
-    global Γs = getfaceset(dh.grid, "Γ_slave")
+    addfaceset!(dh.grid, "Γ_master", x -> ((x[1] - r₀)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2 )
+    global Γs = getfaceset(dh.grid, "Γ_master")
 
-    addnodeset!(dh.grid, "nₛ", x -> ((x[1] - r₀)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2 )
-    global nₛ = getnodeset(dh.grid, "nₛ")
+    addnodeset!(dh.grid, "nₘ", x -> ((x[1] - r₀)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2 )
+    global nₛ = getnodeset(dh.grid, "nₘ")
 end
 
 # ----------------- #
 # Create slave sets #
 # ----------------- #
-addfaceset!(dh.grid, "Γ_master", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
-global Γm = getfaceset(dh.grid, "Γ_master")
+addfaceset!(dh.grid, "Γ_slave", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
+global Γm = getfaceset(dh.grid, "Γ_slave")
 
-addnodeset!(dh.grid, "nₘ", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
-global nₘ = getnodeset(dh.grid, "nₘ")
+addnodeset!(dh.grid, "nₛ", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
+global nₘ = getnodeset(dh.grid, "nₛ")
 
 # Extract all nbr nodes and dofs
 global contact_dofs = getContactDofs(nₛ, nₘ)
