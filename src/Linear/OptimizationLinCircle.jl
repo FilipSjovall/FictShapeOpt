@@ -32,7 +32,7 @@ xₗ =  0.
 
 case = "box"
 grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.05)
-grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.045)
+grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.04)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
@@ -58,11 +58,11 @@ if case == "box"
     # ------------------ #
     # Create master sets #
     # ------------------ #
-    addfaceset!(dh.grid, "Γ_master", x -> x[2] ≈ 1.001)
-    global Γs = getfaceset(dh.grid, "Γ_master")
+    addfaceset!(dh.grid, "Γ_slave", x -> x[2] ≈ 1.001)
+    global Γs = getfaceset(dh.grid, "Γ_slave")
 
-    addnodeset!(dh.grid, "nₘ", x -> x[2] ≈ 1.001)
-    global nₛ = getnodeset(dh.grid, "nₘ")
+    addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ 1.001)
+    global nₛ = getnodeset(dh.grid, "nₛ")
 
     # ------------------ #
     # Create left | sets #
@@ -87,21 +87,21 @@ else
     # ------------------ #
     # Create master sets #
     # ------------------ #
-    addfaceset!(dh.grid, "Γ_master", x -> ((x[1] - r₀)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2 )
-    global Γs = getfaceset(dh.grid, "Γ_master")
+    addfaceset!(dh.grid, "Γ_slave", x -> ((x[1] - r₀)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2 )
+    global Γs = getfaceset(dh.grid, "Γ_slave")
 
-    addnodeset!(dh.grid, "nₘ", x -> ((x[1] - r₀)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2 )
-    global nₛ = getnodeset(dh.grid, "nₘ")
+    addnodeset!(dh.grid, "nₛ", x -> ((x[1] - r₀)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2 )
+    global nₛ = getnodeset(dh.grid, "nₛ")
 end
 
 # ----------------- #
 # Create slave sets #
 # ----------------- #
-addfaceset!(dh.grid, "Γ_slave", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
-global Γm = getfaceset(dh.grid, "Γ_slave")
+addfaceset!(dh.grid, "Γ_master", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
+global Γm = getfaceset(dh.grid, "Γ_master")
 
-addnodeset!(dh.grid, "nₛ", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
-global nₘ = getnodeset(dh.grid, "nₛ")
+addnodeset!(dh.grid, "nₘ", x -> ((x[1] - r₀)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
+global nₘ = getnodeset(dh.grid, "nₘ")
 
 # Extract all nbr nodes and dofs
 global contact_dofs = getContactDofs(nₛ, nₘ)
@@ -186,19 +186,19 @@ global Δa   = zeros(dh.ndofs.x)
 global res  = zeros(dh.ndofs.x)
 
 # boundary conditions for contact analysis
-#bcdof_top_o, _ = setBCXY_both(0.0, dh, Γ_top)
-#bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
-bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
-bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+bcdof_top_o, _ = setBCXY_both(0.0, dh, Γ_top)
+bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
+#bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+#bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o = [bcdof_top_o; bcdof_bot_o]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o = bcdof_o[ϵᵢⱼₖ]
 global bcval_o = bcdof_o .* 0.0
 
-#bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-#bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
-bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
+bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+#bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+#bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
@@ -213,7 +213,7 @@ global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion
 global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ         = similar(a)
 global λψ         = similar(a)
-global Δ          = -0.1
+global Δ          = -0.05
 global nloadsteps = 10
 include("initOptLin.jl")
 
@@ -522,9 +522,9 @@ function Optimize(dh)
             xval  = 0
             #@save "stegett.jld2"
         elseif true_iteration == 2
-            @save "tva.jld2"
+            #@save "tva.jld2"
         elseif true_iteration == 200
-            @save "steg100.jld2"
+            @save "steg200.jld2"
             break
         end
     end
