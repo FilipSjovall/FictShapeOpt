@@ -1211,6 +1211,61 @@ function createBoxMeshRounded_Flipped(filename, r, y₀, h)
     return grid
 end
 
-function createLMesh(filename,x₀,y₀,Δx,Δy,t,h)
+function createStepMesh(filename,x₀,y₀,Δx,Δy,t,h)
+    p1 = gmsh.model.geo.add_point(x₀, y₀+t, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀ + Δx - t, y₀ + Δy, 0.0, h)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx - t, y₀ + t, 0.0, h)
 
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    l3 = gmsh.model.geo.add_line(p3, p4)
+    l4 = gmsh.model.geo.add_line(p4, p5)
+    l5 = gmsh.model.geo.add_line(p5, p1)
+
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5])
+
+    surf = gmsh.model.geo.add_plane_surface([loop])
+
+    gmsh.model.geo.synchronize()
+    gmsh.model.mesh.generate(2)
+
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
+    return grid
+end
+
+
+function createStepMeshRev(filename, x₀, y₀, Δx, Δy, t, h)
+    p1 = gmsh.model.geo.add_point(x₀, y₀ + t, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀ + Δx - t, y₀ + Δy, 0.0, h)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx - t, y₀ + t, 0.0, h)
+
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    l3 = gmsh.model.geo.add_line(p3, p4)
+    l4 = gmsh.model.geo.add_line(p4, p5)
+    l5 = gmsh.model.geo.add_line(p5, p1)
+
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5])
+
+    surf = gmsh.model.geo.add_plane_surface([loop])
+
+    gmsh.model.geo.synchronize()
+    gmsh.model.mesh.generate(2)
+
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
+    return grid
 end

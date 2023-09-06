@@ -19,16 +19,14 @@ include("..//fem.jl")
 #include("runLinContact.jl")
 include("run_linear.jl")
 include("sensitivitiesLin.jl")
-
 include("..//mma.jl")
-
 #include("initLin.jl")
 
 r₀ = 0.5
 # Create two grids
 
-xₗ =  0.
-Δx =  1.
+xₗ =  0.0
+Δx =  1.0
 
 case = "box"
 grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.05)
@@ -186,19 +184,19 @@ global Δa   = zeros(dh.ndofs.x)
 global res  = zeros(dh.ndofs.x)
 
 # boundary conditions for contact analysis
-bcdof_top_o, _ = setBCXY_both(0.0, dh, Γ_top)
-bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
-#bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
-#bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+#bcdof_top_o, _ = setBCXY_both(0.0, dh, Γ_top)
+#bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
+bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o = [bcdof_top_o; bcdof_bot_o]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o = bcdof_o[ϵᵢⱼₖ]
 global bcval_o = bcdof_o .* 0.0
 
-bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-#bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
-#bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
+#bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
+#bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
@@ -230,7 +228,7 @@ function Optimize(dh)
        # global μ     = 1e3
         #l    = similar(a)
         #l   .= 0.5
-        tol            = 1e-6
+        tol            = 1e-3
         OptIter        = 0
         true_iteration = 0
         global coord₀
@@ -382,10 +380,10 @@ function Optimize(dh)
         # # # # #
         # test  #
         # # # # #
-        global nloadsteps = 10
+        global nloadsteps = 20
         global μ = 1e3 # var μ = 1e4
 
-        if OptIter % 10 == 0 #&& g₂ < 0
+        if OptIter % 5 == 0 && g₂ < 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -407,10 +405,6 @@ function Optimize(dh)
         global dh    = deepcopy(dh0)
         updateCoords!(dh, Ψ) # x₀ + Ψ = x
         global coord = getCoord(getX(dh), dh)
-
-       # else
-       #     λ = 1.0
-       # end
 
         # # # # #
         # test  #
@@ -435,15 +429,6 @@ function Optimize(dh)
         # # # # # # #
         # Max reaction force
         g     = - T' * Fᵢₙₜ
-        #∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
-        #∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
-
-        # Max/Min λ
-        #p = 2
-        #X_ordered = getXfromCoord(coord)
-        #g₂         = -contact_pnorm_s(X_ordered, a, ε, p)
-        #∂g₂_∂x     = -ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
-        #∂g₂_∂u     = -ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
 
         # # # # # # #
         # Adjoints  #
@@ -455,7 +440,6 @@ function Optimize(dh)
         # Full sensitivity  #
         # # # # # # # # # # #
         ∂g_∂d            = (-transpose(λψ) * dr_dd)'
-        #∂g_∂d[locked_d] .= 0.0 # fulfix?
 
         # # # # # # # # # # #
         # Volume constraint #
@@ -464,7 +448,6 @@ function Optimize(dh)
         ∂Ω_∂x = volume_sens(dh,coord)
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdof_o2, bcval_o2.*0);
         ∂Ω∂d  = Real.( -transpose(λᵥₒₗ)*dr_dd ./ Vₘₐₓ) ;
-        #∂Ω∂d[locked_d] .= 0.0
 
         # # # # # # # # # # # #
         # Pressure constraint #
@@ -479,10 +462,17 @@ function Optimize(dh)
         solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
         ∂g₂_∂d            = Real.( (-transpose(λψ) * dr_dd)' ./ 0.5 )'
 
+        # # # # # # # # # # #
+        # Lås horisontellt  # // # Dålig lösning?
+        # # # # # # # # # # #
+        ∂g_∂d[locked_d] .= 0.0
+        ∂Ω∂d[locked_d] .= 0.0
+        ∂g₂_∂d[locked_d] .= 0.0
+
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, -10 * g, -10 * ∂g_∂d, hcat([g₁*100; g₂]), vcat([∂Ω∂d.*100; ∂g₂_∂d]), low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g, ∂g_∂d, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
         d      = d_new
@@ -524,10 +514,11 @@ function Optimize(dh)
         elseif true_iteration == 2
             #@save "tva.jld2"
         elseif true_iteration == 200
-            @save "steg200.jld2"
-            break
+            #@save "steg200.jld2"
+            #break
         end
     end
+    jld2save("färdig.jld2",a,dh,dh0,Opiter,v_hist,p_hist,g_hist,d)
     return g_hist, v_hist, OptIter, traction, historia
 end
 

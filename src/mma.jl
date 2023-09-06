@@ -85,14 +85,14 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   epsimin = 10^(-7);
   raa0 = 0.00001;
 
-   move = 0.1;# "standard"
- # move = 0.5;# "standard"
-  # move = 1.0;
+  move = 0.1;# "standard"
+  #move = 0.5;# "standard"
+  #move = 1.0;
 
   albefa = 0.1;
 
   #asyinit = 0.5;# FOR COMPLIANT
-  asyinit = 0.05;
+  asyinit = 0.5;
 
   asyincr = 1.2;
   asydecr = 0.7;
@@ -114,21 +114,23 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
       lowmin = xval - 10*(xmax-xmin);
       lowmax = xval - 0.01*(xmax-xmin);
       uppmin = xval + 0.01*(xmax-xmin);
+      lowmax = xval - 0.001 * (xmax - xmin) ###### Ändrade värden
+      uppmin = xval + 0.001 * (xmax - xmin) ###### Ändrade värden
       uppmax = xval + 10*(xmax-xmin);
-      low = max(low,lowmin);
-      low = min(low,lowmax);
-      upp = min(upp,uppmax);
-      upp = max(upp,uppmin);
+      low = max.(low,lowmin); ### lade till . så att operationen görs elementvis
+      low = min.(low,lowmax); ### lade till . så att operationen görs elementvis
+      upp = min.(upp,uppmax); ### lade till . så att operationen görs elementvis
+      upp = max.(upp,uppmin); ### lade till . så att operationen görs elementvis
   end
 
   # Calculation of the bounds alfa and beta :
 
-  zzz1 = low + albefa*(xval-low);
-  zzz2 = xval - move*(xmax-xmin);
+  zzz1 = low + albefa.*(xval-low);
+  zzz2 = xval - move.*(xmax-xmin);
   zzz  = max.(zzz1,zzz2);
   alfa = max.(zzz,xmin);
-  zzz1 = upp - albefa*(upp-xval);
-  zzz2 = xval + move*(xmax-xmin);
+  zzz1 = upp - albefa.*(upp-xval);
+  zzz2 = xval + move.*(xmax-xmin);
   zzz  = min.(zzz1,zzz2);
   beta = min.(zzz,xmax);
 
@@ -136,7 +138,7 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
 
   xmami = xmax-xmin;
   xmamieps = 0.00001*eeen;
-  xmami = max(xmami,xmamieps);
+  xmami = max.(xmami,xmamieps);
   xmamiinv = eeen./xmami;
   ux1 = upp-xval;
   ux2 = ux1.*ux1;
@@ -229,10 +231,10 @@ function subsolv(m,n,epsimin,low,upp,alfa,beta,p0,q0,P,Q,a0,a,b,c,d);
   z = 1;
   lam = eem;
   xsi = een./(x-alfa);
-  xsi = max(xsi,een);
+  xsi = max.(xsi,een);
   eta = een./(beta-x);
-  eta = max(eta,een);
-  mu  = max(eem,0.5*c);
+  eta = max.(eta,een);
+  mu  = max.(eem,0.5*c);
   zet = 1;
   s = eem;
   itera = 0;
