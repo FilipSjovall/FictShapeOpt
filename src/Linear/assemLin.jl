@@ -85,7 +85,7 @@ function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
         Fₑₓₜ[cell_dofs] -= fₑ
     end
 end
-
+         a
 function assemGlobal!(K,Fᵢₙₜ,rc,dh,mp,t,a,coord,enod,ε)
     assembler = start_assemble(K,Fᵢₙₜ)
     ie        = 0
@@ -126,25 +126,10 @@ function assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε, Γ_top, 
         ie += 1
         cell_dofs = celldofs(cell)
         kₑ, fₑ = assemElem(coord[enod[ie][2:end], :], a[cell_dofs], mp, t)
-        #for face in 1:nfaces(cell)
-        #    if (cellid(cell), face) in Γ_top
-        #        face_nods = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
-        #        face_dofs = [face_nods[1] * 2 - 1; face_nods[1] * 2; face_nods[2] * 2 - 1; face_nods[2] * 2]
-        #        X = coord[enod[ie][face_nods.+1], :]
-        #        fe[face_dofs] += tractionLoad(X, τ)
-        #    end
-        #end
-        #assemble!(assembler, cell_dofs, kₑ, fₑ + fe)
-        # assemble into global
         assemble!(assembler, cell_dofs, kₑ, fₑ )
     end
     # Contact
     X_ordered = getXfromCoord(coord)
-    #rc = contact_residual(X_ordered, a, ε)
-    #Kc = ForwardDiff.jacobian(u -> contact_residual(X_ordered, u, ε), a)
-    #K[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
-    #Fᵢₙₜ[contact_dofs]            -= rc[contact_dofs]
-
     rc                             = contact_residual_reduced(X_ordered, a[contact_dofs], a[freec_dofs], ε)
     Kc                             = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, a[freec_dofs], ε), a[contact_dofs])
     K[contact_dofs, contact_dofs] -= Kc

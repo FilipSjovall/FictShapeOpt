@@ -314,7 +314,9 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
             r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i])
         end
         for (j,C) in enumerate(intersect(master_dofs, 1:size(M, 2)))
+        #for (j, C) in (enumerate(intersect(master_dofs,1:min(size(D, 2), size(M, 1)))))
             # Extract nodal degrees of freedom
+            @show intersect(master_dofs, 1:size(M, 2))
             nod = order[C]
             C_dofs = [2nod - 1, 2nod]
             r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i])

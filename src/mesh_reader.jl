@@ -351,7 +351,7 @@ function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
     p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h)
     p4 = gmsh.model.geo.add_point(x₀, y₀ + Δy, 0.0, h)
     p5 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀, 0.0, h)
-    p6 = gmsh.model.geo.add_point(x₀ + Δx / 2, y₀ + Δy, 0.0, h)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀ + Δy, 0.0, h)
 
     # Add the lines
     l1 = gmsh.model.geo.add_line(p1, p4)
@@ -656,6 +656,20 @@ function setBCX(bc_load, dh, nodes)
         xdof = nodeDofs[node, 1]
         ydof = nodeDofs[node, 2]
         append!(bc_dof, xdof)
+        append!(bc_val, bc_load)
+    end
+    return bc_dof, bc_val
+end
+
+function setBCY(bc_load, dh, nodes)
+    ## Find bc cell_dofs
+    bc_dof = Vector{Int64}()
+    bc_val = Vector{Float64}()
+    nodeDofs = getNodeDofs(dh)
+    for node in nodes
+        xdof = nodeDofs[node, 1]
+        ydof = nodeDofs[node, 2]
+        append!(bc_dof, ydof)
         append!(bc_val, bc_load)
     end
     return bc_dof, bc_val
