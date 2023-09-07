@@ -29,8 +29,9 @@ xₗ =  0.0
 Δx =  1.0
 
 case = "box"
-grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.05)
-grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.04)
+# najs för ~0.05
+grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.1)
+grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.1)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
@@ -472,7 +473,7 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g, ∂g_∂d, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
         d      = d_new

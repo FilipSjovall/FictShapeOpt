@@ -138,7 +138,7 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
 
   xmami = xmax-xmin;
   xmamieps = 0.00001*eeen;
-  xmami = max.(xmami,xmamieps);
+  xmami = max(xmami,xmamieps);
   xmamiinv = eeen./xmami;
   ux1 = upp-xval;
   ux2 = ux1.*ux1;
@@ -163,6 +163,7 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   #Q = max.(-dfdx',0.0);
   P = max.(dfdx, 0.0)
   Q = max.(-dfdx, 0.0)
+  @show size(P) size(Q) size(raa0) size(eeem) size(xmamiinv)
   PQ = 0.001*(P + Q) + raa0*eeem*xmamiinv';
   P = P + PQ;
   Q = Q + PQ;
@@ -357,7 +358,9 @@ function subsolv(m,n,epsimin,low,upp,alfa,beta,p0,q0,P,Q,a0,a,b,c,d);
           #
           itto = 0;
           resinew = 2*residunorm;
-          while vec(resinew) > vec(residunorm) && itto < 50
+          @show resinew residunorm
+          #while vec(resinew) > vec(residunorm) && itto < 50
+          while all(resinew .> residunorm) && itto < 50
               itto = itto+1;
               x   =   xold + steg*dx;
               y   =   yold + steg*dy;

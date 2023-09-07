@@ -78,6 +78,10 @@ function gap_function(X::AbstractVector{T}) where {T}
 end
 
 function gap_scaling(X::AbstractVector{T}) where {T}
+    #
+    # Vi måste räkna ut M,D igen här för det odeformerade tillstånded, möjligtvis kan detta sparas undan...
+    #
+
    # convert X to Real for compatibility with ForwardDiff
    X_float = real.(X)
 
@@ -124,8 +128,6 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε::Numb
 
    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
-
-
 
    # Compute the projected gap function
    g = zeros(eltype(X_float), length(slave_dofs), 2)
@@ -314,9 +316,7 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
             r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i])
         end
         for (j,C) in enumerate(intersect(master_dofs, 1:size(M, 2)))
-        #for (j, C) in (enumerate(intersect(master_dofs,1:min(size(D, 2), size(M, 1)))))
             # Extract nodal degrees of freedom
-            @show intersect(master_dofs, 1:size(M, 2))
             nod = order[C]
             C_dofs = [2nod - 1, 2nod]
             r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i])

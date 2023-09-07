@@ -1225,20 +1225,43 @@ function createBoxMeshRounded_Flipped(filename, r, y₀, h)
     return grid
 end
 
-function createStepMesh(filename,x₀,y₀,Δx,Δy,t,h)
-    p1 = gmsh.model.geo.add_point(x₀, y₀+t, 0.0, h)
-    p2 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
-    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h)
-    p4 = gmsh.model.geo.add_point(x₀ + Δx - t, y₀ + Δy, 0.0, h)
-    p5 = gmsh.model.geo.add_point(x₀ + Δx - t, y₀ + t, 0.0, h)
+function createLMesh(filename,x₀,y₀,Δx,Δy,t,r1,r2,h)
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+
+    p1 = gmsh.model.geo.add_point(x₀+r1, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + t, 0.0, h)
+
+    p4 = gmsh.model.geo.add_point(x₀ + t + r1, y₀ + t, 0.0, h)
+    p5 = gmsh.model.geo.add_point(x₀ + t  + r1, y₀ + t + r1 , 0.0, h)
+    p6 = gmsh.model.geo.add_point(x₀ + t , y₀ + t + r1, 0.0, h)
+
+    p7 = gmsh.model.geo.add_point(x₀ + t, y₀ + Δy - r2, 0.0, h)
+    p8 = gmsh.model.geo.add_point(x₀ + t - r2 , y₀ + Δy - r2, 0.0 , h)
+    p9 = gmsh.model.geo.add_point(x₀ + t - r2, y₀ + Δy, 0.0, h)
+
+    p10= gmsh.model.geo.add_point(x₀ + r2, y₀ + Δy, 0.0, h)
+    p11= gmsh.model.geo.add_point(x₀ + r2, y₀ + Δy - r2, 0.0, h)
+    p12= gmsh.model.geo.add_point(x₀, y₀ + Δy - r2, 0.0, h)
+
+    p13= gmsh.model.geo.add_point(x₀, y₀ + r1, 0.0, h)
+    p14= gmsh.model.geo.add_point(x₀ + r1, y₀ + r1, 0.0, h)
 
     l1 = gmsh.model.geo.add_line(p1, p2)
     l2 = gmsh.model.geo.add_line(p2, p3)
     l3 = gmsh.model.geo.add_line(p3, p4)
-    l4 = gmsh.model.geo.add_line(p4, p5)
-    l5 = gmsh.model.geo.add_line(p5, p1)
+    l4 = gmsh.model.geo.add_circle_arc(p4,p5,p6)
+    l5 = gmsh.model.geo.add_line(p6,p7)
+    l6 = gmsh.model.geo.add_circle_arc(p7,p8,p9)
+    l7 = gmsh.model.geo.add_line(p9,p10)
+    l8 = gmsh.model.geo.add_circle_arc(p10,p11,p12)
+    l9 = gmsh.model.geo.add_line(p12,p13)
+    l10= gmsh.model.geo.add_circle_arc(p13,p14,p1)
 
-    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5])
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7 ,l8, l9, l10])
 
     surf = gmsh.model.geo.add_plane_surface([loop])
 
@@ -1255,24 +1278,52 @@ function createStepMesh(filename,x₀,y₀,Δx,Δy,t,h)
 end
 
 
-function createStepMeshRev(filename, x₀, y₀, Δx, Δy, t, h)
-    p1 = gmsh.model.geo.add_point(x₀, y₀ + t, 0.0, h)
-    p2 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
-    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h)
-    p4 = gmsh.model.geo.add_point(x₀ + Δx - t, y₀ + Δy, 0.0, h)
-    p5 = gmsh.model.geo.add_point(x₀ + Δx - t, y₀ + t, 0.0, h)
+function createLMeshRev(filename, x₀, y₀, Δx, Δy, t, r1, r2, h)
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
 
+    # Points
+    p1 = gmsh.model.geo.add_point(x₀ , y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀ , y₀ - t, 0.0, h)
+
+    p3 = gmsh.model.geo.add_point(x₀ + Δx - t - r1, y₀ - t, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀ + Δx - t - r1, y₀ - t - r1, 0.0, h)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx - t, y₀ - t - r1, 0.0, h)
+
+    p6 = gmsh.model.geo.add_point(x₀ + Δx - t, y₀ - Δy + r2, 0.0, h)
+    p7 = gmsh.model.geo.add_point(x₀ + Δx - t + r2, y₀ - Δy + r2, 0.0, h)
+    p8 = gmsh.model.geo.add_point(x₀ + Δx - t + r2, y₀ - Δy, 0.0, h)
+
+    p9 = gmsh.model.geo.add_point(x₀ + Δx - r2, y₀ - Δy, 0.0, h)
+    p10= gmsh.model.geo.add_point(x₀ + Δx - r2, y₀ - Δy + r2, 0.0, h)
+    p11= gmsh.model.geo.add_point(x₀ + Δx, y₀ - Δy + r2, 0.0, h)
+
+    p12= gmsh.model.geo.add_point(x₀ + Δx, y₀ - r1, 0.0, h)
+    p13= gmsh.model.geo.add_point(x₀ + Δx - r1, y₀ - r1, 0.0, h)
+    p14= gmsh.model.geo.add_point(x₀ + Δx - r1, y₀, 0.0, h)
+
+    # Lines
     l1 = gmsh.model.geo.add_line(p1, p2)
     l2 = gmsh.model.geo.add_line(p2, p3)
-    l3 = gmsh.model.geo.add_line(p3, p4)
-    l4 = gmsh.model.geo.add_line(p4, p5)
-    l5 = gmsh.model.geo.add_line(p5, p1)
+    l3 = gmsh.model.geo.add_circle_arc(p3, p4, p5)
+    l4 = gmsh.model.geo.add_line(p5, p6)
+    l5 = gmsh.model.geo.add_circle_arc(p6, p7, p8)
+    l6 = gmsh.model.geo.add_line(p8, p9)
+    l7 = gmsh.model.geo.add_circle_arc(p9, p10,p11)
+    l8 = gmsh.model.geo.add_line(p11, p12)
+    l9 = gmsh.model.geo.add_circle_arc(p12, p13, p14)
+    l10 = gmsh.model.geo.add_line(p14, p1)
 
-    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5])
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7, l8, l9, l10])
 
     surf = gmsh.model.geo.add_plane_surface([loop])
 
     gmsh.model.geo.synchronize()
+
+    #gmsh.model.add_physical_group(1, [l2,l3,l4,l5,l6,l7], -1, "Γc")
+    #gmsh.model.add_physical_group(1, [l8,l9,l10], -1, "Γr")
+
     gmsh.model.mesh.generate(2)
 
     grid = mktempdir() do dir

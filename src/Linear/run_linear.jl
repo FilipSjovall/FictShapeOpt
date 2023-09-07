@@ -675,10 +675,9 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
     # Boundary conditions #
     # ------------------- #
     bcdof_left, bcvals_left    = setBCXY_both(0.0, dh, n_left)
-    bcdof_top, bcvals_top      = setBCY(Δ/nloadsteps, dh, n_top)
-    bcdof_right, bcvals_right  = setBCX(0.0, dh, n_right)
-    bcdofs                     = [bcdof_left; bcdof_top; bcdof_right]
-    bcvals                     = [bcvals_left; bcvals_top; bcvals_right]
+    bcdof_right, bcvals_right  = setBCXY_both(Δ/nloadsteps, dh, n_right)
+    bcdofs                     = [bcdof_left; bcdof_right]
+    bcvals                     = [bcvals_left;  bcvals_right]
     ϵᵢⱼₖ                      = sortperm(bcdofs)
     global bcdofs              = bcdofs[ϵᵢⱼₖ]
     global bcvals              = bcvals[ϵᵢⱼₖ]

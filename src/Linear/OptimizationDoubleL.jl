@@ -12,17 +12,22 @@ include("run_linear.jl")
 include("sensitivitiesLin.jl")
 include("..//mma.jl")
 
-xₗ = 0.0
-xᵤ = 0.5
+
+xl = 0.0
+yl = 0.0
+xr = -0.49
+yr = 1.5
 Δx = 1.0
-yₗ = 0.0
-yᵤ = 0.51
-Δy = 0.5
+Δy = 1.0
+th = 0.25
+r1 = 0.05
+r2 = 0.075
+
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createBoxMeshRev("box_1", xₗ, yₗ, Δx, Δy, 0.05)
-grid2 = createBoxMeshRev("box_2", xᵤ, yᵤ, Δx, Δy, 0.05)
+grid1 = createLMesh("mesh_1", xl, yₗ, Δx, Δy, th, r1, r2, 0.05)
+grid2 = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, 0.05)
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
 grid1 = nothing
 grid2 = nothing
@@ -34,63 +39,19 @@ close!(dh)
 global coord, enod = getTopology(dh)
 global register = index_nod_to_grid(dh, coord)
 
-# ----------------- #
-# Create slave sets #
-# ----------------- #
-#addfaceset!(dh.grid,"Γ_slave", x-> ( (x[2] ≈ yᵤ) || (( x[2]≥yᵤ) && (x[1] ≈ xᵤ) ) ))
-addfaceset!(dh.grid,"Γ_slave", x-> ( (x[2] ≈ yᵤ) ))
-global Γs = getfaceset(dh.grid, "Γ_slave")
+Γ_all   = Ferrite.__collect_boundary_faces(dh.grid)
+addfaceset!(dh.grid,"Γ_test", Γ_all)
+Γ_test  = getfaceset(dh.grid,"Γ_test")
+addfaceset!(dh.grid,"Γ_tests", x -> (x[1] > 0 && x[2] > 0.5) )
+Γ_tests = getfaceset(dh.grid,"Γ_tests")
 
-#addnodeset!(dh.grid, "nₛ", x -> ( ( x[2] ≈ yᵤ) || ( (x[2] ≥ yᵤ) && (x[1] ≈ xᵤ) ) ) )
-addnodeset!(dh.grid, "nₛ", x -> ( ( x[2] ≈ yᵤ) ))
-global nₛ = getnodeset(dh.grid, "nₛ")
+intersect(Γ_test,Γ_tests)
 
-# ------------------ #
-# Create master sets #
-# ------------------ #
-#addfaceset!(dh.grid, "Γ_master", x -> ( ( x[2] ≈ yₗ + Δy) || ( (x[2] ≤ yₗ + Δy) && (x[1] ≈ xₗ) ) ) )
-addfaceset!(dh.grid, "Γ_master", x -> ( ( x[2] ≈ yₗ + Δy) ))
-global Γm = getfaceset(dh.grid, "Γ_master")
-
-#addnodeset!(dh.grid, "nₘ", x ->  ( (x[2] ≈ yₗ + Δy ) || ( (x[2] ≤ yₗ + Δy) && (x[1] ≈ xₗ + Δx) ) ) )
-addnodeset!(dh.grid, "nₘ", x ->  ( (x[2] ≈ yₗ + Δy ) ))
-global nₘ = getnodeset(dh.grid, "nₘ" )
-
-# ------------------ #
-# Create right  sets #
-# ------------------ #
-addfaceset!(dh.grid, "Γ_right", x -> x[1] ≈ xᵤ + Δx)
-global Γ_right = getfaceset(dh.grid, "Γ_right")
-
-addnodeset!(dh.grid, "nᵣ", x -> x[1] ≈ xᵤ + Δx)
-global n_right = getnodeset(dh.grid, "nᵣ")
-
-# ------------------ #
-# Create left | sets #
-# ------------------ #
-addfaceset!(dh.grid, "Γ_left", x -> x[1] ≈ xₗ)
-global Γ_left = getfaceset(dh.grid, "Γ_left")
-
-addnodeset!(dh.grid, "nₗ", x -> x[1] ≈ xₗ)
-global n_left = getnodeset(dh.grid, "nₗ")
-
-# --------------- #
-# Create top sets #
-# --------------- #
-addfaceset!(dh.grid, "Γ_top", x -> x[2] ≈ yᵤ + Δy)
-global Γ_top = getfaceset(dh.grid, "Γ_top")
-
-addnodeset!(dh.grid, "n_top", x -> x[2] ≈ yᵤ + Δy)
-global n_top = getnodeset(dh.grid, "n_top")
-
-# --------------- #
-# Create bot sets #
-# --------------- #
-addfaceset!(dh.grid, "Γ_bot", x -> x[2] ≈ yₗ)
-global Γ_bot = getfaceset(dh.grid, "Γ_bot")
-
-addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ yₗ)
-global n_bot = getnodeset(dh.grid, "n_bot")
+for cell in CellIterator(dh)
+    for face in 1:nfaces(cell)
+            @show face
+    end
+end
 
 # Extract all nbr nodes and dofs
 global contact_dofs = getContactDofs(nₛ, nₘ)

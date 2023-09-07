@@ -85,7 +85,7 @@ function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
         Fₑₓₜ[cell_dofs] -= fₑ
     end
 end
-         a
+
 function assemGlobal!(K,Fᵢₙₜ,rc,dh,mp,t,a,coord,enod,ε)
     assembler = start_assemble(K,Fᵢₙₜ)
     ie        = 0
