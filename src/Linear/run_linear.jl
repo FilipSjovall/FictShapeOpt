@@ -571,8 +571,8 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
 
     global bcdof_o2 = bcdofs_opt
     global bcval_o2 = bcdofs_opt .* 0.0
-    global pdofs = bcdofs_opt
-    global fdofs = setdiff(1:ndof, pdofs)
+    global pdofs    = bcdofs_opt
+    global fdofs    = setdiff(1:ndof, pdofs)
 
     # ---------- #
     # Set params # // Kanske som input till solver???
@@ -666,18 +666,22 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
     global Fᵢₙₜ = zeros(dh.ndofs.x)
     global rc = zeros(dh.ndofs.x)
     global Fₑₓₜ = zeros(dh.ndofs.x)
-    global a = zeros(dh.ndofs.x)
-    global Δa = zeros(dh.ndofs.x)
-    global res = zeros(dh.ndofs.x)
-    global K = create_sparsity_pattern(dh)
+    global a     = zeros(dh.ndofs.x)
+    global Δa    = zeros(dh.ndofs.x)
+    global res   = zeros(dh.ndofs.x)
+    global K     = create_sparsity_pattern(dh)
 
     # ------------------- #
     # Boundary conditions #
     # ------------------- #
+    #bcdof_left, bcvals_left    = setBCXY_both(0.0, dh, n_left)
+    #bcdof_right, bcvals_right  = setBCXY_both(Δ/nloadsteps, dh, n_right)
     bcdof_left, bcvals_left    = setBCXY_both(0.0, dh, n_left)
-    bcdof_right, bcvals_right  = setBCXY_both(Δ/nloadsteps, dh, n_right)
-    bcdofs                     = [bcdof_left; bcdof_right]
-    bcvals                     = [bcvals_left;  bcvals_right]
+    bcdof_right, bcvals_right  = setBCXY_X(Δ / nloadsteps, dh, n_right)
+    bcdofs_bot, bcvals_bot     = setBCY(0.0, dh, n_bot)
+
+    bcdofs                     = [bcdof_left; bcdof_right; bcdofs_bot]
+    bcvals                     = [bcvals_left;  bcvals_right; bcvals_bot]
     ϵᵢⱼₖ                      = sortperm(bcdofs)
     global bcdofs              = bcdofs[ϵᵢⱼₖ]
     global bcvals              = bcvals[ϵᵢⱼₖ]
@@ -713,17 +717,15 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
         while residual > TOL || iter < 2
             iter += 1
 
-            if iter % 20 == 0 || norm(res) > 1e3
+            if iter % 20 == 0 || norm(res) > 1e3 && β > 1 / 8
                 a = a_old
                 bcvals = bcval₀
-                if β > 1 / 8
-                    global β = β * 0.5
-                    Δ_remaining = (Δ * nloadsteps - β * Δ - loadstep * Δ) / nloadsteps
-                    remaining_steps = nloadsteps - loadstep
-                    nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
-                    bcvals = bcvals ./ 2 #
-                    bcval₀ = bcvals
-                end
+                global β = β * 0.5
+                Δ_remaining = (Δ * nloadsteps - β * Δ - loadstep * Δ) / nloadsteps
+                remaining_steps = nloadsteps - loadstep
+                nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
+                bcvals = bcvals ./ 2 #
+                bcval₀ = bcvals
                 fill!(Δa, 0.0)
                 println("Penalty paremeter and updated: $ε, and step length $β ")
             end

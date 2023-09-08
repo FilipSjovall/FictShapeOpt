@@ -1,9 +1,4 @@
 # Solution vector
-ip = Lagrange{2,RefTetrahedron,1}()
-qr = QuadratureRule{2,RefTetrahedron}(1)
-qr_face = QuadratureRule{1,RefTetrahedron}(1)
-cv = CellVectorValues(qr, ip)
-fv = FaceVectorValues(qr_face, ip)
 kktnorm = 1.0
 
 dr_dd = similar(K)

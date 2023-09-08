@@ -693,6 +693,24 @@ function setBCXY_both(bc_load, dh, nodes)
     return bc_dof, bc_val
 end
 
+function setBCXY_X(bc_load, dh, nodes)
+    ## Find bc cell_dofs
+    bc_dof = Vector{Int64}()
+    bc_val = Vector{Float64}()
+    nodeDofs = getNodeDofs(dh)
+    for node in nodes
+        xdof = nodeDofs[node, 1]
+        ydof = nodeDofs[node, 2]
+
+        append!(bc_dof, xdof)
+        append!(bc_val, bc_load)
+
+        append!(bc_dof, ydof)
+        append!(bc_val, 0.0)
+    end
+    return bc_dof, bc_val
+end
+
 function getNodeDofs(dh)
     node_dofs = Matrix{Int64}(undef,length(dh.grid.nodes),2)
     for cell in CellIterator(dh)
@@ -1262,11 +1280,19 @@ function createLMesh(filename,x₀,y₀,Δx,Δy,t,r1,r2,h)
     l10= gmsh.model.geo.add_circle_arc(p13,p14,p1)
 
     loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7 ,l8, l9, l10])
+    #loop = gmsh.model.geo.add_curve_loop([l10, l9, l8, l7, l6, l5, l4, l3, l2, l1])
 
     surf = gmsh.model.geo.add_plane_surface([loop])
 
     gmsh.model.geo.synchronize()
+
+    gmsh.model.add_physical_group(1, [l4, l5, l6], -1, "hej")
+    #gmsh.model.add_physical_group(1, [l5], -1, "hej")
+    gmsh.model.add_physical_group(2, [surf], -1, "då")
+
     gmsh.model.mesh.generate(2)
+
+    gmsh.model.mesh.reverse()
 
     grid = mktempdir() do dir
         path = joinpath(filename * ".msh")
@@ -1313,18 +1339,23 @@ function createLMeshRev(filename, x₀, y₀, Δx, Δy, t, r1, r2, h)
     l7 = gmsh.model.geo.add_circle_arc(p9, p10,p11)
     l8 = gmsh.model.geo.add_line(p11, p12)
     l9 = gmsh.model.geo.add_circle_arc(p12, p13, p14)
-    l10 = gmsh.model.geo.add_line(p14, p1)
+    l10= gmsh.model.geo.add_line(p14, p1)
 
     loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7, l8, l9, l10])
+    #loop = gmsh.model.geo.add_curve_loop([l10, l9, l8, l7, l6, l5, l4, l3, l2, l1])
 
     surf = gmsh.model.geo.add_plane_surface([loop])
 
     gmsh.model.geo.synchronize()
 
-    #gmsh.model.add_physical_group(1, [l2,l3,l4,l5,l6,l7], -1, "Γc")
-    #gmsh.model.add_physical_group(1, [l8,l9,l10], -1, "Γr")
+    gmsh.model.add_physical_group(1, [l3,l4,l5], -1, "hej")
+    #gmsh.model.add_physical_group(1, [l4], -1, "hej")
+    #gmsh.model.add_physical_group(1, [loop], -1, "hej2")
+    gmsh.model.add_physical_group(2, [surf], -1, "Γr")
 
     gmsh.model.mesh.generate(2)
+
+    gmsh.model.mesh.reverse()
 
     grid = mktempdir() do dir
         path = joinpath(filename * ".msh")
@@ -1333,4 +1364,27 @@ function createLMeshRev(filename, x₀, y₀, Δx, Δy, t, r1, r2, h)
     end
     Gmsh.finalize()
     return grid
+end
+
+
+function getBoundarySet(grid)
+    setCoordinates = Set{Vec{2,Float64}}()
+    for (cellid,faceid) ∈ grid.facesets[""]
+        nodes =  grid.cells[cellid].nodes
+        idx = Ferrite.facedof_indices(ip)[faceid]
+        push!(setCoordinates, grid.nodes[nodes[idx[1]]].x)
+        push!(setCoordinates, grid.nodes[nodes[idx[2]]].x)
+    end
+    return setCoordinates
+end
+
+function getBoundarySet(grid, FaceSet)
+    setCoordinates = Set{Int64}()
+    for (cellid, faceid) ∈ FaceSet
+        nodes = grid.cells[cellid].nodes
+        idx = Ferrite.facedof_indices(ip)[faceid]
+        push!(setCoordinates, nodes[idx[1]])
+        push!(setCoordinates, nodes[idx[2]])
+    end
+    return setCoordinates
 end

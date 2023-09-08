@@ -23,37 +23,99 @@ th = 0.25
 r1 = 0.05
 r2 = 0.075
 
+# # # # # # # # # #
+# Finite element  #
+# # # # # # # # # #
+ip = Lagrange{2,RefTetrahedron,1}()
+qr = QuadratureRule{2,RefTetrahedron}(1)
+qr_face = QuadratureRule{1,RefTetrahedron}(1)
+cv = CellVectorValues(qr, ip)
+fv = FaceVectorValues(qr_face, ip)
+
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createLMesh("mesh_1", xl, yₗ, Δx, Δy, th, r1, r2, 0.05)
-grid2 = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, 0.05)
-grid_tot = merge_grids(grid1, grid2; tol=1e-6)
-grid1 = nothing
-grid2 = nothing
+grid1 = createLMesh("mesh_1", xl, yl, Δx, Δy, th, r1, r2, 0.05);
+Γ_1   = getBoundarySet(grid1);
+grid2 = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, 0.05);
+Γ_2   = getBoundarySet(grid2);
+grid_tot = merge_grids(grid1, grid2; tol=1e-6);
+grid1 = nothing;
+grid2 = nothing;
 # Create dofhandler with displacement field u
-global dh = DofHandler(grid_tot)
-add!(dh, :u, 2)
-close!(dh)
+global dh = DofHandler(grid_tot);
+add!(dh, :u, 2);
+close!(dh);
+
 # Extract CALFEM-style matrices
-global coord, enod = getTopology(dh)
-global register = index_nod_to_grid(dh, coord)
+global coord, enod = getTopology(dh);
+global register = index_nod_to_grid(dh, coord);
 
-Γ_all   = Ferrite.__collect_boundary_faces(dh.grid)
-addfaceset!(dh.grid,"Γ_test", Γ_all)
-Γ_test  = getfaceset(dh.grid,"Γ_test")
-addfaceset!(dh.grid,"Γ_tests", x -> (x[1] > 0 && x[2] > 0.5) )
-Γ_tests = getfaceset(dh.grid,"Γ_tests")
 
-intersect(Γ_test,Γ_tests)
+# Exrtact full boundary
+Γ_all   = Ferrite.__collect_boundary_faces(dh.grid);
+addfaceset!(dh.grid,"Γ_all", Γ_all);
+Γ_all  = getfaceset(dh.grid,"Γ_all");
 
-for cell in CellIterator(dh)
-    for face in 1:nfaces(cell)
-            @show face
-    end
-end
+n_all = getBoundarySet(dh.grid, Γ_all);
+addnodeset!(dh.grid,"n_all", n_all);
 
-# Extract all nbr nodes and dofs
+Γ_all_dofs = Vector{Int64}()
+# --------------
+# Master
+addfaceset!(dh.grid,"Γ_master", x -> x ∈ Γ_1 );
+Γm = getfaceset(dh.grid,"Γ_master");
+Γm =  intersect(Γm,Γ_all);
+
+nₘ = getBoundarySet(dh.grid,Γm);
+addnodeset!(dh.grid,"nₘ" ,nₘ);
+
+# ---------------
+# Slave
+addfaceset!(dh.grid,"Γ_slave", x -> x ∈ Γ_2 );
+Γs = getfaceset(dh.grid,"Γ_slave");
+Γs =  intersect(Γs,Γ_all);
+
+nₛ = getBoundarySet(dh.grid,Γs)
+addnodeset!(dh.grid,"nₛ" ,nₛ)
+
+
+# ---------------
+# Displacement bc boundary u(x) = Δ ∀ x ∈ Γ_Δ
+addfaceset!(dh.grid, "Γ_right", x -> x[1] ≈ xl + Δx)
+Γ_right = getfaceset(dh.grid, "Γ_right")
+
+addnodeset!(dh.grid, "n_right", x -> x[1] ≈ xl + Δx)
+n_right = getnodeset(dh.grid, "n_right")
+
+# --------------
+# Displacement bc boundary u(x) = 0 ∀ x ∈ Γ_0
+addfaceset!(dh.grid, "Γ_left", x -> x[1] ≈ xr )
+Γ_left = getfaceset(dh.grid, "Γ_left")
+
+addnodeset!(dh.grid, "n_left", x -> x[1] ≈ xr )
+n_left = getnodeset(dh.grid, "n_left")
+
+# --------------
+# bottom
+addfaceset!(dh.grid, "Γ_bot", x -> x[2] ≈ yl)
+Γ_bot = getfaceset(dh.grid, "Γ_bot")
+
+addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ yl)
+n_bot = getnodeset(dh.grid, "n_bot")
+
+# ---------------
+# Design boundaries
+Γ_robin = setdiff(Γ_all,union(Γ_left, Γ_right, Γ_bot))
+addfaceset!(dh.grid, "Γ_robin", Γ_robin)
+
+n_robin = getBoundarySet(dh.grid,Γ_robin)
+addnodeset!(dh.grid, "n_robin", n_robin)
+
+
+# # # # # # # # # # # # #
+# Collect contact dofs  #
+# # # # # # # # # # # # #
 global contact_dofs = getContactDofs(nₛ, nₘ)
 global contact_nods = getContactNods(nₛ, nₘ)
 global order = Dict{Int64,Int64}()
@@ -71,51 +133,46 @@ global coord = getCoordfromX(X)
 # Init fictious #
 # # # # # # # # #
 global coord₀ = deepcopy(coord)
-global Γ_robin = union(
-    getfaceset(dh.grid, "Γ_slave"),
-    getfaceset(dh.grid, "Γ_bot"),
-    getfaceset(dh.grid, "Γ_top"),
-    getfaceset(dh.grid, "Γ_master")
-)
-global n_robin = union(
-    getnodeset(dh.grid, "nₛ"),
-    getnodeset(dh.grid, "n_bot"),
-    getnodeset(dh.grid, "n_top"),
-    getnodeset(dh.grid, "nₘ")
-)
 
+# # # # # # # # # # # #
+# Collect design dofs #
+# # # # # # # # # # # #
 global free_d = []
 for jnod in n_robin
-    if in(jnod, n_left) || in(jnod, n_right)
-        append!(free_d, register[jnod, 1])
-        append!(free_d, register[jnod, 2]) ## Fundera på om detta skall vara med
-    else
-        append!(free_d, register[jnod, 1])
-        append!(free_d, register[jnod, 2])
-    end
+    append!(free_d, register[jnod, 1])
+    append!(free_d, register[jnod, 2])
 end
-global locked_d = setdiff(1:dh.ndofs.x, free_d)
+#global locked_d = setdiff(1:dh.ndofs.x, free_d)
+global locked_d = Vector{Int64}()
+for n ∈ n_left
+    push!(locked_d,register[n,1])
+    push!(locked_d,register[n,2])
+end
+for n ∈ n_right
+    push!(locked_d,register[n,1])
+    push!(locked_d,register[n,2])
+end
 
 # Initialize tangents
-global K = create_sparsity_pattern(dh)
-global Kψ = create_sparsity_pattern(dh)
-global a = zeros(dh.ndofs.x)
-global d = zeros(dh.ndofs.x)
-global Ψ = zeros(dh.ndofs.x)
-global Fᵢₙₜ = zeros(dh.ndofs.x)
-global rc = zeros(dh.ndofs.x)
-global Fₑₓₜ = zeros(dh.ndofs.x)
-global a = zeros(dh.ndofs.x)
-global Δa = zeros(dh.ndofs.x)
-global res = zeros(dh.ndofs.x)
-global dr_dd = similar(K)
+global K      = create_sparsity_pattern(dh)
+global Kψ     = create_sparsity_pattern(dh)
+global a      = zeros(dh.ndofs.x)
+global d      = zeros(dh.ndofs.x)
+global Ψ      = zeros(dh.ndofs.x)
+global Fᵢₙₜ  = zeros(dh.ndofs.x)
+global rc     = zeros(dh.ndofs.x)
+global Fₑₓₜ  = zeros(dh.ndofs.x)
+global a      = zeros(dh.ndofs.x)
+global Δa     = zeros(dh.ndofs.x)
+global res    = zeros(dh.ndofs.x)
+global dr_dd  = similar(K)
 global ∂rψ_∂d = similar(K)
-global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
-global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
-global λᵤ = similar(a)
-global λψ = similar(a)
+global ∂g_∂x  = zeros(size(a)) # behövs inte om vi har lokal funktion?
+global ∂g_∂u  = zeros(size(d)) # behövs inte om vi har lokal funktion?
+global λᵤ     = similar(a)
+global λψ     = similar(a)
 
-global Δ = -0.15
+global Δ = 0.05
 global nloadsteps = 10
 
 include("initOptLinHook.jl")
@@ -124,8 +181,9 @@ include("initOptLinHook.jl")
 # Boundary conditions #
 # ------------------- #
 bcdof_left, _    = setBCXY_both(0.0, dh, n_left)
-bcdof_right,_    = setBCXY_both(0.0, dh, n_right)
-bcdofs_opt       = [bcdof_left; bcdof_right];
+bcdof_right,_    = setBCXY_X(0.0, dh, n_right)
+bcdof_bot,_      = setBCY(0.0, dh, n_bot)
+bcdofs_opt       = [bcdof_left; bcdof_right; bcdof_bot];
 ϵᵢⱼₖ            = sortperm(bcdofs_opt)
 global bcdofs_opt = bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt = bcdofs_opt .* 0.0
@@ -190,7 +248,7 @@ function Optimize(dh)
             global g_ini
             global pdofs    = bcdofs_opt
             global fdofs    = setdiff(1:length(a), pdofs)
-            global locked_d = setdiff(1:length(a),free_d)
+            #global locked_d = setdiff(1:length(a),free_d)
             global low
             global upp
             global traction
@@ -202,7 +260,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global μ = 1e4 # var μ = 1e4
+        global μ = 1e3 # var μ = 1e4
 
         if OptIter % 25 == 0 && g₁ < 0
             dh0 = deepcopy(dh)
@@ -231,7 +289,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 1e5 # eller?
+        global ε = 1e4 # eller?
 
         # # # # # # # # #
         # Equillibrium  #
