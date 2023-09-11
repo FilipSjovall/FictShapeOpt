@@ -551,13 +551,13 @@ end
 function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
     # allt överflödigt bör vid tillfälle flyttas utanför
     # lösare till ett "init-liknande script så att huvudsaklig kod hålls ren
-    TOL = 1e-10
+    TOL      = 1e-10
     residual = 0.0
-    iter = 1
+    iter     = 1
     global λ = 0
-    ndof = size(coord₀, 1) * 2
-    nelm = size(enod, 1)
-    t = 1.0
+    ndof     = size(coord₀, 1) * 2
+    nelm     = size(enod, 1)
+    t        = 1.0
 
     #  ----- #
     # Init   #
@@ -574,31 +574,21 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
     global pdofs    = bcdofs_opt
     global fdofs    = setdiff(1:ndof, pdofs)
 
-    # ---------- #
-    # Set params # // Kanske som input till solver???
-    # ---------- #
-
     bcval₀_o2 = bcval_opt
     Δλ = (1.0 / nloadsteps)
-    #Δλ₀ = Δλ
-
-    #for loadstep ∈ 1 : nloadsteps
-    ##
     loadstep = 0
+
     while loadstep < nloadsteps
         loadstep += 1
-        #if Δλ >  0.1 * 1/8
-        #    global μ = μ * 1.1
-        #end
-        ##
-        res = res .* 0
+        res       = res .* 0
         bcval_opt = bcval₀_o2
-        residual = 0 * residual
-        iter = 0
+        residual  = 0 * residual
+        iter      = 0
         global λ += Δλ #* loadstep
         fill!(ΔΨ, 0.0)
         print("\n", "Starting equilibrium iteration at loadstep: ", loadstep, "\n")
         Ψ_old = Ψ
+
         # # # # # # # # # #
         # Newton solve.  #
         # # # # # # # # # #
@@ -611,10 +601,9 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
                     Δλ = Δλ / 2
                     global λ += Δλ  #* loadstep
                     remaining_steps = nloadsteps - loadstep
-                    #nloadsteps = loadstep + 2remaining_steps +  Δλ₀ / Δλ  - 1
                     nloadsteps = loadstep + round((1 - λ) / Δλ)
                 else
-                    global μ = μ * 1.1#0.9
+                    global μ = μ * 0.9
                 end
                 fill!(ΔΨ, 0.0)
                 println("Step length updated: $Δλ, penalty parameter: $μ")
@@ -623,13 +612,14 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             Ψ += ΔΨ
             assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
             solveq!(ΔΨ, Kψ, -FΨ, bcdofs_opt, bcval_opt)
-            bcval_opt = bcval_opt .* 0
-            res = FΨ #- Fₑₓₜ
+            bcval_opt       = bcval_opt .* 0
+            res             = FΨ #- Fₑₓₜ
             res[bcdofs_opt] = res[bcdofs_opt] .* 0
-            residual = norm(res, 2)
-            Ψ[bcdofs_opt] = bcval_opt
-            if iter < 11
+            residual        = norm(res, 2)
+            Ψ[bcdofs_opt]   = bcval_opt
+            if iter < 31
                 postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
+                #Ψ += ΔΨ
                 #postprocess_opt(Ψ, dh0, "fictitious" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
@@ -676,12 +666,13 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
     # ------------------- #
     #bcdof_left, bcvals_left    = setBCXY_both(0.0, dh, n_left)
     #bcdof_right, bcvals_right  = setBCXY_both(Δ/nloadsteps, dh, n_right)
-    bcdof_left, bcvals_left    = setBCXY_both(0.0, dh, n_left)
-    bcdof_right, bcvals_right  = setBCXY_X(Δ / nloadsteps, dh, n_right)
-    bcdofs_bot, bcvals_bot     = setBCY(0.0, dh, n_bot)
+    bcdof_left, bcval_left     = setBCXY_X(0.0, dh, n_left)
+    bcdof_right, bcval_right   = setBCXY_X(Δ / nloadsteps, dh, n_right)
+    bcdof_bot, bcval_bot       = setBCY(0.0, dh, n_bot)
+    bcdof_top, bcval_top       = setBCY(0.0, dh, n_top)
 
-    bcdofs                     = [bcdof_left; bcdof_right; bcdofs_bot]
-    bcvals                     = [bcvals_left;  bcvals_right; bcvals_bot]
+    bcdofs                     = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top]
+    bcvals                     = [bcval_left;  bcval_right; bcval_bot; bcval_top]
     ϵᵢⱼₖ                      = sortperm(bcdofs)
     global bcdofs              = bcdofs[ϵᵢⱼₖ]
     global bcvals              = bcvals[ϵᵢⱼₖ]
@@ -713,10 +704,9 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
         # Newton solve.   #
         # # # # # # # # # #
 
-        @show β
+        #@show β
         while residual > TOL || iter < 2
             iter += 1
-
             if iter % 20 == 0 || norm(res) > 1e3 && β > 1 / 8
                 a = a_old
                 bcvals = bcval₀
@@ -739,8 +729,8 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
             res[bcdofs] = 0 * res[bcdofs]
             residual = norm(res, 2)
             #println("Iteration: ", iter, " Residual: ", residual)
-            @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdofs[2]]
-            if iter < 11
+            @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_right[1]]
+            if iter < 21
                 σx, σy = StressExtract(dh, a, mp)
                 vtk_grid("contact" * string(loadstep), dh) do vtkfile
                     #vtk_grid("contact" * string(iter), dh) do vtkfile

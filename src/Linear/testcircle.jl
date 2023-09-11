@@ -293,7 +293,7 @@ if sens_test==1
         a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord, Δ, 10)
         #test[pert] = a' * Fₑₓₜ
 
-        test[pert]          = -a[pdofs]' * Fᵢₙₜ[pdofs]
+        test[pert] = -T' * Fᵢₙₜ
         #test[pert] = contact_pnorm(X_ordered, a, ε, p)
     end
     ∂rᵤ_∂x = similar(K)

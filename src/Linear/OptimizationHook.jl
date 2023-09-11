@@ -289,12 +289,13 @@ function Optimize(dh)
         # # # # # # #
         # Max reaction force
         g     = - T' * Fᵢₙₜ
-
+        ∂g_∂x =  -T' * ∂rᵤ_∂x ## stämmer? innehåller kontaktkänslighet men dessa träffar bara kontaktdofs som inte är kopplade till bc.
+        ∂g_∂u =  -T' * K
         # # # # # # #
         # Adjoints  #
         # # # # # # #
         solveq!(λᵤ, K',  ∂g_∂u, bcdofs_opt, bcval_opt)
-        solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt)
+        solveq!(λψ, Kψ', ∂g_∂x' - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt)
 
         # # # # # # # # # # #
         # Full sensitivity  #

@@ -42,6 +42,21 @@ function drᵤ_dx(dr,dh,mp,t,a,coord,enod,τ, Γt)
     return dr
 end
 
+# Shape sensitivity of equillibrium residual
+function drᵤ_dx(dr, dh, mp, t, a, coord, enod)
+    assembler = start_assemble(dr)
+    ie = 0
+    drₑ = zeros(6, 6)
+    for cell in CellIterator(dh)
+        ie += 1
+        cell_dofs = celldofs(cell)
+        drₑ = assem_dr(coord[enod[ie][2:end], :], a[cell_dofs], mp, t)
+        dre = zeros(6, 6)
+        assemble!(assembler, cell_dofs, drₑ + dre)
+    end
+    return dr
+end
+
 # Shape sensitivity of external forces
 function dFext_dx(dF,dh,mp,t,a,coord,enod,τ, Γt)
     assembler = start_assemble(dF)

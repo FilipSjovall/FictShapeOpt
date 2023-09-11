@@ -429,7 +429,12 @@ function Optimize(dh)
         # Objective #
         # # # # # # #
         # Max reaction force
+        println("##################################################")
+        println("################### Känsligheterna räknas fel? ###################")
+        println("##################################################")
         g     = - T' * Fᵢₙₜ
+        ∂g_∂x =  -T' * ∂rᵤ_∂x # ?
+        ∂g_∂u =  -T' * K # ?
 
         # # # # # # #
         # Adjoints  #

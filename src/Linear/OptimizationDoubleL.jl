@@ -15,8 +15,8 @@ include("..//mma.jl")
 
 xl = 0.0
 yl = 0.0
-xr = -0.49
-yr = 1.5
+xr = -0.4999
+yr = 1.4
 Δx = 1.0
 Δy = 1.0
 th = 0.25
@@ -63,21 +63,21 @@ addnodeset!(dh.grid,"n_all", n_all);
 Γ_all_dofs = Vector{Int64}()
 # --------------
 # Master
-addfaceset!(dh.grid,"Γ_master", x -> x ∈ Γ_1 );
-Γm = getfaceset(dh.grid,"Γ_master");
-Γm =  intersect(Γm,Γ_all);
-
-nₘ = getBoundarySet(dh.grid,Γm);
-addnodeset!(dh.grid,"nₘ" ,nₘ);
-
-# ---------------
-# Slave
-addfaceset!(dh.grid,"Γ_slave", x -> x ∈ Γ_2 );
+addfaceset!(dh.grid,"Γ_slave", x -> x ∈ Γ_1 );
 Γs = getfaceset(dh.grid,"Γ_slave");
 Γs =  intersect(Γs,Γ_all);
 
-nₛ = getBoundarySet(dh.grid,Γs)
-addnodeset!(dh.grid,"nₛ" ,nₛ)
+nₛ = getBoundarySet(dh.grid,Γs);
+addnodeset!(dh.grid,"nₛ" ,nₛ);
+
+# ---------------
+# Slave
+addfaceset!(dh.grid,"Γ_master", x -> x ∈ Γ_2 );
+Γm = getfaceset(dh.grid,"Γ_master");
+Γm =  intersect(Γm,Γ_all);
+
+nₘ = getBoundarySet(dh.grid,Γm)
+addnodeset!(dh.grid,"nₘ" ,nₘ)
 
 
 # ---------------
@@ -103,6 +103,14 @@ addfaceset!(dh.grid, "Γ_bot", x -> x[2] ≈ yl)
 
 addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ yl)
 n_bot = getnodeset(dh.grid, "n_bot")
+
+# --------------
+# Top
+addfaceset!(dh.grid, "Γ_top", x -> x[2] ≈ yr)
+Γ_top = getfaceset(dh.grid, "Γ_top")
+
+addnodeset!(dh.grid, "n_top", x -> x[2] ≈ yr)
+n_top = getnodeset(dh.grid, "n_top")
 
 # ---------------
 # Design boundaries
@@ -180,21 +188,22 @@ include("initOptLinHook.jl")
 # ------------------- #
 # Boundary conditions #
 # ------------------- #
-bcdof_left, _    = setBCXY_both(0.0, dh, n_left)
+bcdof_left, _    = setBCXY_X(0.0, dh, n_left)
 bcdof_right,_    = setBCXY_X(0.0, dh, n_right)
 bcdof_bot,_      = setBCY(0.0, dh, n_bot)
-bcdofs_opt       = [bcdof_left; bcdof_right; bcdof_bot];
+bcdof_top, _     = setBCY(0.0, dh, n_top)
+bcdofs_opt       = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
 ϵᵢⱼₖ            = sortperm(bcdofs_opt)
-global bcdofs_opt = bcdofs_opt[ϵᵢⱼₖ]
+global bcdofs_opt= bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt = bcdofs_opt .* 0.0
 
 function Optimize(dh)
     # Flytta allt nedan till init_opt?
-        global dh0   = deepcopy(dh)
-        global λψ    = similar(a)
-        global λᵤ    = similar(a)
-        global λᵥₒₗ  = similar(a)
-        Vₘₐₓ         = 1.2  #
+        global dh0     = deepcopy(dh)
+        global λψ      = similar(a)
+        global λᵤ      = similar(a)
+        global λᵥₒₗ   = similar(a)
+        Vₘₐₓ          = 1.2  #
         tol            = 1e-3
         OptIter        = 0
         true_iteration = 0
@@ -203,14 +212,11 @@ function Optimize(dh)
         g_hist         = zeros(1000)
         historia       = zeros(200,4)
         global T       = zeros(size(a))
-        global T[bcdof_right[bcdof_right .% 2 .==0]] .= 1.0
+        global T[bcdof_right[isodd.(bcdof_right)]] .= 1.0
         g₁             = 0.0
     #
     while kktnorm > tol || OptIter < 200
 
-        # # # # # # # # # # # # # #
-        #       Definitions       #
-        # # # # # # # # # # # # # #
             global d
             global Ψ
             global a
@@ -253,14 +259,14 @@ function Optimize(dh)
             global upp
             global traction
         # # # # # # # # # # # # # #
-        OptIter += 1
-        true_iteration +=1
+        OptIter        += 1
+        true_iteration += 1
 
         # # # # #
         # test  #
         # # # # #
-        global nloadsteps = 10
-        global μ = 1e3 # var μ = 1e4
+        global nloadsteps = 20
+        global μ          = 1e3 # var μ = 1e4
 
         if OptIter % 25 == 0 && g₁ < 0
             dh0 = deepcopy(dh)
@@ -275,7 +281,7 @@ function Optimize(dh)
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
-        global coord₀ = getCoord(getX(dh0), dh0) # x₀
+        global coord₀  = getCoord(getX(dh0), dh0) # x₀
         Ψ, _, Kψ, _, λ = fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
 
         # # # # # #
@@ -289,7 +295,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 1e4 # eller?
+        global ε          = 1e4 # eller?
 
         # # # # # # # # #
         # Equillibrium  #
@@ -307,13 +313,15 @@ function Optimize(dh)
         # Objective #
         # # # # # # #
         # Max reaction force
-        g     = - T' * Fᵢₙₜ
+        g     = -T' * Fᵢₙₜ
+        ∂g_∂x = -T' * ∂rᵤ_∂x ## stämmer? innehåller kontaktkänslighet men dessa träffar bara kontaktdofs som inte är kopplade till bc.
+        ∂g_∂u = -T' * K
 
         # # # # # # #
         # Adjoints  #
         # # # # # # #
         solveq!(λᵤ, K',  ∂g_∂u, bcdofs_opt, bcval_opt)
-        solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt)
+        solveq!(λψ, Kψ', ∂g_∂x' - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt)
 
         # # # # # # # # # # #
         # Full sensitivity  #
@@ -331,7 +339,7 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g , ∂g_∂d , g₁, ∂Ω∂d, low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .*100 , ∂g_∂d .*100 , g₁, ∂Ω∂d, low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
         d      = d_new
@@ -343,21 +351,20 @@ function Optimize(dh)
         v_hist[true_iteration] = g₁
         g_hist[true_iteration] = g
 
-
         #The residual vector of the KKT conditions is calculated:
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
         kktnorm = change
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
         if mod(OptIter,1) == 0
             coord = getCoord(getX(dh0), dh0)
-            postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
+            postprocess_opt(Ψ, dh0, "results/Current design"   * string(true_iteration))
             postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
         end
 
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
 
 
-        p2 = plot(1:true_iteration,[v_hist[1:true_iteration], g_hist[1:true_iteration]],label = ["Volume Constraint" "Objective"])
+        p2 = plot(1:true_iteration,[v_hist[1:true_iteration], g_hist[1:true_iteration] .*100],label = ["Volume Constraint" "Objective"])
         display(p2)
 
         #p3 = plot(1:true_iteration,g_hist[1:true_iteration],legend=false, marker=3, reuse = false, lc =:darkgreen)
