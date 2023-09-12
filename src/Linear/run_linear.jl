@@ -594,16 +594,16 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
         # # # # # # # # # #
         while residual > TOL || iter < 2
             iter += 1
-            if iter % 10 == 0 || norm(res) > 1e2 #&& Δλ > 1/16
+            if iter % 20 == 0 || norm(res) > 1e2 #&& Δλ > 1/16
                 Ψ = Ψ_old
-                if Δλ > 0.1 * 1 / 8
+                if Δλ > 0.1 * 1 / 32
                     global λ -= Δλ #* loadstep
                     Δλ = Δλ / 2
                     global λ += Δλ  #* loadstep
                     remaining_steps = nloadsteps - loadstep
                     nloadsteps = loadstep + round((1 - λ) / Δλ)
-                else
-                    global μ = μ * 0.9
+                #else
+                #    global μ = μ * 0.9
                 end
                 fill!(ΔΨ, 0.0)
                 println("Step length updated: $Δλ, penalty parameter: $μ")
@@ -616,11 +616,11 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             res             = FΨ #- Fₑₓₜ
             res[bcdofs_opt] = res[bcdofs_opt] .* 0
             residual        = norm(res, 2)
-            Ψ[bcdofs_opt]   = bcval_opt
+            Ψ[bcdofs_opt]  .= 0.0
             if iter < 31
-                postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
-                #Ψ += ΔΨ
-                #postprocess_opt(Ψ, dh0, "fictitious" * string(iter))
+                #postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
+
+                postprocess_opt(Ψ + ΔΨ, dh0, "fictitious" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
         end
@@ -666,13 +666,16 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
     # ------------------- #
     #bcdof_left, bcvals_left    = setBCXY_both(0.0, dh, n_left)
     #bcdof_right, bcvals_right  = setBCXY_both(Δ/nloadsteps, dh, n_right)
-    bcdof_left, bcval_left     = setBCXY_X(0.0, dh, n_left)
-    bcdof_right, bcval_right   = setBCXY_X(Δ / nloadsteps, dh, n_right)
+    bcdof_left, bcval_left     = setBCXY_X(-Δ / nloadsteps, dh, n_left)
+    bcdof_right, bcval_right   = setBCXY_X( Δ / nloadsteps, dh, n_right)
     bcdof_bot, bcval_bot       = setBCY(0.0, dh, n_bot)
     bcdof_top, bcval_top       = setBCY(0.0, dh, n_top)
 
+    bcdof_bot, bcval_bot       = Vector{Int64}(), Vector{Float64}()
+    bcdof_top, bcval_top       = Vector{Int64}(), Vector{Float64}()
+
     bcdofs                     = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top]
-    bcvals                     = [bcval_left;  bcval_right; bcval_bot; bcval_top]
+    bcvals                     = [bcval_left; bcval_right; bcval_bot; bcval_top]
     ϵᵢⱼₖ                      = sortperm(bcdofs)
     global bcdofs              = bcdofs[ϵᵢⱼₖ]
     global bcvals              = bcvals[ϵᵢⱼₖ]
@@ -740,14 +743,14 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
                 end
             end
         end
-        #=
+
         # Plot traction , can be moved to function...
         τ_c = ExtractContactTraction(a, ε, coord)
         traction = ExtractContactTraction(a, ε, coord)
         X_c = []
         tract = []
         for (key, val) ∈ traction
-            append!(X_c, coord[key, 1])
+            append!(X_c, coord[key, 2])
             append!(tract, val)
         end
         ϵᵢⱼₖ = sortperm(X_c)
@@ -756,7 +759,7 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
         p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
         display(p)
         fill!(Fₑₓₜ, 0.0)
-        =#
+
         Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
     end
     τ_c = ExtractContactTraction(a, ε, coord)

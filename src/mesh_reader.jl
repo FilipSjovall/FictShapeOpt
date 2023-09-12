@@ -722,6 +722,19 @@ function getNodeDofs(dh)
     return node_dofs
 end
 
+function getNodeDofsVec(dh)
+    node_dofs = Vector{Int64}()
+    for cell in CellIterator(dh)
+        element_dofs = celldofs(cell)
+        for (i, node) in enumerate(cell.nodes)
+            if element_dofs[2i-1] ∉ node_dofs
+                append!(node_dofs, [element_dofs[2i-1] element_dofs[2i]])
+            end
+        end
+    end
+    return node_dofs
+end
+
 function getXfromCoord(coord::AbstractVector{T}) where T
     X = Real[]
     for row ∈ 1:size(coord,1) # eachindex(coord)
@@ -783,6 +796,15 @@ function getXinDofOrder(dh,X,coord)
         X_ordered[dofs] = coord[node,:]
     end
     return X_ordered
+end
+
+function getDofOrder(dh)
+    doflist = Vector{Int64}()
+    for node ∈ eachindex(register[:, 1])
+        dofs = register[node, :]
+        append!(doflist, dofs)
+    end
+    return doflist
 end
 
 function getX_from_Dof_To_Node_order(dh,X::AbstractVector{T}) where T
