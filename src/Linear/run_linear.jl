@@ -596,7 +596,7 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             iter += 1
             if iter % 20 == 0 || norm(res) > 1e2 #&& Δλ > 1/16
                 Ψ = Ψ_old
-                if Δλ > 0.1 * 1 / 32
+                if Δλ > 0.1 * 1 / 64
                     global λ -= Δλ #* loadstep
                     Δλ = Δλ / 2
                     global λ += Δλ  #* loadstep
@@ -745,6 +745,7 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
         end
 
         # Plot traction , can be moved to function...
+        #=
         τ_c = ExtractContactTraction(a, ε, coord)
         traction = ExtractContactTraction(a, ε, coord)
         X_c = []
@@ -759,7 +760,7 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
         p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
         display(p)
         fill!(Fₑₓₜ, 0.0)
-
+        =#
         Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
     end
     τ_c = ExtractContactTraction(a, ε, coord)

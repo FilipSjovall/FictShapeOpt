@@ -15,8 +15,8 @@ include("..//mma.jl")
 
 xl = 0.0
 yl = 0.0
-xr = -.753
-yr = 1.65
+xr = -.75
+yr = 1.45
 Δx = 1.25
 Δy = 1.0
 th = 0.25
@@ -35,9 +35,9 @@ fv = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createLMesh("mesh_1", xl, yl, Δx, Δy, th, r1, r2, 0.1);
+grid1 = createLMesh("mesh_1", xl, yl, Δx, Δy, th, r1, r2, 0.05);
 Γ_1   = getBoundarySet(grid1);
-grid2 = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, 0.1);
+grid2 = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, 0.05);
 Γ_2   = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-6);
 grid1 = nothing;
@@ -275,7 +275,7 @@ function Optimize(dh)
         global nloadsteps = 20
         global μ          = 1e3 # var μ = 1e4
 
-        if OptIter % 25 == 0 && g₁ < 0
+        if OptIter % 10 == 0 && g₁ < 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -359,7 +359,7 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .* 100, ∂g_∂d .* 100, g₁, ∂Ω∂d, low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g.*10, ∂g_∂d.*10, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .* 100, ∂g_∂d .* 100, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
