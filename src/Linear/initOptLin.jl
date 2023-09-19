@@ -11,8 +11,8 @@ bcdof,bcval = setBCLin(0.0,dh)
 
 dr_dd = similar(K)
 # Material parameters
-mp₀   = [1.0 1.0]
-#mp₀   = [0.0 1.0]
+#mp₀   = [1.0 1.0]
+mp₀   = [1.0 5.0]
 mp    = [175 80.769230769230759]
 
 t = 1.0
@@ -23,8 +23,8 @@ global epsimin       = 0.0000001;
 global xvalue        = d[:];
 global xold1         = xvalue;
 global xold2         = xvalue;
-global xmin          = -ones(n_mma)/20;
-global xmax          =  ones(n_mma)/20;
+global xmin          = -ones(n_mma)/100;
+global xmax          =  ones(n_mma)/100;
 global C             = 1000*ones(m);
 global d2            = zeros(m);
 global a0            = 1;
@@ -43,14 +43,15 @@ global change        = 1;
 
 #global xmin[free_d] .= -.05 # behöver skrivas över
 #global xmax[free_d] .=  .05 # behöver skrivas över
-global xmin[free_d[findall(x -> x % 2 == 0, free_d)]] .= -.25 # behöver skrivas över
-global xmax[free_d[findall(x -> x % 2 == 0, free_d)]] .=  .25 # behöver skrivas över
+global xmin[free_d[findall(x -> x % 2 == 0, free_d)]] .= -.05 # behöver skrivas över
+global xmax[free_d[findall(x -> x % 2 == 0, free_d)]] .=  .05 # behöver skrivas över
 
 # Gränser sfär / cylinder
 #global xmin[register[collect(nₘ),1]] .= -.1
 #global xmax[register[collect(nₘ),1]] .=  .1
-#global xmin[register[collect(nₘ),2]] .= -.5
-#global xmax[register[collect(nₘ),2]] .=  .5
+global xmin[register[collect(nₘ),2]] .= -.5
+global xmax[register[collect(nₘ),2]] .=  .5
 
 global low           = xmin;
 global upp           = xmax;
+#

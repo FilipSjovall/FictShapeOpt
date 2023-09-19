@@ -25,13 +25,14 @@ include("..//mma.jl")
 r₀ = 0.5
 # Create two grids
 
-xₗ =  0.0
-Δx =  1.0
+xₗ = 0.0
+yₗ = 0.5
+Δx = 1.0
 
 case = "box"
 # najs för ~0.05
-grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.1)
-grid2 = createBoxMeshRev("box_2",  xₗ, 0.0, Δx, 1.001, 0.1)
+grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.05)
+grid2 = createBoxMeshRev("box_2",  xₗ, yₗ, Δx, 0.501, 0.05)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 #case  = "circle"
@@ -122,10 +123,10 @@ global n_top = getnodeset(dh.grid, "n_top")
 
 if case == "box"
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
-    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
+    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ yₗ)
     global Γ_bot = getnodeset(dh.grid, "Γ_bot")
 
-    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.0)
+    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ yₗ)
     global n_bot = getnodeset(dh.grid, "n_bot")
 else
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
@@ -224,7 +225,7 @@ function Optimize(dh)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
         #Vₘₐₓ         = 1.78 #
-        Vₘₐₓ         = 2.5  #
+        Vₘₐₓ         = 1.3  #
        # global ε     = 1e6
        # global μ     = 1e3
         #l    = similar(a)
@@ -238,7 +239,7 @@ function Optimize(dh)
         g_hist         = zeros(200)
         historia       = zeros(200,4)
         global T       = zeros(size(a))
-        global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= 1.0
+        global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= -1.0
         g₁             = 0.0
         g₂             = 0.0
     #
@@ -384,7 +385,7 @@ function Optimize(dh)
         global nloadsteps = 20
         global μ = 1e3 # var μ = 1e4
 
-        if OptIter % 5 == 0 && g₂ < 0
+        if OptIter % 10 == 0 # && g₂ < 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -429,9 +430,9 @@ function Optimize(dh)
         # Objective #
         # # # # # # #
         # Max reaction force
-        println("##################################################")
-        println("################### Känsligheterna räknas fel? ###################")
-        println("##################################################")
+        #println("##################################################")
+        #println("################### Känsligheterna räknas fel? ###################")
+        #println("##################################################")
         g     = - T' * Fᵢₙₜ
         ∂g_∂x =  -T' * ∂rᵤ_∂x # ?
         ∂g_∂u =  -T' * K # ?
@@ -440,7 +441,7 @@ function Optimize(dh)
         # Adjoints  #
         # # # # # # #
         solveq!(λᵤ, K',  ∂g_∂u, bcdof_o, bcval_o)
-        solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
+        solveq!(λψ, Kψ', ∂g_∂x' - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
 
         # # # # # # # # # # #
         # Full sensitivity  #
@@ -460,19 +461,19 @@ function Optimize(dh)
         # # # # # # # # # # # #
         p = 2
         X_ordered = getXfromCoord(coord)
-        g₂         = contact_pnorm_s(X_ordered, a, ε, p) / 0.5 - 1.0
+        g₂         = contact_pnorm_s(X_ordered, a, ε, p) / 2.0 - 1.0
         ∂g₂_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
         ∂g₂_∂u     = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
 
         solveq!(λᵤ, K',  ∂g₂_∂u, bcdof_o, bcval_o)
         solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
-        ∂g₂_∂d            = Real.( (-transpose(λψ) * dr_dd)' ./ 0.5 )'
+        ∂g₂_∂d            = Real.( (-transpose(λψ) * dr_dd)' ./ 2.0 )'
 
         # # # # # # # # # # #
         # Lås horisontellt  # // # Dålig lösning?
         # # # # # # # # # # #
-        ∂g_∂d[locked_d] .= 0.0
-        ∂Ω∂d[locked_d] .= 0.0
+        ∂g_∂d[locked_d]  .= 0.0
+        ∂Ω∂d[locked_d]   .= 0.0
         ∂g₂_∂d[locked_d] .= 0.0
 
         # # # # #
@@ -528,8 +529,12 @@ function Optimize(dh)
     return g_hist, v_hist, OptIter, traction, historia
 end
 
-# plot(coord[collect(n_robin),1], ∂g_∂d[free_d], seriestype=:scatter)
 g_hist, v_hist, OptIter, traction, historia = Optimize(dh)
+
+
+
+
+#=
 
 @gif for i=1:20
     plot(historia[1:i,3], historia[1:i,4], label = "")
@@ -537,24 +542,4 @@ g_hist, v_hist, OptIter, traction, historia = Optimize(dh)
 end
 
 
-
-plot(1:100,historia[:,2], seriestype=:scatter)
-
-plot(1:100,g_hist[1:100], seriestype=:scatter)
-
-Plots.plot(collect(1:10), g_hist[1:10],lc =:red, label="Objective",linewidth=3)
-Plots.plot!(collect(1:10), v_hist[1:10], lc = :blue, label="Constraint",linewidth=3)
-
-plot(coord[contact_nods,1], ∂g_∂d[free_d], seriestype=:scatter)
-
-X_c = []
-tract = []
-for (key, val) ∈ traction
-    append!(X_c, coord[key, 1])
-    append!(tract, val)
-end
-ϵᵢⱼₖ = sortperm(X_c)
-tract = tract[ϵᵢⱼₖ]
-X_c = X_c[ϵᵢⱼₖ]
-Plots.plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
-OptIter = 2
+=#

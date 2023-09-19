@@ -498,16 +498,16 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
             iter += 1
             if iter % 10 == 0 || norm(res) > 1e2 #&& Δλ > 1/16
                 Ψ = Ψ_old
-                if Δλ > 0.1 * 1/8
+                #if Δλ > 0.1 * 1/8
                     global λ -= Δλ #* loadstep
                     Δλ        = Δλ/2
                     global λ += Δλ  #* loadstep
                     remaining_steps = nloadsteps - loadstep
                     #nloadsteps = loadstep + 2remaining_steps +  Δλ₀ / Δλ  - 1
                     nloadsteps = loadstep + round((1 - λ ) / Δλ)
-                else
-                    global μ    = μ * 1.1#0.9
-                end
+                #else
+                    # global μ    = μ * 1.1#0.9
+                #end
                 fill!(ΔΨ, 0.0)
                 println("Step length updated: $Δλ, penalty parameter: $μ")
             end

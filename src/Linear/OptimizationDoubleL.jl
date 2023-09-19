@@ -18,7 +18,7 @@ yl = 0.0
 xr = -.75
 yr = 1.45
 Δx = 1.25
-Δy = 1.0
+Δy = 0.8
 th = 0.25
 r1 = 0.05
 r2 = 0.05
@@ -26,22 +26,22 @@ r2 = 0.05
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
-ip = Lagrange{2,RefTetrahedron,1}()
-qr = QuadratureRule{2,RefTetrahedron}(1)
+ip      = Lagrange{2,RefTetrahedron,1}()
+qr      = QuadratureRule{2,RefTetrahedron}(1)
 qr_face = QuadratureRule{1,RefTetrahedron}(1)
-cv = CellVectorValues(qr, ip)
-fv = FaceVectorValues(qr_face, ip)
+cv      = CellVectorValues(qr, ip)
+fv      = FaceVectorValues(qr_face, ip)
 
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createLMesh("mesh_1", xl, yl, Δx, Δy, th, r1, r2, 0.05);
-Γ_1   = getBoundarySet(grid1);
-grid2 = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, 0.05);
-Γ_2   = getBoundarySet(grid2);
+grid1    = createLMesh("mesh_1", xl, yl, Δx, Δy, th, r1, r2, 0.05);
+Γ_1      = getBoundarySet(grid1);
+grid2    = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, 0.05);
+Γ_2      = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-6);
-grid1 = nothing;
-grid2 = nothing;
+grid1    = nothing;
+grid2    = nothing;
 # Create dofhandler with displacement field u
 global dh = DofHandler(grid_tot);
 add!(dh, :u, 2);
