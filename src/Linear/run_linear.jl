@@ -520,7 +520,7 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
             res[bcdof_o2] = res[bcdof_o2] .* 0
             residual      = norm(res, 2)
             Ψ[bcdof_o2]   = bcval_o2
-            if iter < 11
+            if iter < 11 && loadstep < 40
                 postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
                 #postprocess_opt(Ψ, dh0, "fictitious" * string(iter))
             end

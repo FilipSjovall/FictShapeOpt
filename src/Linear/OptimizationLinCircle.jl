@@ -225,7 +225,7 @@ function Optimize(dh)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
         #Vₘₐₓ         = 1.78 #
-        Vₘₐₓ         = 1.3  #
+        Vₘₐₓ         = 1.0  #
        # global ε     = 1e6
        # global μ     = 1e3
         #l    = similar(a)
@@ -385,7 +385,7 @@ function Optimize(dh)
         global nloadsteps = 20
         global μ = 1e3 # var μ = 1e4
 
-        if OptIter % 10 == 0 # && g₂ < 0
+        if OptIter % 10 == 0 && g₂ < 0.0 && g₁ < 0.0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -479,7 +479,7 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, hcat([g₁.*100; g₂]), vcat([∂Ω∂d.*100; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
         d      = d_new
@@ -507,7 +507,7 @@ function Optimize(dh)
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration] , p_hist[1:true_iteration])
 
 
-        p2 = plot(1:true_iteration,[v_hist[1:true_iteration],p_hist[1:true_iteration],g_hist[1:true_iteration]],label = ["Volume Constraint" "Uniform pressure Constraint" "Objective"])
+        p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100,p_hist[1:true_iteration],g_hist[1:true_iteration]],label = ["Volume Constraint" "Uniform pressure Constraint" "Objective"])
         display(p2)
 
         #p3 = plot(1:true_iteration,g_hist[1:true_iteration],legend=false, marker=3, reuse = false, lc =:darkgreen)
