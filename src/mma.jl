@@ -305,7 +305,7 @@ function subsolv(m,n,epsimin,low,upp,alfa,beta,p0,q0,P,Q,a0,a,b,c,d);
               Alam = spdiagm(m,m,0 => diaglamyi) + GG*spdiagm(n,n,0 => diagxinv)*GG';
               AA = [Alam     a
                       a'    -zet/z ];
-              solut = AA\bb;
+              solut = AA\bb; # gör parallell?
               dlam = solut[1:m];
               dz = solut[m+1];
               dx = -delx./diagx - (GG'*dlam)./diagx;
@@ -320,7 +320,7 @@ function subsolv(m,n,epsimin,low,upp,alfa,beta,p0,q0,P,Q,a0,a,b,c,d);
               AA = [Axx   axz
                       axz'  azz ];
               bb = [-bx' -bz]';
-              solut = AA\bb;
+              solut = AA\bb; # gör parallell?
               dx  = solut[1:n];
               dz = solut[n+1];
               dlam = (GG*dx)./diaglamyi - dz*(a./diaglamyi) + dellamyi./diaglamyi;

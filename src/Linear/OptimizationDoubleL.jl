@@ -1,7 +1,9 @@
 using Mortar2D, ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
 using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
 using SparseDiffTools, Plots, Printf, JLD2, Statistics
-
+#
+#pyplot()
+#
 include("..//mesh_reader.jl")
 include("Contact//contact_help.jl")
 include("assemLin.jl")
@@ -11,18 +13,18 @@ include("..//fem.jl")
 include("run_linear.jl")
 include("sensitivitiesLin.jl")
 include("..//mma.jl")
-
-
+# ------------------- #
+# Geometry parameters #
+# ------------------- #
 xl = 0.0
 yl = 0.0
 xr = -.75
-yr = 1.45
+yr = 1.35
 Δx = 1.25
 Δy = 0.8
 th = 0.25
 r1 = 0.05
 r2 = 0.05
-
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -31,7 +33,6 @@ qr      = QuadratureRule{2,RefTetrahedron}(1)
 qr_face = QuadratureRule{1,RefTetrahedron}(1)
 cv      = CellVectorValues(qr, ip)
 fv      = FaceVectorValues(qr_face, ip)
-
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
@@ -42,86 +43,85 @@ grid2    = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, 0.05);
 grid_tot = merge_grids(grid1, grid2; tol=1e-6);
 grid1    = nothing;
 grid2    = nothing;
-# Create dofhandler with displacement field u
+# ------------------------------------------- #
+# Create dofhandler with displacement field u #
+# ------------------------------------------- #
 global dh = DofHandler(grid_tot);
 add!(dh, :u, 2);
 close!(dh);
-
 # Extract CALFEM-style matrices
 global coord, enod = getTopology(dh);
 global register = index_nod_to_grid(dh, coord);
-
-
 # Exrtact full boundary
 Γ_all   = Ferrite.__collect_boundary_faces(dh.grid);
 addfaceset!(dh.grid,"Γ_all", Γ_all);
 Γ_all  = getfaceset(dh.grid, "Γ_all");
-
+#
 n_all = getBoundarySet(dh.grid, Γ_all);
 addnodeset!(dh.grid, "n_all", n_all);
-
+#
 Γ_all_dofs = Vector{Int64}()
-# --------------
-# Master
+# ------ #
+# Master #
+# ------ #
 addfaceset!(dh.grid, "Γ_master", x -> x ∈ Γ_2 );
 Γm = getfaceset(dh.grid, "Γ_master");
 Γm =  intersect(Γm, Γ_all);
-
+#
 nₘ = getBoundarySet(dh.grid,Γm);
 addnodeset!(dh.grid,"nₘ" ,nₘ);
-
-# ---------------
-# Slave
+#
+# ----- #
+# Slave #
+# ----- #
 addfaceset!(dh.grid,"Γ_slave", x -> x ∈ Γ_1 );
 Γs = getfaceset(dh.grid, "Γ_slave");
 Γs =  intersect(Γs, Γ_all);
-
+#
 nₛ = getBoundarySet(dh.grid,Γs)
 addnodeset!(dh.grid, "nₛ" ,nₛ)
-
-
+#
 # ---------------
 # Displacement bc boundary u(x) = Δ ∀ x ∈ Γ_Δ
 addfaceset!(dh.grid, "Γ_right", x -> x[1] ≈ xl + Δx)
 Γ_right = getfaceset(dh.grid, "Γ_right")
-
+#
 addnodeset!(dh.grid, "n_right", x -> x[1] ≈ xl + Δx)
 n_right = getnodeset(dh.grid, "n_right")
-
-# --------------
-# Displacement bc boundary u(x) = 0 ∀ x ∈ Γ_0
+# -------------------------------------------- #
+# Displacement bc boundary u(x) = 0 ∀ x ∈ Γ_0 #
+# ------------------------------------------- #
 addfaceset!(dh.grid, "Γ_left", x -> x[1] ≈ xr )
 Γ_left = getfaceset(dh.grid, "Γ_left")
-
+#
 addnodeset!(dh.grid, "n_left", x -> x[1] ≈ xr )
 n_left = getnodeset(dh.grid, "n_left")
-
-# --------------
-# bottom
+# ------ #
+# bottom #
+# ------ #
 addfaceset!(dh.grid, "Γ_bot", x -> x[2] ≈ yl)
 Γ_bot = getfaceset(dh.grid, "Γ_bot")
 
 addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ yl)
 n_bot = getnodeset(dh.grid, "n_bot")
-
-# --------------
-# Top
+# --- #
+# Top #
+# --- #
 addfaceset!(dh.grid, "Γ_top", x -> x[2] ≈ yr)
 Γ_top = getfaceset(dh.grid, "Γ_top")
 
 addnodeset!(dh.grid, "n_top", x -> x[2] ≈ yr)
 n_top = getnodeset(dh.grid, "n_top")
 
-# ---------------
-# Design boundaries
+# ----------------- #
+# Design boundaries #
+# ----------------- #
 #Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γ_bot, Γ_top))
 Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right))
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
 n_robin = getBoundarySet(dh.grid,Γ_robin)
 addnodeset!(dh.grid, "n_robin", n_robin)
-
-
 # # # # # # # # # # # # #
 # Collect contact dofs  #
 # # # # # # # # # # # # #
@@ -142,7 +142,6 @@ global coord = getCoordfromX(X)
 # Init fictious #
 # # # # # # # # #
 global coord₀ = deepcopy(coord)
-
 # # # # # # # # # # # #
 # Collect design dofs #
 # # # # # # # # # # # #
@@ -182,12 +181,12 @@ global ∂g₂_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g₂_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ     = similar(a)
 global λψ     = similar(a)
-
 global Δ = 0.05
 global nloadsteps = 10
-
+# # # # # # # # # # # # # # # #
+# Init optimization variables #
+# # # # # # # # # # # # # # # #
 include("initOptLinHook.jl")
-
 # ------------------- #
 # Boundary conditions #
 # ------------------- #
@@ -195,22 +194,23 @@ bcdof_left, _    = setBCXY_X(0.0, dh, n_left)
 bcdof_right, _   = setBCXY_X(0.0, dh, n_right)
 bcdof_bot, _     = setBCY(0.0, dh, n_bot)
 bcdof_top, _     = setBCY(0.0, dh, n_top)
-
 bcdof_bot, _     = Vector{Int64}(), Vector{Float64}()
 bcdof_top, _     = Vector{Int64}(), Vector{Float64}()
-
 bcdofs_opt       = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
 ϵᵢⱼₖ            = sortperm(bcdofs_opt)
 global bcdofs_opt= bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt = bcdofs_opt .* 0.0
 
+# -------------------- #
+# Optimization program #
+# -------------------- #
 function Optimize(dh)
     # Flytta allt nedan till init_opt?
         global dh0     = deepcopy(dh)
         global λψ      = similar(a)
         global λᵤ      = similar(a)
         global λᵥₒₗ   = similar(a)
-        Vₘₐₓ          = 1.2  #
+        Vₘₐₓ          = 0.9  #
         tol            = 1e-3
         OptIter        = 0
         true_iteration = 0
@@ -223,7 +223,7 @@ function Optimize(dh)
         g₁             = 0.0
         g₂             = 0.0
     #
-    while kktnorm > tol || OptIter < 200
+    while kktnorm > tol || OptIter < 10
 
             global d
             global Ψ
@@ -273,7 +273,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ          = 1e3 # var μ = 1e4
+        global μ          = 1e4 # var μ = 1e4
 
         if OptIter % 10 == 0 && g₁ < 0
             dh0 = deepcopy(dh)
@@ -359,7 +359,7 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g.*10, ∂g_∂d.*10, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g.*100, ∂g_∂d.*100, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .* 100, ∂g_∂d .* 100, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
@@ -376,38 +376,38 @@ function Optimize(dh)
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
         kktnorm = change
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
-        if mod(OptIter,1) == 0
-            coord = getCoord(getX(dh0), dh0)
-            postprocess_opt(Ψ, dh0, "results/Current design"   * string(true_iteration))
-            postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
-
-            postprocess_opt(∂g_∂d, dh0, "test")
-        end
+        #if mod(OptIter,1) == 0
+            #coord = getCoord(getX(dh0), dh0)
+        postprocess_opt(Ψ, dh0, "results/Current design"   * string(true_iteration))
+        postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
+        #end
 
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
 
 
-        p2 = plot(1:true_iteration,[v_hist[1:true_iteration], g_hist[1:true_iteration] .*100],label = ["Volume Constraint" "Objective"])
+        # append?
+        p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100, g_hist[1:true_iteration]].*100,label = ["Volume Constraint" "Objective"])
         display(p2)
 
-        #p3 = plot(1:true_iteration,g_hist[1:true_iteration],legend=false, marker=3, reuse = false, lc =:darkgreen)
-        #display(p3)
-
-        if true_iteration == 1
-            g_ini = 0
-            n     = 0
-            xval  = 0
-            #@save "stegett.jld2"
-        elseif true_iteration == 2
-            #@save "tva.jld2"
-        elseif true_iteration == 200
-            #@save "steg200.jld2"
-            #break
-        end
     end
-    jld2save("färdig.jld2",a,dh,dh0,Opiter,v_hist,g_hist,d)
+    #jld2save("färdig.jld2",a,dh,dh0,Opiter,v_hist,g_hist,d)
     return g_hist, v_hist, OptIter, traction, historia
 end
 
-# plot(coord[collect(n_robin),1], ∂g_∂d[free_d], seriestype=:scatter)
 g_hist, v_hist, OptIter, traction, historia = Optimize(dh)
+
+
+#=
+function main()
+    # ----- #
+    # Inits #
+    # ----- #
+
+    # ------------------ #
+    # Shape optimziation #
+    # ------------------ #
+    Optimize(dh);
+end
+
+main
+=#

@@ -128,11 +128,9 @@ function solver_C(dh, coord, Δ, nloadsteps)
     # Set params # // Kanske som input till solver???
     # ---------- # // definiera mp här? och kanske ε ? iofs snyggare utanför!
     t = 1.0
-
     # Define material parameters
-    mp    = [175 80.769230769230759]
+    #mp    = [175 80.769230769230759]
     #mp = [1.0 1.0]
-
     # ------------- #
     # Init-stuff    #
     # ------------- #
@@ -143,7 +141,6 @@ function solver_C(dh, coord, Δ, nloadsteps)
     # ------------- #.0
     # ------------- #
     #K = create_sparsity_pattern(dh)
-
     # ------ #
     #  Init  #
     # ------ #
@@ -165,42 +162,31 @@ function solver_C(dh, coord, Δ, nloadsteps)
     #bcdof_left, bcval_left = setBCX(0.0, dh, n_left)
     bcdofs = [bcdof_top; bcdof_bot]
     bcvals = [bcval_top; bcval_bot]
-
     ϵᵢⱼₖ  = sortperm(bcdofs)
     global bcdofs = bcdofs[ϵᵢⱼₖ]
     global bcvals = bcvals[ϵᵢⱼₖ]
-
     # - For Linear solver..
     global pdofs = bcdofs
     global fdofs = setdiff(1:dh.ndofs.x, pdofs)
-
     bcval₀ = bcvals
     global β = 1.0
-    #for loadstep ∈ 1 : nloadsteps
-    ##
     loadstep = 0
     while loadstep < nloadsteps
         loadstep += 1
         global ε = ε * 1.1
-    ##
         res = res .* 0
         bcvals = bcval₀
         residual = 0 * residual
         iter = 0
         fill!(Δa, 0.0)
         print("\n", "Starting equilibrium iteration at loadstep: ", loadstep, "\n")
-        #global ε = ε₀
         a_old = a
-
-
         # # # # # # # # # #
         # Newton solve.   #
         # # # # # # # # # #
-
         @show β
             while  residual > TOL || iter < 2
                 iter += 1
-
                 if iter % 20 == 0 || norm(res) > 1e3
                     a = a_old
                     bcvals = bcval₀
@@ -226,31 +212,31 @@ function solver_C(dh, coord, Δ, nloadsteps)
                 residual = norm(res, 2)
                 #println("Iteration: ", iter, " Residual: ", residual)
                 @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdofs[2]]
-                if iter < 11
-                    σx, σy = StressExtract(dh, a, mp)
-                    vtk_grid("contact" * string(loadstep) , dh) do vtkfile
-                    #vtk_grid("contact" * string(iter), dh) do vtkfile
-                        vtk_point_data(vtkfile, dh, a) # displacement field
-                        vtk_point_data(vtkfile, σx, "σx")
-                        vtk_point_data(vtkfile, σy, "σy")
-                    end
-                end
-            end
-            # Plot traction , can be moved to function...
-            τ_c = ExtractContactTraction(a, ε, coord)
-            traction = ExtractContactTraction(a, ε, coord)
-            X_c = []
-            tract = []
-            for (key, val) ∈ traction
-                append!(X_c, coord[key, 1])
-                append!(tract, val)
-            end
-            ϵᵢⱼₖ = sortperm(X_c)
-            tract = tract[ϵᵢⱼₖ]
-            X_c = X_c[ϵᵢⱼₖ]
-            p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
-            display(p)
 
+            end
+            if loadstep == 10
+                # Plot traction , can be moved to function...
+                τ_c = ExtractContactTraction(a, ε, coord)
+                traction = ExtractContactTraction(a, ε, coord)
+                X_c = []
+                tract = []
+                for (key, val) ∈ traction
+                    append!(X_c, coord[key, 1])
+                    append!(tract, val)
+                end
+                ϵᵢⱼₖ = sortperm(X_c)
+                tract = tract[ϵᵢⱼₖ]
+                X_c = X_c[ϵᵢⱼₖ]
+                p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
+                display(p)
+            end
+            σx, σy = StressExtract(dh, a, mp)
+            vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
+                #vtk_grid("contact" * string(iter), dh) do vtkfile
+                vtk_point_data(vtkfile, dh, a) # displacement field
+                vtk_point_data(vtkfile, σx, "σx")
+                vtk_point_data(vtkfile, σy, "σy")
+            end
             fill!(Fₑₓₜ, 0.0)
             Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
     end
@@ -328,7 +314,7 @@ function fictitious_solver_C(d, dh0, coord₀)
             residual = norm(res, 2)
             Ψ[bcdof] = bcval
             println("Iteration: ", iter, " Residual: ", residual, " λ: ", λ)
-            postprocess_opt(Ψ, dh, "fict_def" * string(loadstep))
+            postprocess_opt(Ψ, dh, "results/fict_def" * string(loadstep))
         end
 
     end
@@ -409,14 +395,12 @@ function solver_C2(dh, coord)
             res[bcdof] = 0 * res[bcdof]
             residual = norm(res, 2)
             println("Iteration: ", iter, " Residual: ", residual)
-
-
-            σx, σy = StressExtract(dh, a, mp)
-            vtk_grid("hertz"  * string(loadstep), dh) do vtkfile
-                vtk_point_data(vtkfile, dh, a) # displacement field
-                vtk_point_data(vtkfile, σx, "σx")
-                vtk_point_data(vtkfile, σy, "σy")
-            end
+        end
+        σx, σy = StressExtract(dh, a, mp)
+        vtk_grid("hertz" * string(loadstep), dh) do vtkfile
+            vtk_point_data(vtkfile, dh, a) # displacement field
+            vtk_point_data(vtkfile, σx, "σx")
+            vtk_point_data(vtkfile, σy, "σy")
         end
     end
     fill!(Fₑₓₜ, 0.0)
@@ -520,8 +504,8 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
             res[bcdof_o2] = res[bcdof_o2] .* 0
             residual      = norm(res, 2)
             Ψ[bcdof_o2]   = bcval_o2
-            if iter < 11 && loadstep < 40
-                postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
+            if loadstep < 40
+                postprocess_opt(Ψ, dh0, "results/fictitious" * string(loadstep))
                 #postprocess_opt(Ψ, dh0, "fictitious" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
@@ -546,7 +530,6 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     end
     return Ψ, dh0, Kψ, FΨ, λ
 end
-
 
 function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
     # allt överflödigt bör vid tillfälle flyttas utanför
@@ -617,10 +600,8 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             res[bcdofs_opt] = res[bcdofs_opt] .* 0
             residual        = norm(res, 2)
             Ψ[bcdofs_opt]  .= 0.0
-            if iter < 31
-                #postprocess_opt(Ψ, dh0, "fictitious" * string(loadstep))
-
-                postprocess_opt(Ψ + ΔΨ, dh0, "fictitious" * string(iter))
+            if loadstep < 40
+                postprocess_opt(Ψ + ΔΨ, dh0, "results/fictitious" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
         end
@@ -733,17 +714,14 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
             residual = norm(res, 2)
             #println("Iteration: ", iter, " Residual: ", residual)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_right[1]]
-            if iter < 21
-                σx, σy = StressExtract(dh, a, mp)
-                vtk_grid("contact" * string(loadstep), dh) do vtkfile
-                    #vtk_grid("contact" * string(iter), dh) do vtkfile
-                    vtk_point_data(vtkfile, dh, a) # displacement field
-                    vtk_point_data(vtkfile, σx, "σx")
-                    vtk_point_data(vtkfile, σy, "σy")
-                end
-            end
-        end
 
+        end
+        σx, σy = StressExtract(dh, a, mp)
+        vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
+            vtk_point_data(vtkfile, dh, a) # displacement field
+            vtk_point_data(vtkfile, σx, "σx")
+            vtk_point_data(vtkfile, σy, "σy")
+        end
         # Plot traction , can be moved to function...
         #=
         τ_c = ExtractContactTraction(a, ε, coord)
