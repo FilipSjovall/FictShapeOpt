@@ -22,7 +22,6 @@ global am        = zeros(m);
 global outeriter = 0;
 global kkttol    = 0.001;
 global changetol = 0.001;
-global kktnorm   = kkttol + 10;
 global outit     = 0;
 global change    = 1;
 

@@ -410,7 +410,7 @@ function subsolv(m,n,epsimin,low,upp,alfa,beta,p0,q0,P,Q,a0,a,b,c,d);
   xmma   =   x;
   ymma   =   y;
   zmma   =   z;
-  lamma =  lam;
+  lamma  =  lam;
   xsimma =  xsi;
   etamma =  eta;
   mumma  =  mu;

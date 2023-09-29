@@ -1035,7 +1035,6 @@ function reMeshGrids!(h,dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,co
 
     masters = getMasterCoord_remeshed(dhC)
 
-
     # Merge into one grid
     grid_tot = merge_grids(gridC, gridB; tol=1e-6)
 
@@ -1199,7 +1198,7 @@ function createBoxMeshRounded(filename, r, h)
     return grid
 end
 
-function createBoxMeshRounded_Flipped(filename, r, y₀, h)
+function createBoxMeshRounded_Flipped(filename, r, y₀, Δy, h)
 
     # Initialize gmsh
     Gmsh.initialize()
@@ -1208,17 +1207,17 @@ function createBoxMeshRounded_Flipped(filename, r, y₀, h)
 
     # Add the points
     # bottom
-    p1 = gmsh.model.geo.add_point(0.0, 2.0, 0.0, h)
-    p2 = gmsh.model.geo.add_point(0.5, 2.0, 0.0, h)
-    p3 = gmsh.model.geo.add_point(1.0, 2.0, 0.0, h)
+    p1 = gmsh.model.geo.add_point(0.0, y₀ + Δy, 0.0, h)
+    p2 = gmsh.model.geo.add_point(0.5, y₀ + Δy, 0.0, h)
+    p3 = gmsh.model.geo.add_point(1.0, y₀ + Δy, 0.0, h)
     # rounded corners
-    p4 = gmsh.model.geo.add_point(1.0    , y₀ + r, 0.0, h / 2)
-    p5 = gmsh.model.geo.add_point(1.0 - r, y₀    , 0.0, h / 2)
-    p6 = gmsh.model.geo.add_point(0.0 + r, y₀    , 0.0, h / 2)
-    p7 = gmsh.model.geo.add_point(0.0    , y₀ + r, 0.0, h / 2)
+    p4 = gmsh.model.geo.add_point(1.0    , y₀ + r, 0.0, h)
+    p5 = gmsh.model.geo.add_point(1.0 - r, y₀    , 0.0, h)
+    p6 = gmsh.model.geo.add_point(0.0 + r, y₀    , 0.0, h)
+    p7 = gmsh.model.geo.add_point(0.0    , y₀ + r, 0.0, h)
     # circle center
-    p8 = gmsh.model.geo.add_point(1.0 - r, 1.0 + r, 0.0, h)
-    p9 = gmsh.model.geo.add_point(r      , 1.0 + r, 0.0, h)
+    p8 = gmsh.model.geo.add_point(1.0 - r, y₀ + r, 0.0, h/2)
+    p9 = gmsh.model.geo.add_point(r      , y₀ + r, 0.0, h/2)
 
 
     # Add the lines
@@ -1251,6 +1250,8 @@ function createBoxMeshRounded_Flipped(filename, r, y₀, h)
     gmsh.model.mesh.embed(0, [p2], 2, 1)
 
     gmsh.model.mesh.generate(2)
+
+    #gmsh.model.mesh.reverse()
 
     # Save the mesh, and read back in as a Ferrite Grid
     grid = mktempdir() do dir
