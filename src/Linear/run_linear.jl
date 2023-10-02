@@ -128,9 +128,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
     # Set params # // Kanske som input till solver???
     # ---------- # // definiera mp här? och kanske ε ? iofs snyggare utanför!
     t = 1.0
-    # Define material parameters
-    #mp    = [175 80.769230769230759]
-    #mp = [1.0 1.0]
+
     # ------------- #
     # Init-stuff    #
     # ------------- #
@@ -184,7 +182,6 @@ function solver_C(dh, coord, Δ, nloadsteps)
         # # # # # # # # # #
         # Newton solve.   #
         # # # # # # # # # #
-        @show β
             while  residual > TOL || iter < 2
                 iter += 1
                 if iter % 20 == 0 || norm(res) > 1e3
@@ -210,9 +207,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
                 res = Fᵢₙₜ - Fₑₓₜ
                 res[bcdofs] = 0 * res[bcdofs]
                 residual = norm(res, 2)
-                #println("Iteration: ", iter, " Residual: ", residual)
                 @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdofs[2]]
-
             end
             if loadstep == 10
                 # Plot traction , can be moved to function...
@@ -243,7 +238,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
     τ_c = ExtractContactTraction(a, ε, coord)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
 end
-
+#
 # Fictitious equillibrium for shape optimization of problem with contact
 function fictitious_solver_C(d, dh0, coord₀)
     # allt överflödigt bör vid tillfälle flyttas utanför
@@ -320,7 +315,7 @@ function fictitious_solver_C(d, dh0, coord₀)
     end
     return Ψ, dh0, Kψ, Fᵢₙₜ, λ
 end
-
+#
 # Solver for hertz contact
 function solver_C2(dh, coord)
 
@@ -409,7 +404,7 @@ function solver_C2(dh, coord)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
 
 end
-
+#
 # Fictitious equillibrium for shape optimization with consistent with contact
 function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     # allt överflödigt bör vid tillfälle flyttas utanför
@@ -530,7 +525,8 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     end
     return Ψ, dh0, Kψ, FΨ, λ
 end
-
+#
+#
 function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
     # allt överflödigt bör vid tillfälle flyttas utanför
     # lösare till ett "init-liknande script så att huvudsaklig kod hålls ren
@@ -608,7 +604,8 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
     end
     return Ψ, dh0, Kψ, FΨ, λ
 end
-
+#
+#
 function solver_C_hook(dh, coord, Δ, nloadsteps)
 
     # ---------- #

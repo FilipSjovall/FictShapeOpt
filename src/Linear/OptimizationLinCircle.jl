@@ -42,12 +42,12 @@ case = "box"
 rounded = true
 # najs för ~0.05
 if rounded == true
-    grid1 = createBoxMeshRounded_Flipped("box_rounded", 0.2,  2yₗ, Δy, 0.04)
+    grid1 = createBoxMeshRounded_Flipped("box_rounded", 0.35,  2yₗ, Δy, 0.05)
     Γ_1   = getBoundarySet(grid1);
 else
-    grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.04)
+    grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.05)
 end
-grid2 = createBoxMeshRev("box_2",  xₗ, yₗ, Δx, 0.501, 0.04)
+grid2 = createBoxMeshRev("box_2",  xₗ, yₗ, Δx, 0.501, 0.05)
 ## Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
 grid1 = nothing
@@ -241,11 +241,14 @@ include("initOptLin.jl")
 #
 function Optimize(dh)
     # Flytta allt nedan till init_opt?
+        # - - - - - - -  #
+        # Initialization #
+        # - - - - - - -  #
         global dh0     = deepcopy(dh)
         global λψ      = similar(a)
         global λᵤ      = similar(a)
         global λᵥₒₗ   = similar(a)
-        Vₘₐₓ          = 1.0  #
+        Vₘₐₓ          = 1.5# 1.0  #
         tol            = 1e-3
         OptIter        = 0
         true_iteration = 0
@@ -259,7 +262,7 @@ function Optimize(dh)
         global T[bcdof_top_o[bcdof_top_o .% 2 .==0]] .=  1.0
         g₁             = 0.0
         g₂             = 0.0
-    while change > tol && OptIter < 250 || OptIter < 3
+    while change > tol && OptIter < 200 #|| OptIter < 3
         # # # # # # # # # # # # # #
         #       Definitions       #
         # # # # # # # # # # # # # #
@@ -388,13 +391,13 @@ function Optimize(dh)
             global low   = xmin
             global upp   = xmax
         end
-
+        #
         # # # # #
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ = 1e4 # var μ = 1e4
-        if OptIter % 10 == 0 && g₂ < 0.0 && g₁ < 0.0
+        global μ = 1e3 # var μ = 1e4
+        if OptIter % 10 == 0 && g₁ < 0.0 #  && g₂ < 0.0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -403,6 +406,7 @@ function Optimize(dh)
             global upp        = xmax
             OptIter           = 1
         end
+        #
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
@@ -411,43 +415,56 @@ function Optimize(dh)
         # # # # # #
         # Filter  #
         # # # # # #
+        #
         global dh    = deepcopy(dh0)
         updateCoords!(dh, Ψ) # x₀ + Ψ = x
         global coord = getCoord(getX(dh), dh)
+        #
         # # # # #
         # test  #
         # # # # #
         global nloadsteps = 10
         global ε = 1e5 # eller?
+        #
         # # # # # # # # #
         # Equillibrium  #
         # # # # # # # # #
+        #
         a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord, Δ, nloadsteps)
         # # # # # # # # #
         # Sensitivities #
         # # # # # # # # #
+        #
         ∂rᵤ_∂x = similar(K)
         ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
         dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
+        #
         # # # # # # #
         # Objective #
         # # # # # # #
         # Max reaction force
+        #
         g     = - T' * Fᵢₙₜ
-        ∂g_∂x =  -T' * ∂rᵤ_∂x # ?
+        ∂g_∂x =  -T' * ∂rᵤ_∂x #
         ∂g_∂u =  -T' * K # ?
+        #
         # # # # # # #
         # Adjoints  #
         # # # # # # #
+        #
         solveq!(λᵤ, K',  ∂g_∂u, bcdof_o, bcval_o)
         solveq!(λψ, Kψ', ∂g_∂x' - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
+        #
         # # # # # # # # # # #
         # Full sensitivity  #
         # # # # # # # # # # #
+        #
         ∂g_∂d            = (-transpose(λψ) * dr_dd)'
+        #
         # # # # # # # # # # #
         # Volume constraint #
         # # # # # # # # # # #
+        #
         g₁    = volume(dh,coord,enod) / Vₘₐₓ - 1.0
         ∂Ω_∂x = volume_sens(dh,coord)
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdof_o2, bcval_o2.*0);
@@ -471,34 +488,42 @@ function Optimize(dh)
         # # # # # # # # # # #
         # Lås horisontellt  # // # Dålig lösning?
         # # # # # # # # # # #
-        ∂g_∂d[1:2:end-1]  .= 0.0
-        ∂Ω∂d[1:2:end-1]   .= 0.0
+        #
+        #∂g_∂d[1:2:end-1]  .= 0.0
+        #∂Ω∂d[1:2:end-1]   .= 0.0
         #∂g₂_∂d[1:2:end-1] .= 0.0
         # # # # #
         # M M A #
         # # # # #
+        #
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, hcat([g₁.*100; g₂]), vcat([∂Ω∂d.*100; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
         d      = d_new
         change = norm(d .- xold1)
+        #
         # # # # # # # # # #
         # Postprocessing  #
         # # # # # # # # # #
+        #
         v_hist[true_iteration] = g₁
         p_hist[true_iteration] = g₂
         g_hist[true_iteration] = g
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
+        println("Objective: ", g_hist[true_iteration], " Constraint: ", v_hist[true_iteration] , p_hist[true_iteration])
+        # - - - - - -  #
+        # Write to VTK #
+        # - - - - - -  #
         coord = getCoord(getX(dh0), dh0)
         postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
         postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
-        println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration] , p_hist[1:true_iteration])
+        postprocess_opt(∂g_∂d,dh,"results/🛸" * string(true_iteration))
+        # - - - - - - - - - - - - - - -  #
+        # Plot objective and constraints #
+        # - - - - - - - - - - - - - - -  #
         p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100,p_hist[1:true_iteration],g_hist[1:true_iteration]],label = ["Volume Constraint" "Uniform pressure Constraint" "Objective"])
         display(p2)
-
-        postprocess_opt(∂g_∂d,dh,"results/🛸" * string(true_iteration))
-
     end
     jld2save("250_iter_circle.jld2")
     return g_hist, v_hist, OptIter, traction, historia
