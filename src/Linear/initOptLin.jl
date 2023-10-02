@@ -1,9 +1,3 @@
-# Solution vector
-ip = Lagrange{2,RefTetrahedron,1}()
-qr = QuadratureRule{2,RefTetrahedron}(1)
-qr_face = QuadratureRule{1,RefTetrahedron}(1)
-cv = CellVectorValues(qr, ip)
-fv = FaceVectorValues(qr_face, ip)
 # Optimization norm
 kktnorm = 1.0
 # Boundary values and associated dofs
@@ -50,8 +44,8 @@ global change        = 1;
 #global xmin[register[collect(nₘ),2]] .= -.5
 #global xmax[register[collect(nₘ),2]] .=  .5
 
-global xmin .= -0.1
-global xmax .=  0.1
+global xmin .= -0.5
+global xmax .=  0.5
 
 #global xmin[1:2:end-1] .= -0.001
 #global xmax[1:2:end-1] .=  0.001

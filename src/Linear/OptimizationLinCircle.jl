@@ -39,13 +39,13 @@ yₗ = 0.5
 Δx = 1.0
 Δy = 0.5
 case = "box"
-rounded = true
+rounded = false
 # najs för ~0.05
 if rounded == true
     grid1 = createBoxMeshRounded_Flipped("box_rounded", 0.35,  2yₗ, Δy, 0.05)
     Γ_1   = getBoundarySet(grid1);
 else
-    grid1 = createCircleMesh("box_1",  0.5, 1.5, r₀, 0.05)
+    grid1 = createCircleMesh("box_1",  Δx/2, yₗ + 2Δy, r₀, 0.05)
 end
 grid2 = createBoxMeshRev("box_2",  xₗ, yₗ, Δx, 0.501, 0.05)
 ## Merge into one grid
@@ -210,7 +210,7 @@ global Δa   = zeros(dh.ndofs.x)
 global res  = zeros(dh.ndofs.x)
 # "fem"
 #  boundary conditions for contact analysis
-bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
+bcdof_top_o, _ = setBCXY(0.0, dh, Γ_top)
 bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
 bcdof_o = [bcdof_top_o; bcdof_bot_o]
 ϵᵢⱼₖ = sortperm(bcdof_o)
@@ -310,86 +310,85 @@ function Optimize(dh)
         OptIter += 1
         true_iteration +=1
         # detta ska 100% vara en rutin
-        if OptIter % 1000 == 0 #|| OptIter == 1
-            print("\n", " -------- Remeshing -------- ", "\n")
+        if true_iteration % 5 == 0 #|| OptIter == 1
+            print("\n", " ⏳ --------  Remeshing -------- ⏳ ", "\n")
             reMeshGrids!(0.05, dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
-            # Initialize tangents
-            global K  = create_sparsity_pattern(dh) # behövs
-            global Kψ = create_sparsity_pattern(dh) # behövs
-            global a = zeros(dh.ndofs.x) # behövs
-            global Ψ = zeros(dh.ndofs.x) # behövs
-            global Fᵢₙₜ = zeros(dh.ndofs.x) # behövs?
-            global rc = zeros(dh.ndofs.x) # behövs?
-            global Fₑₓₜ = zeros(dh.ndofs.x) # behövs ?
-            global a = zeros(dh.ndofs.x) # behövs ?
-            global d = zeros(dh.ndofs.x)
-            global Δa = zeros(dh.ndofs.x) # behövs inte
-            global res = zeros(dh.ndofs.x) # behövs inte
+            # Initialize tangents, också en rutin
+            global K      = create_sparsity_pattern(dh) # behövs
+            global Kψ     = create_sparsity_pattern(dh) # behövs
+            global a      = zeros(dh.ndofs.x) # behövs
+            global Ψ      = zeros(dh.ndofs.x) # behövs
+            global Fᵢₙₜ  = zeros(dh.ndofs.x) # behövs?
+            global rc     = zeros(dh.ndofs.x) # behövs?
+            global Fₑₓₜ  = zeros(dh.ndofs.x) # behövs ?
+            global a      = zeros(dh.ndofs.x) # behövs ?
+            global d      = zeros(dh.ndofs.x)
+            global Δa     = zeros(dh.ndofs.x) # behövs inte
+            global res    = zeros(dh.ndofs.x) # behövs inte
             global ∂rᵤ_∂x = similar(K) # behövs inte om vi har lokal funktion?
-            global dr_dd = similar(K) # behövs inte om vi har lokal funktion?
+            global dr_dd  = similar(K) # behövs inte om vi har lokal funktion?
             global ∂rψ_∂d = similar(K) # behövs inte om vi har lokal funktion?
-            global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
-            global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
-            global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion?
-            global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
-            global ∂g₂_∂d     = zeros(size(d)) # behövs inte om vi har lokal funktion?
+            global ∂g_∂x  = zeros(size(a)) # behövs inte om vi har lokal funktion?
+            global ∂g_∂u  = zeros(size(d)) # behövs inte om vi har lokal funktion?
+            global ∂g₂_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
+            global ∂g₂_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
+            global ∂g₂_∂d = zeros(size(d)) # behövs inte om vi har lokal funktion?
             global ∂rᵤ_∂x = similar(K) # behövs inte om vi har lokal funktion?
-            global λᵤ = similar(a) # behövs inte om vi har lokal funktion?
-            global λψ = similar(a) # behövs inte om vi har lokal funktion?
-            global λᵥₒₗ = similar(a) # behövs inte om vi har lokal funktion?
-            global m = 1 # behöver inte skrivas över
-            global n_mma = length(d) # behöver skrivas över
-            global epsimin = 0.0000001 # behöver inte skrivas över
-            global xval = d[:] # behöver skrivas över
-            global xold1 = xval # behöver skrivas över
-            global xold2 = xval # behöver skrivas över
-            global xmin = -ones(n_mma) / 20 # behöver skrivas över
-            global xmax =  ones(n_mma)  / 20 # behöver skrivas över
-            global C = 1000 * ones(m) # behöver inte skrivas över
-            global d2 = zeros(m) # behöver inte skrivas över
-            global a0 = 1 # behöver inte skrivas över
-            global am = zeros(m) # behöver inte skrivas över
-            global outeriter = 0 # behöver inte skrivas över
-            global kkttol = 0.001 # behöver inte skrivas över
-            global changetol = 0.001 # behöver inte skrivas över
-            global kktnorm = kkttol + 10 # behöver inte skrivas över
-            global outit = 0 # behöver inte skrivas över
-            global change = 1 # behöver inte skrivas över
-            global xmin[contact_dofs] .= -.01 # behöver skrivas över
-            global xmax[contact_dofs] .=  .01 # behöver skrivas över
-            global xmin[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .= -0.1 # behöver skrivas över
-            global xmax[contact_dofs[findall(x -> x % 2 == 0, contact_dofs)]] .=  0.1 # behöver skrivas över
-            global low        = xmin # behöver skrivas över
-            global upp        = xmax # behöver skrivas över
-            global d .= 0
-            #global d[free_d] .= 0.05
+            global λᵤ     = similar(a) # behövs inte om vi har lokal funktion?
+            global λψ     = similar(a) # behövs inte om vi har lokal funktion?
+            global λᵥₒₗ  = similar(a) # behövs inte om vi har lokal funktion?
+            #
+            include("initOptLin.jl")
+            #
+            #=
+                global m = 1 # behöver inte skrivas över
+                global n_mma = length(d) # behöver skrivas över
+                global epsimin = 0.0000001 # behöver inte skrivas över
+                global xval = d[:] # behöver skrivas över
+                global xold1 = xval # behöver skrivas över
+                global xold2 = xval # behöver skrivas över
+                global xmin = -ones(n_mma) / 20 # behöver skrivas över
+                global xmax =  ones(n_mma)  / 20 # behöver skrivas över
+                global C = 1000 * ones(m) # behöver inte skrivas över
+                global d2 = zeros(m) # behöver inte skrivas över
+                global a0 = 1 # behöver inte skrivas över
+                global am = zeros(m) # behöver inte skrivas över
+                global outeriter = 0 # behöver inte skrivas över
+                global kkttol = 0.001 # behöver inte skrivas över
+                global changetol = 0.001 # behöver inte skrivas över
+                global kktnorm = kkttol + 10 # behöver inte skrivas över
+                global outit = 0 # behöver inte skrivas över
+                global change = 1 # behöver inte skrivas över
+                global xmin .= -0.1
+                global xmax .=  0.1
+                global low           = -ones(n_mma);
+                global upp           =  ones(n_mma);
+            =#
             # boundary conditions for contact analysis
-            bcdof_top_o, _ = setBCXY_both(0.0, dh, Γ_top)
-            bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
+            bcdof_top_o, _ = setBCXY(0.0, dh, Γ_top)
+            bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
             bcdof_o = [bcdof_top_o; bcdof_bot_o]
             ϵᵢⱼₖ = sortperm(bcdof_o)
             global bcdof_o = bcdof_o[ϵᵢⱼₖ]
             global bcval_o = bcdof_o .* 0.0
-
-            bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
-            bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
+            #
+            bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
+            bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
             bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
             ϵᵢⱼₖ = sortperm(bcdof_o)
             global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
             global bcval_o2 = bcdof_o2 .* 0.0
-
-            global T               = zeros(size(a))
-            global T[bcdof_bot_o] .= 1.0
-            global nloadsteps      = nloadsteps + 5
-
+            #
+            global T       = zeros(size(a))
+            global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= -1.0
+            global T[bcdof_top_o[bcdof_top_o .% 2 .==0]] .=  1.0
             # # # # # # # # # # # # # # # #
             # Reset Optimization problem  #
             # # # # # # # # # # # # # # # #
             OptIter = 1
+            global d    .= 0
             global xold1 = d[:]
             global xold2 = d[:]
-            global low   = xmin
-            global upp   = xmax
         end
         #
         # # # # #
@@ -489,9 +488,9 @@ function Optimize(dh)
         # Lås horisontellt  # // # Dålig lösning?
         # # # # # # # # # # #
         #
-        #∂g_∂d[1:2:end-1]  .= 0.0
-        #∂Ω∂d[1:2:end-1]   .= 0.0
-        #∂g₂_∂d[1:2:end-1] .= 0.0
+            # ∂g_∂d[1:2:end-1]  .= 0.0
+            # ∂Ω∂d[1:2:end-1]   .= 0.0
+            # ∂g₂_∂d[1:2:end-1] .= 0.0
         # # # # #
         # M M A #
         # # # # #

@@ -838,46 +838,38 @@ function remeshCircle(filename,h)
     # ny funktion för att definiera kontakt- och bc-ytor osv.
     Gmsh.initialize()
     gmsh.option.set_number("General.Verbosity", 2)
-
+    # Extract master coords
     master_coords = zeros(length(nₘ), 2)
-
     for (i, node) in enumerate(nₘ)
         master_coords[i, :] = dh.grid.nodes[node].x
     end
-
-    # Behöver specificera sorteringen m.a.på x
+    # Sort (Behöver specificera sorteringen m.a.på x)
     master_coords = master_coords[sortperm(master_coords[:, 1]), :]
-    #top_coords = top_coords[sortperm(top_coords[:, 1]), :]
-
+    # Add points to GMSH
     Points = []
     for (x, y) in Iterators.reverse(eachrow(master_coords[1:end,:]))
         append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h))
     end
-    append!(Points, gmsh.model.geo.add_point(0.5, 1.5, 0.0, h*4))
-
-
+    append!(Points, gmsh.model.geo.add_point(0.5, 1.5, 0.0, h))
+    # Connect points through lines
     Lines = Vector{Int32}()
-
     for (i, x) in enumerate(eachrow(master_coords[1:end, :]))
         append!(Lines, gmsh.model.geo.add_line(Points[i], Points[i+1]))
     end
     append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
-
+    # gmsh.model.geo.addSpline // polyline // bspline // ..
     Loop = gmsh.model.geo.add_curve_loop(Lines[:])
     gmsh.model.geo.remove_all_duplicates()
-
     Surf = gmsh.model.geo.add_plane_surface([Loop])
-
     gmsh.model.geo.synchronize()
 
     # Make physical group of slave nodes
     gmsh.model.add_physical_group(1, Lines[1:end-2], -1, "Γ_m")
     gmsh.model.add_physical_group(2, [Surf], -1, " hej ")
-
-
+    # Generate mesh
     gmsh.model.mesh.generate(2)
     #gmsh.model.mesh.reverse(2)
-
+    # Write mesh file
     grid = mktempdir() do dir
         path = joinpath(filename * ".msh")
         gmsh.write(path)
@@ -892,68 +884,65 @@ function remeshBox(filename,h)
     # ny funktion för att definiera kontakt- och bc-ytor osv.
     Gmsh.initialize()
     gmsh.option.set_number("General.Verbosity", 2)
-
+    #
     # init
     slave_coords = zeros(length(nₛ), 2)
     bot_coords = zeros(length(n_bot), 2)
-
-    # loop over node sets
     for (i, node) in enumerate(nₛ)
         slave_coords[i, :] = dh.grid.nodes[node].x
     end
-
     for (i, node) in enumerate(n_bot)
         bot_coords[i, :] = dh.grid.nodes[node].x
     end
-
-    # Behöver specificera sorteringen m.a.p x
     slave_coords = slave_coords[sortperm(slave_coords[:, 1]), :]
-
     bot_coords = bot_coords[sortperm(bot_coords[:, 1]), :]
-
+    #
+    # Extract left and right boundaries
+    #=
+    right_coords = zeros(length(n_right), 2)
+    left_coords = zeros(length(n_left), 2)
+    for (i, node) in enumerae(n_right)
+        right_coords[i, :] = dh.grid.nodes[node].x
+    end
+    for (i, node) in enumerae(n_left)
+        left_coords[i, :] = dh.grid.nodes[node].x
+    end
+    right_coords = right_coords[sortperm(-right_coords[:, 2]), :]
+    left_coords = left_coords[sortperm(left_coords[:, 2]), :]
+    =#
     # add points gmsh
     Points = []
-    append!(Points, gmsh.model.geo.add_point(bot_coords[1, 1], bot_coords[1, 2], 0.0, h*4))
+    append!(Points, gmsh.model.geo.add_point(bot_coords[1, 1], bot_coords[1, 2], 0.0, h))
     for (x, y) in eachrow(slave_coords)
-        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h*0.75)) # sätt in h = ... hur fint nät?
+        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h)) # sätt in h = ... hur fint nät?
     end
-    append!(Points, gmsh.model.geo.add_point(bot_coords[end, 1], bot_coords[end, 2], 0.0, h*4))
+    append!(Points, gmsh.model.geo.add_point(bot_coords[end, 1], bot_coords[end, 2], 0.0, h))
     # extra point to ensure we can place boundary condition in the very middle
-    append!(Points, gmsh.model.geo.add_point(0.5, 0.0, 0.0, h*4))
-
-
+    append!(Points, gmsh.model.geo.add_point(Δx/2, yₗ, 0.0, h))
     # lines through points
     Lines = Vector{Int32}()
-
-
     append!(Lines, gmsh.model.geo.add_line(Points[end-1], Points[end]))
     append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
+    # for(i, x) in enumerate(eachrow(left_coords[1:end, :]))
+    #   append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
+    # end
     for (i, x) in enumerate(eachrow(slave_coords[1:end, :]))
         append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
     end
+    # måste gå andra vägen här! (GMSH borde varna)
+    # for(i, x) in enumerate(eachrow(right_coords[1:end, :]))
+    #   append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
+    # end
     append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
-
-    #append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
-    #for (i, x) in enumerate(eachrow(slave_coords[1:end, :])) # Iterator.reverse
-    #    append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
-    #end
-    #append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
-
     # patch it up
     Loop = gmsh.model.geo.add_curve_loop(Lines[:])
-
-    gmsh.model.geo.remove_all_duplicates()
-
+    gmsh.model.geo.remove_all_duplicates() # ?
     Surf = gmsh.model.geo.add_plane_surface([Loop])
-
     gmsh.model.geo.synchronize()
-
     # Make physical group of slave nodes
     gmsh.model.add_physical_group(1, Lines[3:end-2], -1, "Γ_s")
     gmsh.model.add_physical_group(2, [Surf], -1, " hej ")
-
     gmsh.model.mesh.generate(2)
-
     #gmsh.model.mesh.reverse(2)
     #
     gridB = mktempdir() do dir
@@ -1073,26 +1062,27 @@ function reMeshGrids!(h,dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,co
     global freec_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
 
     # Define top nodeset for displacement controlled loading
-    addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.5)
+    addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ yₗ + 2Δy)
     global Γ_top = getnodeset(dh.grid, "Γ_top")
 
-    addnodeset!(dh.grid, "n_top", x -> x[2] ≈ 1.5)
+    addnodeset!(dh.grid, "n_top", x -> x[2] ≈ yₗ + 2Δy)
     global n_top = getnodeset(dh.grid, "n_top")
 
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
-    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
+    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ yₗ)
     global Γ_bot = getnodeset(dh.grid, "Γ_bot")
 
-    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.0)
+    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ yₗ)
     global n_bot = getnodeset(dh.grid, "n_bot")
+
+    # Left and right sets
+
 
     # Final preparations for contact
     global X = getX(dh)
     global coord = getCoordfromX(X)
 
     # Init fictious
-
-
     global Γ_robin = union(
         getfaceset(dh.grid, "Γ_slave"),
         getfaceset(dh.grid, "Γ_master")
