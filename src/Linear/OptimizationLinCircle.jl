@@ -38,16 +38,17 @@ xₗ = 0.0
 yₗ = 0.5
 Δx = 1.0
 Δy = 0.5
+h  = 0.04
 case = "box"
 rounded = false
 # najs för ~0.05
 if rounded == true
-    grid1 = createBoxMeshRounded_Flipped("box_rounded", 0.35,  2yₗ, Δy, 0.05)
+    grid1 = createBoxMeshRounded_Flipped("box_rounded", 0.35,  2yₗ, Δy, h)
     Γ_1   = getBoundarySet(grid1);
 else
-    grid1 = createCircleMesh("box_1",  Δx/2, yₗ + 2Δy, r₀, 0.05)
+    grid1 = createCircleMesh("box_1",  Δx/2, yₗ + 2Δy, r₀, h)
 end
-grid2 = createBoxMeshRev("box_2",  xₗ, yₗ, Δx, 0.501, 0.05)
+grid2 = createBoxMeshRev("box_2",  xₗ, yₗ, Δx, 0.501, h)
 ## Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
 grid1 = nothing
@@ -145,22 +146,22 @@ for (i, nod) ∈ enumerate(contact_nods)
 end
 global freec_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
 # Define top nodeset for displacement controlled loading
-addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.5)
-global Γ_top = getnodeset(dh.grid, "Γ_top")
+addfaceset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.5)
+global Γ_top = getfaceset(dh.grid, "Γ_top")
 addnodeset!(dh.grid, "n_top", x -> x[2] ≈ 1.5)
 global n_top = getnodeset(dh.grid, "n_top")
 #
 if case == "box"
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
-    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ yₗ)
-    global Γ_bot = getnodeset(dh.grid, "Γ_bot")
+    addfaceset!(dh.grid, "Γ_bot", x -> x[2] ≈ yₗ)
+    global Γ_bot = getfaceset(dh.grid, "Γ_bot")
 
     addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ yₗ)
     global n_bot = getnodeset(dh.grid, "n_bot")
 else
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
-    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.5001)
-    global Γ_bot = getnodeset(dh.grid, "Γ_bot")
+    addfaceset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.5001)
+    global Γ_bot = getfaceset(dh.grid, "Γ_bot")
 
     addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.5001)
     global n_bot = getnodeset(dh.grid, "n_bot")
@@ -210,15 +211,15 @@ global Δa   = zeros(dh.ndofs.x)
 global res  = zeros(dh.ndofs.x)
 # "fem"
 #  boundary conditions for contact analysis
-bcdof_top_o, _ = setBCXY(0.0, dh, Γ_top)
-bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+bcdof_top_o, _ = setBCXY(0.0, dh, n_top)
+bcdof_bot_o, _ = setBCXY(0.0, dh, n_bot)
 bcdof_o = [bcdof_top_o; bcdof_bot_o]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o = bcdof_o[ϵᵢⱼₖ]
 global bcval_o = bcdof_o .* 0.0
 # fictitious bcs
-bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
-bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
+bcdof_top_o2, _ = setBCXY(0.0, dh, n_top)
+bcdof_bot_o2, _ = setBCXY(0.0, dh, n_bot)
 bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
 ϵᵢⱼₖ = sortperm(bcdof_o)
 global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
@@ -248,7 +249,7 @@ function Optimize(dh)
         global λψ      = similar(a)
         global λᵤ      = similar(a)
         global λᵥₒₗ   = similar(a)
-        Vₘₐₓ          = 1.5# 1.0  #
+        Vₘₐₓ          = 1.0
         tol            = 1e-3
         OptIter        = 0
         true_iteration = 0
@@ -310,9 +311,9 @@ function Optimize(dh)
         OptIter += 1
         true_iteration +=1
         # detta ska 100% vara en rutin
-        if true_iteration % 5 == 0 #|| OptIter == 1
+        if true_iteration % 10 == 0 #|| OptIter == 1
             print("\n", " ⏳ --------  Remeshing -------- ⏳ ", "\n")
-            reMeshGrids!(0.05, dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
+            reMeshGrids!(h, dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
             # Initialize tangents, också en rutin
             global K      = create_sparsity_pattern(dh) # behövs
             global Kψ     = create_sparsity_pattern(dh) # behövs
@@ -364,16 +365,16 @@ function Optimize(dh)
                 global low           = -ones(n_mma);
                 global upp           =  ones(n_mma);
             =#
-            # boundary conditions for contact analysis
-            bcdof_top_o, _ = setBCXY(0.0, dh, Γ_top)
-            bcdof_bot_o, _ = setBCXY(0.0, dh, Γ_bot)
+            #  boundary conditions for contact analysis
+            bcdof_top_o, _ = setBCXY(0.0, dh, n_top)
+            bcdof_bot_o, _ = setBCXY(0.0, dh, n_bot)
             bcdof_o = [bcdof_top_o; bcdof_bot_o]
             ϵᵢⱼₖ = sortperm(bcdof_o)
             global bcdof_o = bcdof_o[ϵᵢⱼₖ]
             global bcval_o = bcdof_o .* 0.0
-            #
-            bcdof_top_o2, _ = setBCXY(0.0, dh, Γ_top)
-            bcdof_bot_o2, _ = setBCXY(0.0, dh, Γ_bot)
+            # fictitious bcs
+            bcdof_top_o2, _ = setBCXY(0.0, dh, n_top)
+            bcdof_bot_o2, _ = setBCXY(0.0, dh, n_bot)
             bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2]
             ϵᵢⱼₖ = sortperm(bcdof_o)
             global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
@@ -391,20 +392,21 @@ function Optimize(dh)
             global xold2 = d[:]
         end
         #
+        # if OptIter % 10 == 0 && g₁ < 0.0 #  && g₂ < 0.0
+        #     dh0 = deepcopy(dh)
+        #     global d          = zeros(dh.ndofs.x)
+        #     global xold1      = d[:]
+        #     global xold2      = d[:]
+        #     global low        = xmin
+        #     global upp        = xmax
+        #     OptIter           = 1
+        # end
+        #
         # # # # #
         # test  #
         # # # # #
         global nloadsteps = 20
         global μ = 1e3 # var μ = 1e4
-        if OptIter % 10 == 0 && g₁ < 0.0 #  && g₂ < 0.0
-            dh0 = deepcopy(dh)
-            global d          = zeros(dh.ndofs.x)
-            global xold1      = d[:]
-            global xold2      = d[:]
-            global low        = xmin
-            global upp        = xmax
-            OptIter           = 1
-        end
         #
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #

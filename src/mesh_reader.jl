@@ -896,51 +896,61 @@ function remeshBox(filename,h)
     end
     slave_coords = slave_coords[sortperm(slave_coords[:, 1]), :]
     bot_coords = bot_coords[sortperm(bot_coords[:, 1]), :]
-    #
-    # Extract left and right boundaries
-    #=
+    # --------------------------------- #
+    # Extract left and right boundaries #
+    # --------------------------------- #
     right_coords = zeros(length(n_right), 2)
     left_coords = zeros(length(n_left), 2)
-    for (i, node) in enumerae(n_right)
+    for (i, node) in enumerate(n_right)
         right_coords[i, :] = dh.grid.nodes[node].x
     end
-    for (i, node) in enumerae(n_left)
+    for (i, node) in enumerate(n_left)
         left_coords[i, :] = dh.grid.nodes[node].x
     end
+    left_coords  = left_coords[sortperm(left_coords[:, 2]), :]
     right_coords = right_coords[sortperm(-right_coords[:, 2]), :]
-    left_coords = left_coords[sortperm(left_coords[:, 2]), :]
-    =#
-    # add points gmsh
+    # --------------- #
+    # add points gmsh #
+    # --------------- #
     Points = []
-    append!(Points, gmsh.model.geo.add_point(bot_coords[1, 1], bot_coords[1, 2], 0.0, h))
-    for (x, y) in eachrow(slave_coords)
-        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h)) # sätt in h = ... hur fint nät?
+    #append!(Points, gmsh.model.geo.add_point(bot_coords[1, 1], bot_coords[1, 2], 0.0, h))
+    for (x,y) in eachrow(left_coords)
+        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h))
     end
-    append!(Points, gmsh.model.geo.add_point(bot_coords[end, 1], bot_coords[end, 2], 0.0, h))
+    for (x, y) in eachrow(slave_coords)
+        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h))
+    end
+    for (x, y) in eachrow(right_coords)
+        append!(Points, gmsh.model.geo.add_point(x, y, 0.0, h))
+    end
+    #append!(Points, gmsh.model.geo.add_point(bot_coords[end, 1], bot_coords[end, 2], 0.0, h))
     # extra point to ensure we can place boundary condition in the very middle
     append!(Points, gmsh.model.geo.add_point(Δx/2, yₗ, 0.0, h))
     # lines through points
     Lines = Vector{Int32}()
     append!(Lines, gmsh.model.geo.add_line(Points[end-1], Points[end]))
     append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
-    # for(i, x) in enumerate(eachrow(left_coords[1:end, :]))
-    #   append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
-    # end
-    for (i, x) in enumerate(eachrow(slave_coords[1:end, :]))
-        append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
+    for (i, x) in enumerate(eachrow(left_coords[1:end, :]))
+        append!(Lines, gmsh.model.geo.add_line(Points[i], Points[i+1]))
     end
-    # måste gå andra vägen här! (GMSH borde varna)
-    # for(i, x) in enumerate(eachrow(right_coords[1:end, :]))
-    #   append!(Lines, gmsh.model.geo.add_line(Points[i+1], Points[i+2]))
-    # end
-    append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
+    # gör om till spline
+    append!(Lines, gmsh.model.geo.addSpline(Points[1+length(n_left):length(n_left)+length(nₛ)]))
+    append!(Lines, gmsh.model.geo.add_line(Points[length(n_left)+length(nₛ)], Points[length(n_left)+length(nₛ)+1]))
+    #for (i, x) in enumerate(eachrow(slave_coords[1:end, :]))
+    #    append!(Lines, gmsh.model.geo.add_line(Points[i+length(n_left)], Points[i+1+length(n_left)]))
+    #end
+    for (i, x) in enumerate(eachrow(right_coords[1:end-1, :]))
+        append!(Lines, gmsh.model.geo.add_line(Points[i+length(n_left)+length(nₛ)], Points[i+1+length(n_left)+length(nₛ)]))
+    end
+    #append!(Lines, gmsh.model.geo.add_line(Points[1], Points[2]))
     # patch it up
     Loop = gmsh.model.geo.add_curve_loop(Lines[:])
     gmsh.model.geo.remove_all_duplicates() # ?
     Surf = gmsh.model.geo.add_plane_surface([Loop])
     gmsh.model.geo.synchronize()
     # Make physical group of slave nodes
-    gmsh.model.add_physical_group(1, Lines[3:end-2], -1, "Γ_s")
+    #gmsh.model.add_physical_group(1, Lines[3+length(n_left):(length(n_left)+length(nₛ)+1)], -1, "Γ_s")
+    gmsh.model.add_physical_group(1, [Lines[3+length(n_left)]], -1, "Γ_s")
     gmsh.model.add_physical_group(2, [Surf], -1, " hej ")
     gmsh.model.mesh.generate(2)
     #gmsh.model.mesh.reverse(2)
@@ -1062,21 +1072,38 @@ function reMeshGrids!(h,dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,co
     global freec_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
 
     # Define top nodeset for displacement controlled loading
-    addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ yₗ + 2Δy)
-    global Γ_top = getnodeset(dh.grid, "Γ_top")
+    addfaceset!(dh.grid, "Γ_top", x -> x[2] ≈ yₗ + 2Δy)
+    global Γ_top = getfaceset(dh.grid, "Γ_top")
 
     addnodeset!(dh.grid, "n_top", x -> x[2] ≈ yₗ + 2Δy)
     global n_top = getnodeset(dh.grid, "n_top")
 
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
-    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ yₗ)
-    global Γ_bot = getnodeset(dh.grid, "Γ_bot")
+    addfaceset!(dh.grid, "Γ_bot", x -> x[2] ≈ yₗ)
+    global Γ_bot = getfaceset(dh.grid, "Γ_bot")
 
     addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ yₗ)
     global n_bot = getnodeset(dh.grid, "n_bot")
 
     # Left and right sets
+    global Γ_all = Ferrite.__collect_boundary_faces(dh.grid)
+    addfaceset!(dh.grid, "Γ_all", Γ_all)
+    Γ_all = getfaceset(dh.grid, "Γ_all")
+    global Γ_lr  = setdiff(Γ_all,union(Γ_bot,Γ_top,Γs,Γm))
 
+    addfaceset!(dh.grid, "Γ_l_help", x -> (x[1] < Δx / 2 ))
+    global Γ_left = getfaceset(dh.grid,"Γ_l_help")
+    global Γ_left = intersect(Γ_left,Γ_lr)
+    addfaceset!(dh.grid, "Γ_left", Γ_left)
+    global n_left = getBoundarySet(dh.grid,Γ_left)
+    addnodeset!(dh.grid, "nₗ", n_left)
+
+    addfaceset!(dh.grid, "Γ_r_help", x -> (x[1] > Δx / 2 ))
+    global Γ_right = getfaceset(dh.grid, "Γ_r_help")
+    global Γ_right = intersect(Γ_right, Γ_lr)
+    addfaceset!(dh.grid,"Γ_right", Γ_right)
+    global n_right = getBoundarySet(dh.grid, Γ_right)
+    addnodeset!(dh.grid, "nᵣ", n_right)
 
     # Final preparations for contact
     global X = getX(dh)
@@ -1085,10 +1112,14 @@ function reMeshGrids!(h,dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,co
     # Init fictious
     global Γ_robin = union(
         getfaceset(dh.grid, "Γ_slave"),
+        getfaceset(dh.grid, "Γ_left"),
+        getfaceset(dh.grid, "Γ_right"),
         getfaceset(dh.grid, "Γ_master")
     )
     global n_robin = union(
         getnodeset(dh.grid, "nₛ"),
+        getnodeset(dh.grid, "nₗ"),
+        getnodeset(dh.grid, "nᵣ"),
         getnodeset(dh.grid, "nₘ")
     )
 
@@ -1101,14 +1132,6 @@ function reMeshGrids!(h,dh,coord,enod,register,Γs,nₛ,Γm,nₘ,contact_dofs,co
     end
 
     global locked_d = setdiff(1:dh.ndofs.x,free_d)
-
-    # boundary conditions for contact analysis
-    bcdof_top_o, _ = setBCXY(-0.01, dh, Γ_top)
-    bcdof_bot_o, _ = setBCXY( 0.0, dh, Γ_bot)
-    bcdof_o        = [bcdof_top_o; bcdof_bot_o]
-    ϵᵢⱼₖ           = sortperm(bcdof_o)
-    global bcdof_o = bcdof_o[ϵᵢⱼₖ]
-    global bcval_o = bcdof_o .* 0.0
 
     # - For Linear solver..
     global pdofs = bcdof_o

@@ -5,8 +5,8 @@ bcdof,bcval = setBCLin(0.0,dh)
 
 dr_dd = similar(K)
 # Material parameters
-mp₀   = [1.0 5.0]
-#mp₀   = [0.0 5.0]
+#mp₀   = [1.0 1.0]
+mp₀   = [0.0 5.0]
 mp    = [175 80.769230769230759]
 
 t = 1.0
@@ -41,14 +41,15 @@ global change        = 1;
 # Gränser sfär / cylinder
 #global xmin[register[collect(nₘ),1]] .= -.0
 #global xmax[register[collect(nₘ),1]] .=  .0
-#global xmin[register[collect(nₘ),2]] .= -.5
-#global xmax[register[collect(nₘ),2]] .=  .5
 
-global xmin .= -0.5
-global xmax .=  0.5
+global xmin .= -0.1
+global xmax .=  0.1
 
-#global xmin[1:2:end-1] .= -0.001
-#global xmax[1:2:end-1] .=  0.001
+global xmin[1:2:end-1] .= -0.0001
+global xmax[1:2:end-1] .=  0.0001
+
+global xmin[register[collect(nₘ),2]] .= -.5
+global xmax[register[collect(nₘ),2]] .=  .5
 
 global low           = -ones(n_mma);
 global upp           =  ones(n_mma);

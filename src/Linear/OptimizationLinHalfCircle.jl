@@ -385,7 +385,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 1e6 # eller?
+        global ε = 1e5 # eller?
 
         # # # # # # # # #
         # Equillibrium  #
@@ -456,7 +456,7 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, -10 * g, -10 * ∂g_∂d, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, hcat([g₁.*100; g₂]), vcat([∂Ω∂d.*100; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
         d      = d_new
