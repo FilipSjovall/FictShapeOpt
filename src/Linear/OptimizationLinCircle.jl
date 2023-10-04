@@ -311,7 +311,7 @@ function Optimize(dh)
         OptIter += 1
         true_iteration +=1
         # detta ska 100% vara en rutin
-        if true_iteration % 10 == 0 #|| OptIter == 1
+        if true_iteration % 20 == 0 #|| OptIter == 1
             print("\n", " ⏳ --------  Remeshing -------- ⏳ ", "\n")
             reMeshGrids!(h, dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
             # Initialize tangents, också en rutin
@@ -392,15 +392,15 @@ function Optimize(dh)
             global xold2 = d[:]
         end
         #
-        # if OptIter % 10 == 0 && g₁ < 0.0 #  && g₂ < 0.0
-        #     dh0 = deepcopy(dh)
-        #     global d          = zeros(dh.ndofs.x)
-        #     global xold1      = d[:]
-        #     global xold2      = d[:]
-        #     global low        = xmin
-        #     global upp        = xmax
-        #     OptIter           = 1
-        # end
+        if OptIter % 10 == 0 && g₁ < 0.0 #  && g₂ < 0.0
+            dh0 = deepcopy(dh)
+            global d          = zeros(dh.ndofs.x)
+            global xold1      = d[:]
+            global xold2      = d[:]
+            global low        = xmin
+            global upp        = xmax
+            OptIter           = 1
+        end
         #
         # # # # #
         # test  #
