@@ -385,7 +385,7 @@ function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
 
     # Save the mesh, and read back in as a Ferrite Grid
     grid = mktempdir() do dir
-        path = joinpath(dir, filename * ".msh")
+        path = joinpath(filename * ".msh")
         gmsh.write(path)
         togrid(path)
     end
@@ -433,7 +433,7 @@ function createCircleMesh(filename, x₀, y₀, r, h)
 
     # Save the mesh, and read back in as a Ferrite Grid
     grid = mktempdir() do dir
-        path = joinpath(dir, filename * ".msh")
+        path = joinpath(filename * ".msh")
         gmsh.write(path)
         togrid(path)
     end
@@ -839,12 +839,29 @@ function remeshCircle(filename,h)
     Gmsh.initialize()
     gmsh.option.set_number("General.Verbosity", 2)
     # Extract master coords
-    master_coords = zeros(length(nₘ), 2)
-    for (i, node) in enumerate(nₘ)
-        master_coords[i, :] = dh.grid.nodes[node].x
-    end
-    # Sort (Behöver specificera sorteringen m.a.på x)
-    master_coords = master_coords[sortperm(master_coords[:, 1]), :]
+        master_coords = zeros(length(nₘ), 2)
+        for (i, node) in enumerate(nₘ)
+            master_coords[i, :] = dh.grid.nodes[node].x
+        end
+        # Sort (m.a.p vinkel)
+        points = [point for point in eachrow(master_coords)]
+        # Compute the convex hull
+        ch = convex_hull(points)
+        # Get the vertices of the convex hull
+        ch_vertices = ch
+        indices = [argmin([sum((master_coords[i, :] .- v) .^ 2) for i in 1:size(master_coords, 1)]) for v in ch_vertices]
+        ordered_indices = [indices[mod(i, length(indices))+1] for i in 1:length(indices)]
+        master_coords = master_coords[ordered_indices, :]
+        y_1_5_elements = [row for row in eachrow(master_coords) if row[2] == 1.5]
+        min_x_element = argmin(y_1_5_elements[:, 1])
+        matching_rows = findall(isequal(y_1_5_elements[min_x_element][1:2]), eachrow(master_coords))
+        for k = 1 : (size(master_coords,1) + 1 - matching_rows[1])
+            last_element = master_coords[end, :]
+            for i in reverse(2:size(master_coords, 1))
+                master_coords[i ,:] = master_coords[i-1, :]
+            end
+            master_coords[1, :] = last_element
+        end
     # Add points to GMSH
     Points = []
     for (x, y) in Iterators.reverse(eachrow(master_coords[1:end,:]))
@@ -853,18 +870,16 @@ function remeshCircle(filename,h)
     append!(Points, gmsh.model.geo.add_point(0.5, 1.5, 0.0, h))
     # Connect points through lines
     Lines = Vector{Int32}()
-    for (i, x) in enumerate(eachrow(master_coords[1:end, :]))
-        append!(Lines, gmsh.model.geo.add_line(Points[i], Points[i+1]))
-    end
+    append!(Lines, gmsh.model.geo.addSpline(Points[1:size(master_coords,1)])) # byt tillbaka?
+    append!(Lines, gmsh.model.geo.add_line(Points[end-1], Points[end]))
     append!(Lines, gmsh.model.geo.add_line(Points[end], Points[1]))
-    # gmsh.model.geo.addSpline // polyline // bspline // ..
     Loop = gmsh.model.geo.add_curve_loop(Lines[:])
     gmsh.model.geo.remove_all_duplicates()
     Surf = gmsh.model.geo.add_plane_surface([Loop])
     gmsh.model.geo.synchronize()
 
     # Make physical group of slave nodes
-    gmsh.model.add_physical_group(1, Lines[1:end-2], -1, "Γ_m")
+    gmsh.model.add_physical_group(1, [Lines[1]], -1, "Γ_m")
     gmsh.model.add_physical_group(2, [Surf], -1, " hej ")
     # Generate mesh
     gmsh.model.mesh.generate(2)

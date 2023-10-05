@@ -3,6 +3,7 @@ using Ferrite, FerriteGmsh#, FerriteMeshParser
 using LinearSolve, SparseArrays # LinearSolvePardiso
 using IterativeSolvers, IncompleteLU    # AlgebraicMultigrid
 using Plots, Printf, JLD2, Statistics
+using LazySets: convex_hull
 include("..//mesh_reader.jl")
 include("Contact//contact_help.jl")
 include("assemLin.jl")
@@ -38,17 +39,20 @@ xₗ = 0.0
 yₗ = 0.5
 Δx = 1.0
 Δy = 0.5
-h  = 0.04
+h  = 0.05
 case = "box"
 rounded = false
 # najs för ~0.05
 if rounded == true
-    grid1 = createBoxMeshRounded_Flipped("box_rounded", 0.35,  2yₗ, Δy, h)
+    filename1 = "box_rounded"
+    grid1 = createBoxMeshRounded_Flipped(filename1, 0.35,  2yₗ, Δy, h)
     Γ_1   = getBoundarySet(grid1);
 else
-    grid1 = createCircleMesh("box_1",  Δx/2, yₗ + 2Δy, r₀, h)
+    filename1 = "circle"
+    grid1 = createCircleMesh(filename1,  Δx/2, yₗ + 2Δy, r₀, h)
 end
-grid2 = createBoxMeshRev("box_2",  xₗ, yₗ, Δx, 0.501, h)
+filename2 = "box"
+grid2 = createBoxMeshRev(filename2, xₗ, yₗ, Δx, 0.501, h)
 ## Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
 grid1 = nothing
@@ -249,7 +253,7 @@ function Optimize(dh)
         global λψ      = similar(a)
         global λᵤ      = similar(a)
         global λᵥₒₗ   = similar(a)
-        Vₘₐₓ          = 1.0
+        Vₘₐₓ          = 1.0#0.9
         tol            = 1e-3
         OptIter        = 0
         true_iteration = 0
@@ -311,7 +315,10 @@ function Optimize(dh)
         OptIter += 1
         true_iteration +=1
         # detta ska 100% vara en rutin
-        if true_iteration % 20 == 0 #|| OptIter == 1
+        if true_iteration % 10 == 0 #|| OptIter == 1
+            @save "innan_remeshh.jld2" h dh coord enod register Γs nₛ Γm nₘ contact_dofs contact_nods order freec_dofs free_d locked_d bcdof_o bcval_o d dh0 coord₀
+            #@load "innan_remeshh.jld2"
+            #break
             print("\n", " ⏳ --------  Remeshing -------- ⏳ ", "\n")
             reMeshGrids!(h, dh, coord, enod, register, Γs, nₛ, Γm, nₘ, contact_dofs, contact_nods, order, freec_dofs, free_d, locked_d, bcdof_o, bcval_o, d, dh0, coord₀)
             # Initialize tangents, också en rutin
@@ -406,7 +413,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ = 1e3 # var μ = 1e4
+        global μ = 1e4 # var μ = 1e4
         #
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
