@@ -369,13 +369,8 @@ function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
     gmsh.model.geo.synchronize()
 
     # Create the physical domains
-    gmsh.model.add_physical_group(1, [l1], -1, "Γ")
-    gmsh.model.add_physical_group(1, [l2], -1, "Γ2")
-    gmsh.model.add_physical_group(1, [l3], -1, "Γ3")
-    gmsh.model.add_physical_group(1, [l4], -1, "Γ4")
-    gmsh.model.add_physical_group(1, [l5], -1, "Γ5")
-    gmsh.model.add_physical_group(1, [l6], -1, "Γ6")
-    gmsh.model.add_physical_group(2, [surf], 1)
+    gmsh.model.add_physical_group(1, [l2, l3], -1, "Γ")
+    gmsh.model.add_physical_group(2, [surf])
 
     gmsh.model.mesh.embed(0, [p5], 2 ,1)
     gmsh.model.mesh.embed(0, [p6], 2, 1)
@@ -423,10 +418,7 @@ function createCircleMesh(filename, x₀, y₀, r, h)
     gmsh.model.geo.synchronize()
 
     # Create the physical domains
-    gmsh.model.add_physical_group(1, [l1], -1, "Γ")
-    gmsh.model.add_physical_group(1, [l2], -1, "Γ2")
-    gmsh.model.add_physical_group(1, [l3], -1, "Γ3")
-    gmsh.model.add_physical_group(1, [l4], -1, "Γ3")
+    gmsh.model.add_physical_group(1, [l1, l2], -1, "Γ")
     gmsh.model.add_physical_group(2, [surf])
 
     gmsh.model.mesh.generate(2)
@@ -883,7 +875,8 @@ function remeshCircle(filename,h)
     gmsh.model.add_physical_group(2, [Surf], -1, " hej ")
     # Generate mesh
     gmsh.model.mesh.generate(2)
-    #gmsh.model.mesh.reverse(2)
+    # optimize
+
     # Write mesh file
     grid = mktempdir() do dir
         path = joinpath(filename * ".msh")

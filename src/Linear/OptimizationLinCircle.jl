@@ -39,7 +39,7 @@ xₗ = 0.0
 yₗ = 0.5
 Δx = 1.0
 Δy = 0.5
-h  = 0.05
+h  = 0.04
 case = "box"
 rounded = false
 # najs för ~0.05
@@ -533,7 +533,7 @@ function Optimize(dh)
         p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100,p_hist[1:true_iteration],g_hist[1:true_iteration]],label = ["Volume Constraint" "Uniform pressure Constraint" "Objective"])
         display(p2)
     end
-    jld2save("250_iter_circle.jld2")
+#    jld2save("250_iter_circle.jld2")
     return g_hist, v_hist, OptIter, traction, historia
 end
 
