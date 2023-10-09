@@ -39,7 +39,7 @@ xₗ = 0.0
 yₗ = 0.5
 Δx = 1.0
 Δy = 0.5
-h  = 0.01
+h  = 0.04
 case = "box"
 rounded = false
 # najs för ~0.05

@@ -225,7 +225,7 @@ function strainExtract(dh,a,mp,strain_type)
 end
 
 function energy(dh,a,mp)
-
+    W = zeros(length(dh.grid.cells),1)
     for el ∈ CellIterator(dh)
         cell_dofs = celldofs(cell)
         for gp ∈ 1 : 3
