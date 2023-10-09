@@ -226,12 +226,15 @@ end
 
 function energy(dh,a,mp)
     W = zeros(length(dh.grid.cells),1)
+    ie= 0
     for el ∈ CellIterator(dh)
-        cell_dofs = celldofs(cell)
+        cell_dofs = celldofs(el)
+        ie += 1
         for gp ∈ 1 : 3
-            F = defgradGP(coord[cell.nodes, :], a[cell_dofs], gp, mp, t)
+            F = defgradGP(coord[el.nodes, :], a[cell_dofs], gp, mp, t)
             C = F'*F
-            W[el] += Ψ(C, mp::NeoHooke)
+            W[ie] = Ψ(C, mp)
         end
     end
+    return W
 end
