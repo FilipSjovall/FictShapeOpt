@@ -369,7 +369,7 @@ function Optimize(dh)
             # Fictitious equillibrium #
             # # # # # # # # # # # # # #
             global coord₀ = getCoord(getX(dh0), dh0) # x₀
-            Ψ, _, Kψ, _, λ = fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
+            Ψ, _, Kψ, _, λ = fictitious_solver_with_contact_half(d, dh0, coord₀, nloadsteps)
 
             # # # # # #
             # Filter  #
@@ -390,7 +390,7 @@ function Optimize(dh)
         # # # # # # # # #
         # Equillibrium  #
         # # # # # # # # #
-        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C(dh, coord, Δ, nloadsteps)
+        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C_half(dh, coord, Δ, nloadsteps)
 
         # # # # # # # # #
         # Sensitivities #

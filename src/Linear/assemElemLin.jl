@@ -381,3 +381,57 @@ function extrapolate_stress(s)
     end
     return stress
 end
+
+function extrapolate_strain(ε)
+    strain = zeros(3)
+    for nod in 1 : 3
+        strain[nod] = (N[:, nod] ./ N[:, nod]) ⋅ ε
+    end
+end
+
+function assemS(coord, ed, mp, t, gp, strain_type)
+    # Jacobian N x = Jᵀ N ξ
+    Jᵀ[:, 2:3] = transpose(dNᵣ[:, index[gp, :]]) * coord # ??
+    J⁻ = inv(Jᵀ)
+    dNₓ = P₀ * J⁻ * transpose(dNᵣ[:, index[gp, :]])
+
+    # Gradient matrices " ∇N "
+    H₀[1, 1:2:5] = dNₓ[1, :]
+    H₀[2, 1:2:5] = dNₓ[2, :]
+    H₀[3, 2:2:6] = dNₓ[1, :]
+    H₀[4, 2:2:6] = dNₓ[2, :]
+
+    Bₗ₀[1, 1:2:5] = dNₓ[1, :]
+    Bₗ₀[2, 2:2:6] = dNₓ[2, :]
+    Bₗ₀[3, 1:2:5] = dNₓ[2, :]
+    Bₗ₀[3, 2:2:6] = dNₓ[1, :]
+
+    # ∇u = ∇ₓN u
+    A_temp = H₀ * ed
+    A[1, :] = [A_temp[1] 0.0 A_temp[3] 0.0]
+    A[2, :] = [0.0 A_temp[2] 0.0 A_temp[4]]
+    A[3, :] = [A_temp[2] A_temp[1] A_temp[4] A_temp[3]]
+
+    # Deformation gradient F = I + ∇u
+    eff[1, 1] = A_temp[1] + 1.0
+    eff[1, 2] = A_temp[2]
+    eff[2, 1] = A_temp[3]
+    eff[2, 2] = A_temp[4] + 1.0
+
+    # Vec(F)
+    ef = [eff[1, 1] eff[1, 2] eff[2, 1] eff[2, 2]]
+    # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²
+    es      = neohooke1(ef, mp)
+    F       = zeros(3, 3)
+    F[1, :] = [eff[1] eff[2] 0.0]
+    F[2, :] = [eff[3] eff[4] 0.0]
+    F[3, :] = [0.0 0.0 1.0]
+    if strain_type == "Cauchy Green"
+        strain = F'*F
+    elseif strain_type == "Green Lagrange "
+        strain = ( F' * F - I(3) ) ./2
+    else
+        strain = inv(F)*(F' * F)*inv(F)' * det(F)
+    end
+    return strain
+end

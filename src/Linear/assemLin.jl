@@ -219,3 +219,19 @@ function ExtractContactTraction(a,ε,coord)
     τ_c       = contact_traction(X_ordered, a, ε)
     return τ_c
 end
+
+function strainExtract(dh,a,mp,strain_type)
+
+end
+
+function energy(dh,a,mp)
+
+    for el ∈ CellIterator(dh)
+        cell_dofs = celldofs(cell)
+        for gp ∈ 1 : 3
+            F = defgradGP(coord[cell.nodes, :], a[cell_dofs], gp, mp, t)
+            C = F'*F
+            W[el] += Ψ(C, mp::NeoHooke)
+        end
+    end
+end
