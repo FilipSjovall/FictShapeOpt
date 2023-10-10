@@ -751,8 +751,8 @@ function fictitious_solver_with_contact_half(d, dh0, coord₀, nloadsteps)
 
     #bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
     #bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-    bcdof_top_o2, _ = setBCXY(0.0, dh, n_top)
-    bcdof_bot_o2, _ = setBCXY(0.0, dh, n_bot)
+    bcdof_top_o2, _  = setBCY(0.0, dh, n_top)
+    bcdof_bot_o2, _  = setBCY(0.0, dh, n_bot)
     bcdof_left_o2, _ = setBCX(0.0, dh, n_left)
     bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2; bcdof_left_o2]
     ϵᵢⱼₖ = sortperm(bcdof_o2)
@@ -861,8 +861,8 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
     # Set bcs - should be moved outside this function
     #bcdof_top, bcval_top = setBCXY_both(Δ / nloadsteps, dh, Γ_top)
     #bcdof_bot, bcval_bot = setBCXY_both(0.0, dh, Γ_bot)
-    bcdof_top, bcval_top   = setBCXY(Δ / nloadsteps, dh, n_top)
-    bcdof_bot, bcval_bot   = setBCXY(0.0, dh, n_bot)
+    bcdof_top, bcval_top   = setBCY(Δ / nloadsteps, dh, n_top)
+    bcdof_bot, bcval_bot   = setBCY(0.0, dh, n_bot)
     bcdof_left, bcval_left = setBCX(0.0, dh, n_left)
     bcdofs = [bcdof_top; bcdof_bot; bcdof_left]
     bcvals = [bcval_top; bcval_bot; bcval_left]

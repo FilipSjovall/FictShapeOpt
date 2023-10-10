@@ -1,12 +1,9 @@
 using Mortar2D, ForwardDiff
-using Ferrite, FerriteGmsh, FerriteMeshParser
+using Ferrite, FerriteGmsh#, FerriteMeshParser
 using LinearSolve, SparseArrays # LinearSolvePardiso
 using IterativeSolvers, IncompleteLU    # AlgebraicMultigrid
-using SparseDiffTools
-using Plots
-using Printf
-using JLD2
-
+using Plots, Printf, JLD2, Statistics
+using LazySets: convex_hull
 include("..//mesh_reader.jl")
 include("Contact//contact_help.jl")
 include("assemLin.jl")
@@ -16,12 +13,19 @@ include("..//fem.jl")
 include("run_linear.jl")
 include("sensitivitiesLin.jl")
 include("..//mma.jl")
-
+# FEM quantities
+ip = Lagrange{2,RefTetrahedron,1}()
+qr = QuadratureRule{2,RefTetrahedron}(1)
+qr_face = QuadratureRule{1,RefTetrahedron}(1)
+cv = CellVectorValues(qr, ip)
+fv = FaceVectorValues(qr_face, ip)
 # Create two grids
 case  = "box"
 r₀    = 0.5
-grid1 = createHalfCircleMesh("circle", 0.0, 1.5, r₀, 0.0125)
-grid2 = createBoxMeshRev("box_1",  0.0, 0.0, 1.0, 1.001, 0.075)
+h     = 0.03
+Δx    = 0.5
+grid1 = createHalfCircleMesh("circle", 0.0, 1.5, r₀, h)
+grid2 = createBoxMeshRev("box_1",  0.0, 0.0, Δx, 1.001, h)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -56,7 +60,14 @@ if case == "box"
 
     addnodeset!(dh.grid, "nₗ", x ->  x[1] ≈ 0.0)
     global n_left = getnodeset(dh.grid, "nₗ")
+    # ------------------- #
+    # Create right | sets #
+    # ------------------- #
+    addfaceset!(dh.grid, "Γ_right", x ->  x[1] ≈ Δx)
+    global Γ_right = getfaceset(dh.grid, "Γ_right")
 
+    addnodeset!(dh.grid, "nᵣ", x ->  x[1] ≈ Δx)
+    global nᵣ = getnodeset(dh.grid, "nᵣ")
 
 else
     # ------------------ #
@@ -123,20 +134,20 @@ global coord₀ = deepcopy(coord)
 global Γ_robin = union(
     getfaceset(dh.grid, "Γ_slave"),
     ###getfaceset(dh.grid, "Γ_left"),
-    ###getfaceset(dh.grid, "Γ_right"),
+    getfaceset(dh.grid, "Γ_right"),
     getfaceset(dh.grid, "Γ_master")
 )
 global n_robin = union(
     getnodeset(dh.grid, "nₛ"),
     ###getnodeset(dh.grid, "nₗ"),
-    ###getnodeset(dh.grid, "nᵣ"),
+    getnodeset(dh.grid, "nᵣ"),
     getnodeset(dh.grid, "nₘ")
 )
 
 
 global free_d = []
 for jnod in n_robin
-    if in(jnod,n_left) || in(jnod,n_right)
+    if in(jnod,n_left)
         append!(free_d, register[jnod, 1] )
     else
         append!(free_d, register[jnod, 1] )
@@ -161,8 +172,8 @@ global res  = zeros(dh.ndofs.x)
 # boundary conditions for contact analysis
 #bcdof_top_o, _ = setBCXY_both(-0.01, dh, Γ_top)
 #bcdof_bot_o, _ = setBCXY_both(0.0, dh, Γ_bot)
-bcdof_top_o, _  = setBCXY(-0.01, dh, Γ_top)
-bcdof_bot_o, _  = setBCXY(0.0, dh, Γ_bot)
+bcdof_top_o, _  = setBCY(-0.01, dh, Γ_top)
+bcdof_bot_o, _  = setBCY(0.0, dh, Γ_bot)
 bcdof_left_o, _ = setBCX(0.0, dh, n_left)
 bcdof_o = [bcdof_top_o; bcdof_bot_o; bcdof_left_o]
 ϵᵢⱼₖ = sortperm(bcdof_o)
@@ -171,8 +182,8 @@ global bcval_o = bcdof_o .* 0.0
 
 #bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
 #bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
-bcdof_top_o2, _  = setBCXY(0.0, dh, Γ_top)
-bcdof_bot_o2, _  = setBCXY(0.0, dh, Γ_bot)
+bcdof_top_o2, _  = setBCY(0.0, dh, Γ_top)
+bcdof_bot_o2, _  = setBCY(0.0, dh, Γ_bot)
 bcdof_left_o2, _ = setBCX(0.0, dh, n_left)
 bcdof_o2 = [bcdof_top_o2; bcdof_bot_o2; bcdof_left_o2]
 ϵᵢⱼₖ = sortperm(bcdof_o)
@@ -188,10 +199,9 @@ global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion
 global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ         = similar(a)
 global λψ         = similar(a)
-global Δ          = -0.1
+global Δ          = -0.05
 global nloadsteps = 10
 include("initOptLin.jl")
-
 
 function Optimize(dh)
     # Flytta allt nedan till init_opt?
@@ -199,7 +209,7 @@ function Optimize(dh)
         global λψ    = similar(a)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
-        Vₘₐₓ         = 1.78 #1.1 * volume(dh, coord, enod)
+        Vₘₐₓ         = 0.75 #1.1 * volume(dh, coord, enod)
        # global ε     = 1e6
        # global μ     = 1e3
         #l    = similar(a)
@@ -212,8 +222,9 @@ function Optimize(dh)
         p_hist         = zeros(200)
         g_hist         = zeros(200)
         historia = zeros(200,4)
-        global T = zeros(size(a))
-        global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= 1.0
+        global T       = zeros(size(a))
+        global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= -1.0
+        global T[bcdof_top_o[bcdof_top_o .% 2 .==0]] .=  1.0
         g₁ = 0.0
         g₂ = 0.0
     #
@@ -404,8 +415,8 @@ function Optimize(dh)
         # # # # # # #
         # Max reaction force
         g     = - T' * Fᵢₙₜ
-        ∂g_∂x = -(T' * ∂rᵤ_∂x)'
-        ∂g_∂u = -(T' * K)'
+        ∂g_∂x =  -T' * ∂rᵤ_∂x #
+        ∂g_∂u =  -T' * K # ?
 
         # Compliance
         #g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
@@ -423,7 +434,7 @@ function Optimize(dh)
         # Adjoints  #
         # # # # # # #
         solveq!(λᵤ, K',  ∂g_∂u, bcdof_o, bcval_o)
-        solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
+        solveq!(λψ, Kψ', ∂g_∂x' - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
 
         # # # # # # # # # # #
         # Full sensitivity  #
@@ -443,6 +454,7 @@ function Optimize(dh)
         # # # # # # # # # # # #
         # Pressure constraint #
         # # # # # # # # # # # #
+        #=
         p = 2
         X_ordered = getXfromCoord(coord)
         g₂         = contact_pnorm_s(X_ordered, a, ε, p) / 0.5 - 1.0
@@ -452,11 +464,12 @@ function Optimize(dh)
         solveq!(λᵤ, K',  ∂g₂_∂u, bcdof_o, bcval_o)
         solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
         ∂g₂_∂d            = Real.( (-transpose(λψ) * dr_dd)' ./ 0.5 )'
+        =#
 
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, hcat([g₁.*100; g₂]), vcat([∂Ω∂d.*100; ∂g₂_∂d]), low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
         d      = d_new
@@ -469,8 +482,6 @@ function Optimize(dh)
         p_hist[true_iteration] = g₂
         g_hist[true_iteration] = g
 
-        #historia[true_iteration,:] = [∂g_∂d[677] ∂g_∂d[678] coord[273,1] coord[273,2]]
-
         #The residual vector of the KKT conditions is calculated:
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
         kktnorm = change
@@ -480,19 +491,9 @@ function Optimize(dh)
             postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
             postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
         end
-
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration] , p_hist[1:true_iteration])
-        if true_iteration == 1
-            g_ini = 0
-            n     = 0
-            xval  = 0
-            #@save "stegett.jld2"
-        elseif true_iteration == 2
-            @save "tva.jld2"
-        elseif true_iteration == 200
-            @save "steg100.jld2"
-            break
-        end
+        p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100,p_hist[1:true_iteration],g_hist[1:true_iteration]],label = ["Volume Constraint" "Uniform pressure Constraint" "Objective"])
+        display(p2)
     end
     return g_hist, v_hist, OptIter, traction, historia
 end

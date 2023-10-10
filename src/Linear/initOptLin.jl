@@ -45,8 +45,8 @@ global change        = 1;
 global xmin .= -0.1
 global xmax .=  0.1
 
-global xmin[1:2:end-1] .= -0.0001
-global xmax[1:2:end-1] .=  0.0001
+global xmin[1:2:end-1] .= -0.001
+global xmax[1:2:end-1] .=  0.001
 
 global xmin[register[collect(nₘ),2]] .= -.5
 global xmax[register[collect(nₘ),2]] .=  .5
