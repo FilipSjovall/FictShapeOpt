@@ -42,14 +42,14 @@ global change        = 1;
 #global xmin[register[collect(nₘ),1]] .= -.0
 #global xmax[register[collect(nₘ),1]] .=  .0
 
-global xmin .= -0.1
 global xmax .=  0.1
+global xmin .= -0.1
 
-global xmin[1:2:end-1] .= -0.001
-global xmax[1:2:end-1] .=  0.001
+global xmin[1:2:end-1] .= -0.01
+global xmax[1:2:end-1] .=  0.01
 
-global xmin[register[collect(nₘ),2]] .= -.5
 global xmax[register[collect(nₘ),2]] .=  .5
+global xmin[register[collect(nₘ),2]] .= -.5
 
 global low           = -ones(n_mma);
 global upp           =  ones(n_mma);

@@ -22,7 +22,7 @@ fv = FaceVectorValues(qr_face, ip)
 # Create two grids
 case  = "box"
 r₀    = 0.5
-h     = 0.03
+h     = 0.015
 Δx    = 0.5
 grid1 = createHalfCircleMesh("circle", 0.0, 1.5, r₀, h)
 grid2 = createBoxMeshRev("box_1",  0.0, 0.0, Δx, 1.001, h)
@@ -209,7 +209,7 @@ function Optimize(dh)
         global λψ    = similar(a)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
-        Vₘₐₓ         = 0.75 #1.1 * volume(dh, coord, enod)
+        Vₘₐₓ         = 0.9 #1.1 * volume(dh, coord, enod)
        # global ε     = 1e6
        # global μ     = 1e3
         #l    = similar(a)
@@ -396,7 +396,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 1e5 # eller?
+        global ε = 1e5 # 2?
 
         # # # # # # # # #
         # Equillibrium  #
