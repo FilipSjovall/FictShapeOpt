@@ -220,10 +220,10 @@ function Optimize(dh)
         OptIter = 0
         true_iteration = 0
         global coord₀
-        v_hist         = zeros(200)
-        p_hist         = zeros(200)
-        g_hist         = zeros(200)
-        historia       = zeros(200,4)
+        v_hist         = zeros(1000)
+        p_hist         = zeros(1000)
+        g_hist         = zeros(1000)
+        historia       = zeros(1000,4)
         global T       = zeros(size(a))
         global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= -1.0
         global T[bcdof_top_o[bcdof_top_o .% 2 .==0]] .=  1.0
@@ -360,7 +360,7 @@ function Optimize(dh)
             global upp   = xmax
         end
 
-        if OptIter % 10 == 0 && OptIter < 30
+        if OptIter % 10 == 0 ## && OptIter < 30
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -376,7 +376,7 @@ function Optimize(dh)
             # test  #
             # # # # #
             global nloadsteps = 10
-            global μ = 1e4 # var μ = 1e4
+            global μ = 5e3 # μ = 1e4
 
             # # # # # # # # # # # # # #
             # Fictitious equillibrium #
@@ -424,9 +424,6 @@ function Optimize(dh)
         #g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
         #∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
         #∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
-
-        # Max/Min λ
-        #p = 2
         #X_ordered = getXfromCoord(coord)
         #g₂         = -contact_pnorm_s(X_ordered, a, ε, p)
         #∂g₂_∂x     = -ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
@@ -492,9 +489,10 @@ function Optimize(dh)
             coord = getCoord(getX(dh0), dh0)
             postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
             postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
+            postprocess_opt(∂g_∂d,dh,"results/🛸" * string(true_iteration))
         end
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration] , p_hist[1:true_iteration])
-        p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100,p_hist[1:true_iteration],g_hist[1:true_iteration]],label = ["Volume Constraint" "Uniform pressure Constraint" "Objective"])
+        p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100,g_hist[1:true_iteration]],label = ["Volume Constraint" "Objective"], marker = :circle)
         display(p2)
     end
     return g_hist, v_hist, OptIter, traction, historia

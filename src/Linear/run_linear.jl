@@ -794,7 +794,7 @@ function fictitious_solver_with_contact_half(d, dh0, coord₀, nloadsteps)
         # # # # # # # # # #
         while residual > TOL || iter < 2
             iter += 1
-            if iter % 10 == 0 || norm(res) > 1e2 #&& Δλ > 1/16
+            if iter % 10 == 0 || norm(res) > 1e2 && Δλ > ((1.0 / nloadsteps) * 1/16)
                 Ψ = Ψ_old
                 #if Δλ > 0.1 * 1/8
                 global λ -= Δλ #* loadstep
