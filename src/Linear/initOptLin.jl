@@ -12,7 +12,7 @@ mp    = [175 80.769230769230759]
 t = 1.0
 # Optimization parameters
 #global m             = 2;
-global m = 1;
+global m             = 1;
 global n_mma         = length(d);
 global epsimin       = 0.0000001;
 global xvalue        = d[:];
@@ -42,14 +42,18 @@ global change        = 1;
 #global xmin[register[collect(nₘ),1]] .= -.0
 #global xmax[register[collect(nₘ),1]] .=  .0
 
-global xmax .=  0.1
-global xmin .= -0.1
+global xmax .=  0.2
+global xmin .= -0.2
 
-global xmin[1:2:end-1] .= -0.01
-global xmax[1:2:end-1] .=  0.01
+#global xmin[1:2:end-1] .= -0.01
+#global xmax[1:2:end-1] .=  0.01
 
-global xmax[register[collect(nₘ),2]] .=  .5
-global xmin[register[collect(nₘ),2]] .= -.5
+
+
+# global xmax[register[collect(nₘ), 1]].=   .5
+# global xmin[register[collect(nₘ), 1]].=  -.5
+# global xmax[register[collect(nₘ), 2]] .=  .5
+# global xmin[register[collect(nₘ), 2]] .= -.5
 
 global low           = -ones(n_mma);
 global upp           =  ones(n_mma);

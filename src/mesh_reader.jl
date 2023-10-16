@@ -443,7 +443,7 @@ function createHalfCircleMesh(filename, x₀, y₀, r, h)
     gmsh.option.set_number("General.Verbosity", 2)
 
 
-    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, 8h)
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
     p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h)
     p3 = gmsh.model.geo.add_point(x₀, y₀ - r, 0.0, h)
 

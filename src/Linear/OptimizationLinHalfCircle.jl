@@ -22,10 +22,12 @@ fv = FaceVectorValues(qr_face, ip)
 # Create two grids
 case  = "box"
 r₀    = 0.5
-h     = 0.015
+h     = 0.03
 Δx    = 0.5
+y₀    = 0.5
+Δy    = 0.501 #1.001
 grid1 = createHalfCircleMesh("circle", 0.0, 1.5, r₀, h)
-grid2 = createBoxMeshRev("box_1",  0.0, 0.0, Δx, 1.001, h)
+grid2 = createBoxMeshRev("box_1",  0.0, y₀, Δx, Δy, h)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -107,10 +109,10 @@ global n_top = getnodeset(dh.grid, "n_top")
 
 if case == "box"
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
-    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
+    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ y₀)
     global Γ_bot = getnodeset(dh.grid, "Γ_bot")
 
-    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.0)
+    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ y₀)
     global n_bot = getnodeset(dh.grid, "n_bot")
 else
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
@@ -209,7 +211,7 @@ function Optimize(dh)
         global λψ    = similar(a)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
-        Vₘₐₓ         = 0.9 #1.1 * volume(dh, coord, enod)
+        Vₘₐₓ         = 0.75 #0.9 #1.1 * volume(dh, coord, enod)
        # global ε     = 1e6
        # global μ     = 1e3
         #l    = similar(a)
@@ -221,7 +223,7 @@ function Optimize(dh)
         v_hist         = zeros(200)
         p_hist         = zeros(200)
         g_hist         = zeros(200)
-        historia = zeros(200,4)
+        historia       = zeros(200,4)
         global T       = zeros(size(a))
         global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= -1.0
         global T[bcdof_top_o[bcdof_top_o .% 2 .==0]] .=  1.0
@@ -358,7 +360,7 @@ function Optimize(dh)
             global upp   = xmax
         end
 
-        if OptIter % 10 == 0
+        if OptIter % 10 == 0 && OptIter < 30
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
