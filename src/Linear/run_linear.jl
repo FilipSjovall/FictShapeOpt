@@ -741,8 +741,7 @@ function fictitious_solver_with_contact_half(d, dh0, coord₀, nloadsteps)
     #  ----- #
     # Init   #
     #  ----- #
-    global Kψ = create_sparsity_pattern(dh0)
-    global Ψ = zeros(dh0.ndofs.x)
+    #global Kψ = create_sparsity_pattern(dh0)
     global FΨ = zeros(dh0.ndofs.x)
     global Fₑₓₜ = zeros(dh0.ndofs.x)
     global Ψ = zeros(dh0.ndofs.x)
@@ -759,16 +758,12 @@ function fictitious_solver_with_contact_half(d, dh0, coord₀, nloadsteps)
     global bcdof_o2 = bcdof_o2[ϵᵢⱼₖ]
     global bcval_o2 = bcdof_o2 .* 0.0
 
-    # Struct - problem {dh0,bcs,mp}
-
-    global pdofs = bcdof
-    global fdofs = setdiff(1:ndof, pdofs)
-
     # ---------- #
     # Set params # // Kanske som input till solver???
     # ---------- #
 
     bcval₀_o2 = bcval_o2
+    n₀ = nloadsteps
     Δλ = (1.0 / nloadsteps)
     #Δλ₀ = Δλ
 
@@ -794,7 +789,7 @@ function fictitious_solver_with_contact_half(d, dh0, coord₀, nloadsteps)
         # # # # # # # # # #
         while residual > TOL || iter < 2
             iter += 1
-            if iter % 10 == 0 || norm(res) > 1e2 && Δλ > ((1.0 / nloadsteps) * 1/16)
+            if iter % 10 == 0 || norm(res) > 1e2 && Δλ > ((1.0 / n₀) * 1/16)
                 Ψ = Ψ_old
                 #if Δλ > 0.1 * 1/8
                 global λ -= Δλ #* loadstep
@@ -820,7 +815,7 @@ function fictitious_solver_with_contact_half(d, dh0, coord₀, nloadsteps)
             Ψ[bcdof_o2] = bcval_o2
             if loadstep < 40
                 postprocess_opt(Ψ, dh0, "results/fictitious" * string(loadstep))
-                #postprocess_opt(Ψ, dh0, "fictitious" * string(iter))
+                #postprocess_opt(Ψ, dh0, "results/fictitious" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
         end
@@ -854,7 +849,7 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
     global a = zeros(dh.ndofs.x)
     global Δa = zeros(dh.ndofs.x)
     global res = zeros(dh.ndofs.x)
-    global K = create_sparsity_pattern(dh)
+    #global K = create_sparsity_pattern(dh)
     # ---------- #
     # Set BCS    #
     # ---------- #
@@ -914,6 +909,12 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
             res[bcdofs] = 0 * res[bcdofs]
             residual = norm(res, 2)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdofs[2]]
+            σx, σy = StressExtract(dh, a, mp)
+            vtk_grid("contact" * string(iter), dh) do vtkfile
+                vtk_point_data(vtkfile, dh, a) # displacement field
+                vtk_point_data(vtkfile, σx, "σx")
+                vtk_point_data(vtkfile, σy, "σy")
+            end
         end
         if loadstep == 10
             # Plot traction , can be moved to function...
