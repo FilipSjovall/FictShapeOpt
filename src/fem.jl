@@ -31,7 +31,7 @@ function solveq!(x,K,f,bcdofs_in,bcval_in)
 
     # Naive attempt
     x[pdofs_in] = bcval_in
-
+    prob = nothing # ?
 end
 
 function externalForce!(F_ext,r,F_int,F)

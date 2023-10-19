@@ -158,6 +158,10 @@ for jnod in n_robin
 end
 global locked_d = setdiff(1:dh.ndofs.x,free_d)
 
+# ------------------ #
+# To test asymptotes #
+# ------------------ #
+global asy_counter = []
 
 function Optimize(dh)
         #
@@ -235,7 +239,7 @@ function Optimize(dh)
         global λψ      = similar(a)
         global λᵤ      = similar(a)
         global λᵥₒₗ   = similar(a)
-        Vₘₐₓ          = 0.5 #0.9 #1.1 * volume(dh, coord, enod)
+        Vₘₐₓ          = 0.75 #0.9 #1.1 * volume(dh, coord, enod)
         tol            = 1e-6
         OptIter        = 0
         true_iteration = 0
@@ -360,6 +364,7 @@ function Optimize(dh)
         xold1  = d
         d      = d_new
         change = norm(d .- xold1)
+        kktnorm = change
 
         # # # # # # # # # #
         # Postprocessing  #
@@ -368,9 +373,7 @@ function Optimize(dh)
         p_hist[true_iteration] = g₂
         g_hist[true_iteration] = g
 
-        #The residual vector of the KKT conditions is calculated:
-        #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
-        kktnorm = change
+        # Print results
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
         if mod(OptIter,1) == 0
             coord = getCoord(getX(dh0), dh0)
@@ -382,10 +385,6 @@ function Optimize(dh)
         p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100,g_hist[1:true_iteration]],label = ["Volume Constraint" "Objective"], marker = :circle)
         display(p2)
         GC.gc()
-        # if mod(OptIter,10) == 0
-        #     var_names = names(Main, all = true)
-        #     @save "resultmat.jld2" var_names
-        # end
     end
     return g_hist, v_hist, OptIter, historia
 end

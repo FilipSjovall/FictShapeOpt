@@ -85,13 +85,11 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   epsimin = 10^(-7);
   raa0 = 0.00001;
 
-  move = 0.1;# "standard"
+  move = 0.1;#
   #move = 0.5;# "standard"
   #move = 1.0;
 
   albefa = 0.1;
-
-  #asyinit = 0.5;# FOR COMPLIANT
   asyinit = 0.5;
 
   asyincr = 1.2;
@@ -163,7 +161,6 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   #Q = max.(-dfdx',0.0);
   P = max.(dfdx, 0.0)
   Q = max.(-dfdx, 0.0)
-  #@show size(P) size(Q) size(raa0) size(eeem) size(xmamiinv)
   PQ = 0.001*(P + Q) + raa0*eeem*xmamiinv';
   P = P + PQ;
   Q = Q + PQ;
@@ -177,6 +174,12 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   #
   ### Solving the subproblem by a primal-dual Newton method
   xmma,ymma,zmma,lam,xsi,eta,mu,zet,s = subsolv(m,n,epsimin,low,upp,alfa,beta,p0,q0,P,Q,a0,a,b,c,d);
+  #
+  # Check asymptotes
+  #
+    #append!(asy_counter, length(findall(zzz .< 0)))
+    append!(asy_counter, findall(zzz .< 0))
+  #
   return xmma,ymma,zmma,lam,xsi,eta,mu,zet,s,low,upp
 end
 

@@ -56,6 +56,6 @@ global xmin .= -0.2
 # global xmax[register[collect(nₘ), 2]] .=  .5
 # global xmin[register[collect(nₘ), 2]] .= -.5
 
-global low           = -ones(n_mma);
-global upp           =  ones(n_mma);
+global low           = -xmin;
+global upp           =  xmax;
 #
