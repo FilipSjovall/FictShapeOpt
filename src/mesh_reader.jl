@@ -444,7 +444,7 @@ function createHalfCircleMesh(filename, x₀, y₀, r, h)
 
 
     p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
-    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h/2)
     p3 = gmsh.model.geo.add_point(x₀, y₀ - r, 0.0, h)
 
     # Add lines

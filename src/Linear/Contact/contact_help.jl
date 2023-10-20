@@ -17,6 +17,7 @@ function create_contact_list(dh,Γs,Γm, coord_dual)
        push!(slave_elements,face_el => [face_nods[1],face_nods[2]])
        push!(element_types, face_el => :Seg2)
     end
+
     for face in  Γm
        i        += 1
        face_el   = face[1]
