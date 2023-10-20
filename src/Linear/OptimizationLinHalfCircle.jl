@@ -161,7 +161,7 @@ global locked_d = setdiff(1:dh.ndofs.x,free_d)
 # ------------------ #
 # To test asymptotes #
 # ------------------ #
-global asy_counter = zeros(length(d),400)
+global asy_counter = zeros(dh.ndofs.x,400)
 
 function Optimize(dh)
         #
@@ -175,7 +175,6 @@ function Optimize(dh)
         global Ψ    = zeros(dh.ndofs.x)
         global Fᵢₙₜ= zeros(dh.ndofs.x)
         global Fₑₓₜ= zeros(dh.ndofs.x)
-
         # boundary conditions for contact analysis
         bcdof_top_o, _    = setBCY(-0.01, dh, Γ_top)
         bcdof_bot_o, _    = setBCY(0.0, dh, Γ_bot)

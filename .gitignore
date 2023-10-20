@@ -4,5 +4,7 @@ products/
 
 *.dat
 
+*.vtu
+
 results/
 
