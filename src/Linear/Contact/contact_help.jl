@@ -252,7 +252,7 @@ end
 
 function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}, a_f::AbstractVector{T3}, ε::Number) where {T1,T2,T3}
 
-    a_total  = similar(X)
+    a_total                = similar(X)
 
     a_total[contact_dofs]  = a_c
 

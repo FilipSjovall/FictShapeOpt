@@ -22,7 +22,7 @@ fv      = FaceVectorValues(qr_face, ip)
 # Create two grids
 case    = "box"
 r₀      = 0.5
-h       = 0.03
+h       = 0.1
 Δx      = 0.5
 y₀      = 0.5
 Δy      = 0.501 #1.001
@@ -256,6 +256,9 @@ function Optimize(dh)
         # # # # # # # # # # # # # #
     #
     while kktnorm > tol || OptIter < 200
+        if OptIter == 3
+            break
+        end
         # # # # # # # # # # # # # #
         OptIter += 1
         true_iteration +=1
@@ -273,7 +276,7 @@ function Optimize(dh)
             # # # # #
             # test  #
             # # # # #
-            global nloadsteps = 20
+            global nloadsteps = 5
             # 1e5 för h=0.015
             # 5e3 för h=0.03
             # 1e4 standard
@@ -295,7 +298,7 @@ function Optimize(dh)
         # # # # #
         # test  #
         # # # # #
-        global nloadsteps = 10
+        global nloadsteps = 5
         global ε = 1e5 # 2?
 
         # # # # # # # # #
@@ -383,13 +386,17 @@ function Optimize(dh)
         p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100,g_hist[1:true_iteration]],label = ["Volume Constraint" "Objective"], marker = :circle)
         display(p2)
         GC.gc()
+        #Profile.take_heap_snapshot( "snapshot.heapsnapshot" * string(true_iteration) )
     end
     return g_hist, v_hist, OptIter, historia
 end
 
-
-g_hist, v_hist, OptIter, historia = Optimize(dh)
-
+using PProf
+using Profile
+#@time g_hist, v_hist, OptIter, historia = Optimize(dh)
+Profile.Allocs.clear()
+@time Profile.Allocs.@profile sample_rate=0.01 Optimize(dh)
+PProf.Allocs.pprof(from_c = false)
 
 # Get a list of all variables in the current workspace
 # var_names = names(Main, all = true)
