@@ -19,12 +19,12 @@ include("..//mma.jl")
 xl = 0.0
 yl = 0.0
 xr = -.75
-yr = 1.35
+yr = 1.1
 Δx = 1.25
 Δy = 0.8
 th = 0.25
-r1 = 0.05
-r2 = 0.05
+r1 = 0.1
+r2 = 0.1
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -36,7 +36,7 @@ fv      = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1    = createLMesh("mesh_1", xl, yl, Δx, Δy, th, r1, r2, 0.05);
+grid1    = createLMesh("mesh_1", xl, yl, Δx, Δy, th/2, r1, r2, 0.05);
 Γ_1      = getBoundarySet(grid1);
 grid2    = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, 0.05);
 Γ_2      = getBoundarySet(grid2);
@@ -88,6 +88,7 @@ addfaceset!(dh.grid, "Γ_right", x -> x[1] ≈ xl + Δx)
 #
 addnodeset!(dh.grid, "n_right", x -> x[1] ≈ xl + Δx)
 n_right = getnodeset(dh.grid, "n_right")
+
 # -------------------------------------------- #
 # Displacement bc boundary u(x) = 0 ∀ x ∈ Γ_0 #
 # ------------------------------------------- #
@@ -181,7 +182,7 @@ global ∂g₂_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g₂_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ     = similar(a)
 global λψ     = similar(a)
-global Δ = 0.05
+global Δ      = 0.05
 global nloadsteps = 10
 # # # # # # # # # # # # # # # #
 # Init optimization variables #
@@ -194,18 +195,20 @@ bcdof_left, _    = setBCXY_X(0.0, dh, n_left)
 bcdof_right, _   = setBCXY_X(0.0, dh, n_right)
 bcdof_bot, _     = setBCY(0.0, dh, n_bot)
 bcdof_top, _     = setBCY(0.0, dh, n_top)
-bcdof_bot, _     = Vector{Int64}(), Vector{Float64}()
+#bcdof_bot, _     = Vector{Int64}(), Vector{Float64}()
 bcdof_top, _     = Vector{Int64}(), Vector{Float64}()
 bcdofs_opt       = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
 ϵᵢⱼₖ            = sortperm(bcdofs_opt)
 global bcdofs_opt= bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt = bcdofs_opt .* 0.0
 
+
+global asy_counter = zeros(dh.ndofs.x, 400)
 # -------------------- #
 # Optimization program #
 # -------------------- #
 function Optimize(dh)
-    # Flytta allt nedan till init_opt?
+        # Flytta allt nedan till init_opt?
         global dh0     = deepcopy(dh)
         global λψ      = similar(a)
         global λᵤ      = similar(a)
@@ -213,17 +216,18 @@ function Optimize(dh)
         Vₘₐₓ          = 0.9  #
         tol            = 1e-3
         OptIter        = 0
-        true_iteration = 0
+        global true_iteration = 0
         global coord₀
         v_hist         = zeros(1000)
         g_hist         = zeros(1000)
         historia       = zeros(200,4)
         global T       = zeros(size(a))
-        global T[bcdof_left[isodd.(bcdof_left)]] .= 1.0
+        global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
+        global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
         g₁             = 0.0
         g₂             = 0.0
     #
-    while kktnorm > tol || OptIter < 10
+    while kktnorm > tol || OptIter < 2
 
             global d
             global Ψ
@@ -273,9 +277,9 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ          = 1e4 # var μ = 1e4
+        global μ          = 1e5 # var μ = 1e4
 
-        if OptIter % 10 == 0 && g₁ < 0
+        if OptIter % 10 == 0 #&& g₁ < 0
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -359,7 +363,7 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g.*100, ∂g_∂d.*100, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g.*100, ∂g_∂d.*100, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .* 100, ∂g_∂d .* 100, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
@@ -376,19 +380,13 @@ function Optimize(dh)
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
         kktnorm = change
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
-        #if mod(OptIter,1) == 0
-            #coord = getCoord(getX(dh0), dh0)
         postprocess_opt(Ψ, dh0, "results/Current design"   * string(true_iteration))
         postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
-        #end
-
+        postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
-
-
         # append?
         p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100, g_hist[1:true_iteration]].*100,label = ["Volume Constraint" "Objective"])
         display(p2)
-
     end
     #jld2save("färdig.jld2",a,dh,dh0,Opiter,v_hist,g_hist,d)
     return g_hist, v_hist, OptIter, traction, historia
@@ -410,4 +408,4 @@ function main()
 end
 
 main
-=#
+postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))=#

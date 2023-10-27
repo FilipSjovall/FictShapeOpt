@@ -556,7 +556,7 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
         # # # # # # # # # #
         while residual > TOL || iter < 2
             iter += 1
-            if iter % 20 == 0 || norm(res) > 1e2 #&& Δλ > 1/16
+            if iter % 10 == 0 || norm(res) > 1e2 #&& Δλ > 1/16
                 Ψ = Ψ_old
                 if Δλ > 0.1 * 1 / 64
                     global λ -= Δλ #* loadstep
@@ -580,7 +580,8 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             residual        = norm(res, 2)
             Ψ[bcdofs_opt]  .= 0.0
             if loadstep < 40
-                postprocess_opt(Ψ + ΔΨ, dh0, "results/fictitious" * string(iter))
+                postprocess_opt(Ψ, dh0, "results/fictitious" * string(loadstep))
+                #postprocess_opt(Ψ, dh0, "results/fictitious" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
         end
@@ -615,8 +616,8 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
     #  Init  #
     # ------ #
     global Fᵢₙₜ = zeros(dh.ndofs.x)
-    global rc = zeros(dh.ndofs.x)
-    global Fₑₓₜ = zeros(dh.ndofs.x)
+    global rc    = zeros(dh.ndofs.x)
+    global Fₑₓₜ  = zeros(dh.ndofs.x)
     global a     = zeros(dh.ndofs.x)
     global Δa    = zeros(dh.ndofs.x)
     global res   = zeros(dh.ndofs.x)
@@ -627,12 +628,12 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
     # ------------------- #
     #bcdof_left, bcvals_left    = setBCXY_both(0.0, dh, n_left)
     #bcdof_right, bcvals_right  = setBCXY_both(Δ/nloadsteps, dh, n_right)
-    bcdof_left, bcval_left     = setBCXY_X(-Δ / nloadsteps, dh, n_left)
-    bcdof_right, bcval_right   = setBCXY_X( Δ / nloadsteps, dh, n_right)
+    bcdof_left, bcval_left     = setBCXY_X( -Δ / nloadsteps, dh, n_left)
+    bcdof_right, bcval_right   = setBCXY_X(  Δ / nloadsteps, dh, n_right)
     bcdof_bot, bcval_bot       = setBCY(0.0, dh, n_bot)
     bcdof_top, bcval_top       = setBCY(0.0, dh, n_top)
 
-    bcdof_bot, bcval_bot       = Vector{Int64}(), Vector{Float64}()
+    #bcdof_bot, bcval_bot       = Vector{Int64}(), Vector{Float64}()
     bcdof_top, bcval_top       = Vector{Int64}(), Vector{Float64}()
 
     bcdofs                     = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top]
@@ -652,7 +653,7 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
     loadstep = 0
     while loadstep < nloadsteps
         loadstep += 1
-        global ε = ε * 1.1
+        #global ε = ε * 1.1
         ##
         res = res .* 0
         bcvals = bcval₀

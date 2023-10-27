@@ -1297,13 +1297,13 @@ function createLMesh(filename,x₀,y₀,Δx,Δy,t,r1,r2,h)
     p2 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, h)
     p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + t, 0.0, h)
 
-    p4 = gmsh.model.geo.add_point(x₀ + t + r1, y₀ + t, 0.0, h)
-    p5 = gmsh.model.geo.add_point(x₀ + t  + r1, y₀ + t + r1 , 0.0, h)
-    p6 = gmsh.model.geo.add_point(x₀ + t , y₀ + t + r1, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀ + 2t + r1, y₀ + t, 0.0, h)
+    p5 = gmsh.model.geo.add_point(x₀ + 2t  + r1, y₀ + t + r1 , 0.0, h)
+    p6 = gmsh.model.geo.add_point(x₀ + 2t , y₀ + t + r1, 0.0, h)
 
-    p7 = gmsh.model.geo.add_point(x₀ + t, y₀ + Δy - r2, 0.0, h)
-    p8 = gmsh.model.geo.add_point(x₀ + t - r2 , y₀ + Δy - r2, 0.0 , h)
-    p9 = gmsh.model.geo.add_point(x₀ + t - r2, y₀ + Δy, 0.0, h)
+    p7 = gmsh.model.geo.add_point(x₀ + 2t, y₀ + Δy - r2, 0.0, h)
+    p8 = gmsh.model.geo.add_point(x₀ + 2t - r2 , y₀ + Δy - r2, 0.0 , h)
+    p9 = gmsh.model.geo.add_point(x₀ + 2t - r2, y₀ + Δy, 0.0, h)
 
     p10= gmsh.model.geo.add_point(x₀ + r2, y₀ + Δy, 0.0, h)
     p11= gmsh.model.geo.add_point(x₀ + r2, y₀ + Δy - r2, 0.0, h)
@@ -1330,10 +1330,9 @@ function createLMesh(filename,x₀,y₀,Δx,Δy,t,r1,r2,h)
 
     gmsh.model.geo.synchronize()
 
+    gmsh.model.add_physical_group(1, [l5, l6], -1, "hej")
     #gmsh.model.add_physical_group(1, [l4, l5, l6], -1, "hej")
     #gmsh.model.add_physical_group(1, [l3, l4, l5, l6, l7, l8], -1, "hej")
-    gmsh.model.add_physical_group(1, [l4, l5, l6, l7], -1, "hej")
-    #gmsh.model.add_physical_group(1, [l5], -1, "hej")
     gmsh.model.add_physical_group(2, [surf], -1, "då")
 
     gmsh.model.mesh.generate(2)
@@ -1395,8 +1394,8 @@ function createLMeshRev(filename, x₀, y₀, Δx, Δy, t, r1, r2, h)
     gmsh.model.geo.synchronize()
 
     #gmsh.model.add_physical_group(1, [l3, l4, l5], -1, "hej")
+    gmsh.model.add_physical_group(1, [l4, l5], -1, "hej")
     #gmsh.model.add_physical_group(1, [l2, l3, l4, l5, l6, l7], -1, "hej")
-    gmsh.model.add_physical_group(1, [l3, l4, l5, l6], -1, "hej")
 
     gmsh.model.add_physical_group(2, [surf], -1, "Γr")
 

@@ -256,9 +256,6 @@ function Optimize(dh)
         # # # # # # # # # # # # # #
     #
     while kktnorm > tol || OptIter < 200
-        if OptIter == 3
-            break
-        end
         # # # # # # # # # # # # # #
         OptIter += 1
         true_iteration +=1
@@ -276,7 +273,7 @@ function Optimize(dh)
             # # # # #
             # test  #
             # # # # #
-            global nloadsteps = 5
+            global nloadsteps = 20
             # 1e5 för h=0.015
             # 5e3 för h=0.03
             # 1e4 standard
@@ -298,7 +295,7 @@ function Optimize(dh)
         # # # # #
         # test  #
         # # # # #
-        global nloadsteps = 5
+        global nloadsteps = 10
         global ε = 1e5 # 2?
 
         # # # # # # # # #
@@ -376,12 +373,12 @@ function Optimize(dh)
 
         # Print results
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
-        if mod(OptIter,1) == 0
-            coord = getCoord(getX(dh0), dh0)
+        #if mod(OptIter,1) == 0
+            #coord = getCoord(getX(dh0), dh0)
             postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
             postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
             postprocess_opt(∂g_∂d,dh,"results/🛸" * string(true_iteration))
-        end
+        #end
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration] , p_hist[1:true_iteration])
         p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100,g_hist[1:true_iteration]],label = ["Volume Constraint" "Objective"], marker = :circle)
         display(p2)
@@ -391,21 +388,11 @@ function Optimize(dh)
     return g_hist, v_hist, OptIter, historia
 end
 
-using PProf
-using Profile
-#@time g_hist, v_hist, OptIter, historia = Optimize(dh)
-Profile.Allocs.clear()
-@time Profile.Allocs.@profile sample_rate=0.01 Optimize(dh)
-PProf.Allocs.pprof(from_c = false)
+g_hist, v_hist, OptIter, historia = Optimize(dh)
 
-# Get a list of all variables in the current workspace
-# var_names = names(Main, all = true)
-# # Try to save each variable one by one
-# for var_name in var_names
-#     try
-#         workspace_dict[var_name] = eval(var_name)
-#     catch e
-#         println("Error saving $var_name: $e")
-#     end
-# end
-# @save "minne_snart_slut.jld2" workspace_dict
+
+#using PProf
+#using Profile
+# Profile.Allocs.clear()
+# @time Profile.Allocs.@profile sample_rate=0.01 Optimize(dh)
+# PProf.Allocs.pprof(from_c = false)
