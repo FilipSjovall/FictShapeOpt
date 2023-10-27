@@ -18,13 +18,15 @@ include("..//mma.jl")
 # ------------------- #
 xl = 0.0
 yl = 0.0
-xr = -.75
-yr = 1.1
+xr = -.749
+yr = 1.11
 Δx = 1.25
 Δy = 0.8
 th = 0.25
-r1 = 0.1
+r1 = 0.05
 r2 = 0.1
+# grid size
+h = 0.025
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -36,11 +38,11 @@ fv      = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1    = createLMesh("mesh_1", xl, yl, Δx, Δy, th/2, r1, r2, 0.05);
+grid1    = createLMesh("mesh_1", xl, yl, Δx, Δy, th/2, r1, r2, h);
 Γ_1      = getBoundarySet(grid1);
-grid2    = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, 0.05);
+grid2    = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, h);
 Γ_2      = getBoundarySet(grid2);
-grid_tot = merge_grids(grid1, grid2; tol=1e-6);
+grid_tot = merge_grids(grid1, grid2; tol=1e-8);
 grid1    = nothing;
 grid2    = nothing;
 # ------------------------------------------- #
@@ -222,8 +224,10 @@ function Optimize(dh)
         g_hist         = zeros(1000)
         historia       = zeros(200,4)
         global T       = zeros(size(a))
-        global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
-        global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
+        global T[bcdof_left]  .=  1.0
+        #global T[bcdof_right] .= -1.0
+        # global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
+        # global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
         g₁             = 0.0
         g₂             = 0.0
     #
@@ -277,7 +281,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ          = 1e5 # var μ = 1e4
+        global μ          = 5e3 # var μ = 1e4
 
         if OptIter % 10 == 0 #&& g₁ < 0
             dh0 = deepcopy(dh)
@@ -306,7 +310,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε          = 1e4 # eller?
+        global ε          = 1e5 # eller?
 
         # # # # # # # # #
         # Equillibrium  #

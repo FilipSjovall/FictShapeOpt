@@ -584,6 +584,23 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
                 #postprocess_opt(Ψ, dh0, "results/fictitious" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
+
+            if loadstep < 40
+                # Plot traction , can be moved to function...
+                τ_c = ExtractContactTraction(Ψ, μ, coord₀)
+                traction = ExtractContactTraction(Ψ, μ, coord₀)
+                X_c = []
+                tract = []
+                for (key, val) ∈ traction
+                    append!(X_c, coord₀[key, 2])
+                    append!(tract, val)
+                end
+                ϵᵢⱼₖ = sortperm(X_c)
+                tract = tract[ϵᵢⱼₖ]
+                X_c = X_c[ϵᵢⱼₖ]
+                p = plot(tract, X_c, legend=false, marker=4, lc=:tomato, mc=:tomato)
+                display(p)
+            end
         end
     end
     return Ψ, dh0, Kψ, FΨ, λ
@@ -628,7 +645,7 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
     # ------------------- #
     #bcdof_left, bcvals_left    = setBCXY_both(0.0, dh, n_left)
     #bcdof_right, bcvals_right  = setBCXY_both(Δ/nloadsteps, dh, n_right)
-    bcdof_left, bcval_left     = setBCXY_X( -Δ / nloadsteps, dh, n_left)
+    bcdof_left, bcval_left     = setBCXY_X(0.0, dh, n_left)
     bcdof_right, bcval_right   = setBCXY_X(  Δ / nloadsteps, dh, n_right)
     bcdof_bot, bcval_bot       = setBCY(0.0, dh, n_bot)
     bcdof_top, bcval_top       = setBCY(0.0, dh, n_top)
@@ -697,29 +714,14 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_right[1]]
 
         end
-        σx, σy = StressExtract(dh, a, mp)
-        vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
-            vtk_point_data(vtkfile, dh, a) # displacement field
-            vtk_point_data(vtkfile, σx, "σx")
-            vtk_point_data(vtkfile, σy, "σy")
+        if loadstep < 40
+            σx, σy = StressExtract(dh, a, mp)
+            vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
+                vtk_point_data(vtkfile, dh, a) # displacement field
+                vtk_point_data(vtkfile, σx, "σx")
+                vtk_point_data(vtkfile, σy, "σy")
+            end
         end
-        # Plot traction , can be moved to function...
-        #=
-        τ_c = ExtractContactTraction(a, ε, coord)
-        traction = ExtractContactTraction(a, ε, coord)
-        X_c = []
-        tract = []
-        for (key, val) ∈ traction
-            append!(X_c, coord[key, 2])
-            append!(tract, val)
-        end
-        ϵᵢⱼₖ = sortperm(X_c)
-        tract = tract[ϵᵢⱼₖ]
-        X_c = X_c[ϵᵢⱼₖ]
-        p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
-        display(p)
-        fill!(Fₑₓₜ, 0.0)
-        =#
         Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
     end
     τ_c = ExtractContactTraction(a, ε, coord)
