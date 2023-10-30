@@ -18,15 +18,15 @@ include("..//mma.jl")
 # ------------------- #
 xl = 0.0
 yl = 0.0
-xr = -.749
-yr = 1.11
+xr = -0.75
+yr = 1.45
 Δx = 1.25
-Δy = 0.8
+Δy = 1.0
 th = 0.25
 r1 = 0.05
-r2 = 0.1
+r2 = 0.05
 # grid size
-h = 0.025
+h = 0.05
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -165,26 +165,26 @@ end
 #end
 
 # Initialize tangents
-global K      = create_sparsity_pattern(dh)
-global Kψ     = create_sparsity_pattern(dh)
-global a      = zeros(dh.ndofs.x)
-global d      = zeros(dh.ndofs.x)
-global Ψ      = zeros(dh.ndofs.x)
-global Fᵢₙₜ  = zeros(dh.ndofs.x)
-global rc     = zeros(dh.ndofs.x)
-global Fₑₓₜ  = zeros(dh.ndofs.x)
-global a      = zeros(dh.ndofs.x)
-global Δa     = zeros(dh.ndofs.x)
-global res    = zeros(dh.ndofs.x)
-global dr_dd  = similar(K)
-global ∂rψ_∂d = similar(K)
-global ∂g_∂x  = zeros(size(a)) # behövs inte om vi har lokal funktion?
-global ∂g_∂u  = zeros(size(d)) # behövs inte om vi har lokal funktion?
-global ∂g₂_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
-global ∂g₂_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
-global λᵤ     = similar(a)
-global λψ     = similar(a)
-global Δ      = 0.05
+global K          = create_sparsity_pattern(dh)
+global Kψ         = create_sparsity_pattern(dh)
+global a          = zeros(dh.ndofs.x)
+global d          = zeros(dh.ndofs.x)
+global Ψ          = zeros(dh.ndofs.x)
+global Fᵢₙₜ       = zeros(dh.ndofs.x)
+global rc         = zeros(dh.ndofs.x)
+global Fₑₓₜ       = zeros(dh.ndofs.x)
+global a          = zeros(dh.ndofs.x)
+global Δa         = zeros(dh.ndofs.x)
+global res        = zeros(dh.ndofs.x)
+global dr_dd      = similar(K)
+global ∂rψ_∂d     = similar(K)
+global ∂g_∂x      = zeros(size(a)) # behövs inte om vi har lokal funktion?
+global ∂g_∂u      = zeros(size(d)) # behövs inte om vi har lokal funktion?
+global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion?
+global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
+global λᵤ         = similar(a)
+global λψ         = similar(a)
+global Δ          = 0.05
 global nloadsteps = 10
 # # # # # # # # # # # # # # # #
 # Init optimization variables #
@@ -224,12 +224,11 @@ function Optimize(dh)
         g_hist         = zeros(1000)
         historia       = zeros(200,4)
         global T       = zeros(size(a))
-        global T[bcdof_left]  .=  1.0
+        #global T[bcdof_left]  .=  1.0
         #global T[bcdof_right] .= -1.0
-        # global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
-        # global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
-        g₁             = 0.0
-        g₂             = 0.0
+        global T[bcdof_left[isodd.(bcdof_left)]]   .= 1.0
+        global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
+        g₁ = 0.0
     #
     while kktnorm > tol || OptIter < 2
 
@@ -283,7 +282,7 @@ function Optimize(dh)
         global nloadsteps = 20
         global μ          = 5e3 # var μ = 1e4
 
-        if OptIter % 10 == 0 #&& g₁ < 0
+        if OptIter % 10 == 0 # OptIter % 5 == 0 #
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
