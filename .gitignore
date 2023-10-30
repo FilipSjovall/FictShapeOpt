@@ -5,6 +5,7 @@ products/
 *.dat
 
 *.vtu
+*.heapsnapshot*
 
 results/
 
