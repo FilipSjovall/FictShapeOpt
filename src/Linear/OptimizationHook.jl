@@ -11,19 +11,30 @@ include("..//fem.jl")
 include("run_linear.jl")
 include("sensitivitiesLin.jl")
 include("..//mma.jl")
-
+# # # # # # #
+# Geometry  #
+# # # # # # #
 xₗ = 0.0
 xᵤ = 0.5
 Δx = 1.0
 yₗ = 0.0
-yᵤ = 0.51
+yᵤ = 0.501
 Δy = 0.5
+# # # # # # # # # #
+# Finite element  #
+# # # # # # # # # #
+ip      = Lagrange{2,RefTetrahedron,1}()
+qr      = QuadratureRule{2,RefTetrahedron}(1)
+qr_face = QuadratureRule{1,RefTetrahedron}(1)
+cv      = CellVectorValues(qr, ip)
+fv      = FaceVectorValues(qr_face, ip)
+
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createBoxMeshRev("box_1", xₗ, yₗ, Δx, Δy, 0.05)
-grid2 = createBoxMeshRev("box_2", xᵤ, yᵤ, Δx, Δy, 0.05)
-grid_tot = merge_grids(grid1, grid2; tol=1e-6)
+grid1 = createBoxMeshRev("box_1", xₗ, yₗ, Δx, Δy, 0.071)
+grid2 = createBoxMeshRev("box_2", xᵤ, yᵤ, Δx, Δy, 0.07)
+grid_tot = merge_grids(grid1, grid2; tol=1e-8)
 grid1 = nothing
 grid2 = nothing
 # Create dofhandler with displacement field u
@@ -156,7 +167,7 @@ global λψ = similar(a)
 
 global Δ = -0.15
 global nloadsteps = 10
-
+global asy_counter = zeros(dh.ndofs.x, 400)
 include("initOptLinHook.jl")
 
 # ------------------- #
@@ -178,7 +189,7 @@ function Optimize(dh)
         Vₘₐₓ         = 1.2  #
         tol            = 1e-3
         OptIter        = 0
-        true_iteration = 0
+        global true_iteration = 0
         global coord₀
         v_hist         = zeros(1000)
         g_hist         = zeros(1000)
@@ -241,7 +252,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global μ = 1e4 # var μ = 1e4
+        global μ = 1e3 # var μ = 1e4
 
         if OptIter % 25 == 0 && g₁ < 0
             dh0 = deepcopy(dh)
@@ -288,9 +299,14 @@ function Optimize(dh)
         # Objective #
         # # # # # # #
         # Max reaction force
-        g     = - T' * Fᵢₙₜ
-        ∂g_∂x =  -T' * ∂rᵤ_∂x ## stämmer? innehåller kontaktkänslighet men dessa träffar bara kontaktdofs som inte är kopplade till bc.
-        ∂g_∂u =  -T' * K
+        g     = -T' * Fᵢₙₜ
+        ∂g_∂x = -T' * ∂rᵤ_∂x ## stämmer? innehåller kontaktkänslighet men dessa träffar bara kontaktdofs som inte är kopplade till bc.
+        ∂g_∂u = -T' * K
+        # Compliance
+        # g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
+        # ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
+        # ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
+
         # # # # # # #
         # Adjoints  #
         # # # # # # #
@@ -313,7 +329,8 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g , ∂g_∂d , g₁, ∂Ω∂d, low, upp, a0, am, C, d2)
+        #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g , ∂g_∂d , g₁, ∂Ω∂d, low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g.*100, ∂g_∂d.*100, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
         xold2  = xold1
         xold1  = d
         d      = d_new

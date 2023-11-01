@@ -26,7 +26,7 @@ th = 0.25
 r1 = 0.05
 r2 = 0.05
 # grid size
-h = 0.05
+h = 0.026
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -38,7 +38,7 @@ fv      = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1    = createLMesh("mesh_1", xl, yl, Δx, Δy, th/2, r1, r2, h);
+grid1    = createLMesh("mesh_1", xl, yl, Δx, Δy, th, r1, r2, h);
 Γ_1      = getBoundarySet(grid1);
 grid2    = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, h);
 Γ_2      = getBoundarySet(grid2);
@@ -119,6 +119,7 @@ n_top = getnodeset(dh.grid, "n_top")
 # ----------------- #
 # Design boundaries #
 # ----------------- #
+#Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γm, Γs))
 #Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γ_bot, Γ_top))
 Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right))
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
@@ -184,7 +185,7 @@ global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion
 global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ         = similar(a)
 global λψ         = similar(a)
-global Δ          = 0.05
+global Δ          = 0.05/2
 global nloadsteps = 10
 # # # # # # # # # # # # # # # #
 # Init optimization variables #
@@ -215,7 +216,7 @@ function Optimize(dh)
         global λψ      = similar(a)
         global λᵤ      = similar(a)
         global λᵥₒₗ   = similar(a)
-        Vₘₐₓ          = 0.9  #
+        Vₘₐₓ          = 1.2  #
         tol            = 1e-3
         OptIter        = 0
         global true_iteration = 0
@@ -226,7 +227,7 @@ function Optimize(dh)
         global T       = zeros(size(a))
         #global T[bcdof_left]  .=  1.0
         #global T[bcdof_right] .= -1.0
-        global T[bcdof_left[isodd.(bcdof_left)]]   .= 1.0
+        #global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
         global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
         g₁ = 0.0
     #
@@ -280,9 +281,9 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ          = 5e3 # var μ = 1e4
+        global μ          = 1e4 # var μ = 1e4
 
-        if OptIter % 10 == 0 # OptIter % 5 == 0 #
+        if OptIter % 5 == 0 # OptIter % 5 == 0 #
             dh0 = deepcopy(dh)
             global d          = zeros(dh.ndofs.x)
             global xold1      = d[:]
@@ -309,7 +310,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε          = 1e5 # eller?
+        global ε          = 1e3 # eller?
 
         # # # # # # # # #
         # Equillibrium  #
@@ -330,6 +331,10 @@ function Optimize(dh)
         g     = -T' * Fᵢₙₜ
         ∂g_∂x = -T' * ∂rᵤ_∂x ## stämmer? innehåller kontaktkänslighet men dessa träffar bara kontaktdofs som inte är kopplade till bc.
         ∂g_∂u = -T' * K
+        # Compliance
+        # g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
+        # ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
+        # ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
 
         # # # # # # #
         # Adjoints  #
@@ -355,9 +360,9 @@ function Optimize(dh)
         # # # # # # # # # # # #
         #p = 2
         #X_ordered = getXfromCoord(coord)
-        #g₂ = contact_pnorm_s(X_ordered, a, ε, p) / 0.5 - 1.0
-        #∂g₂_∂x = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
-        #∂g₂_∂u = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
+        #g₂        = contact_pnorm_s(X_ordered, a, ε, p) / 0.5 - 1.0
+        #∂g₂_∂x    = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
+        #∂g₂_∂u    = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
 #
         #solveq!(λᵤ, K', ∂g₂_∂u, bcdofs_opt, bcval_opt)
         #solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt)
