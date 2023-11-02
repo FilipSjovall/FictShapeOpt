@@ -32,8 +32,8 @@ fv      = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createBoxMeshRev("box_1", xₗ, yₗ, Δx, Δy, 0.071)
-grid2 = createBoxMeshRev("box_2", xᵤ, yᵤ, Δx, Δy, 0.07)
+grid1 = createBoxMeshRev("box_1", xₗ, yₗ, Δx, Δy, 0.051)
+grid2 = createBoxMeshRev("box_2", xᵤ, yᵤ, Δx, Δy, 0.05)
 grid_tot = merge_grids(grid1, grid2; tol=1e-8)
 grid1 = nothing
 grid2 = nothing

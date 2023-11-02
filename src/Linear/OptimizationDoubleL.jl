@@ -18,33 +18,33 @@ include("..//mma.jl")
 # ------------------- #
 xl = 0.0
 yl = 0.0
-xr = -0.75
-yr = 1.45
+xr = -0.75 + 0.1 #+ 0.05
+yr = 1.51
 Δx = 1.25
 Δy = 1.0
-th = 0.25
+th = 0.3
 r1 = 0.05
-r2 = 0.05
+r2 = 0.1
 # grid size
-h = 0.026
+h = 0.1
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
-ip      = Lagrange{2,RefTetrahedron,1}()
-qr      = QuadratureRule{2,RefTetrahedron}(1)
-qr_face = QuadratureRule{1,RefTetrahedron}(1)
-cv      = CellVectorValues(qr, ip)
-fv      = FaceVectorValues(qr_face, ip)
+ip = Lagrange{2,RefTetrahedron,1}()
+qr = QuadratureRule{2,RefTetrahedron}(3)
+qr_face = QuadratureRule{1,RefTetrahedron}(2)
+cv = CellVectorValues(qr, ip)
+fv = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1    = createLMesh("mesh_1", xl, yl, Δx, Δy, th, r1, r2, h);
-Γ_1      = getBoundarySet(grid1);
-grid2    = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, h);
-Γ_2      = getBoundarySet(grid2);
+grid1 = createLMesh("mesh_1", xl, yl, Δx, Δy, th, r1, r2, h);
+Γ_1 = getBoundarySet(grid1);
+grid2 = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, h);
+Γ_2 = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);
-grid1    = nothing;
-grid2    = nothing;
+grid1 = nothing;
+grid2 = nothing;
 # ------------------------------------------- #
 # Create dofhandler with displacement field u #
 # ------------------------------------------- #
@@ -55,9 +55,9 @@ close!(dh);
 global coord, enod = getTopology(dh);
 global register = index_nod_to_grid(dh, coord);
 # Exrtact full boundary
-Γ_all   = Ferrite.__collect_boundary_faces(dh.grid);
-addfaceset!(dh.grid,"Γ_all", Γ_all);
-Γ_all  = getfaceset(dh.grid, "Γ_all");
+Γ_all = Ferrite.__collect_boundary_faces(dh.grid);
+addfaceset!(dh.grid, "Γ_all", Γ_all);
+Γ_all = getfaceset(dh.grid, "Γ_all");
 #
 n_all = getBoundarySet(dh.grid, Γ_all);
 addnodeset!(dh.grid, "n_all", n_all);
@@ -66,22 +66,22 @@ addnodeset!(dh.grid, "n_all", n_all);
 # ------ #
 # Master #
 # ------ #
-addfaceset!(dh.grid, "Γ_master", x -> x ∈ Γ_2 );
+addfaceset!(dh.grid, "Γ_master", x -> x ∈ Γ_2);
 Γm = getfaceset(dh.grid, "Γ_master");
-Γm =  intersect(Γm, Γ_all);
+Γm = intersect(Γm, Γ_all);
 #
-nₘ = getBoundarySet(dh.grid,Γm);
-addnodeset!(dh.grid,"nₘ" ,nₘ);
+nₘ = getBoundarySet(dh.grid, Γm);
+addnodeset!(dh.grid, "nₘ", nₘ);
 #
 # ----- #
 # Slave #
 # ----- #
-addfaceset!(dh.grid,"Γ_slave", x -> x ∈ Γ_1 );
+addfaceset!(dh.grid, "Γ_slave", x -> x ∈ Γ_1);
 Γs = getfaceset(dh.grid, "Γ_slave");
-Γs =  intersect(Γs, Γ_all);
+Γs = intersect(Γs, Γ_all);
 #
-nₛ = getBoundarySet(dh.grid,Γs)
-addnodeset!(dh.grid, "nₛ" ,nₛ)
+global nₛ = getBoundarySet(dh.grid, Γs)
+addnodeset!(dh.grid, "nₛ", nₛ)
 #
 # ---------------
 # Displacement bc boundary u(x) = Δ ∀ x ∈ Γ_Δ
@@ -94,10 +94,10 @@ n_right = getnodeset(dh.grid, "n_right")
 # -------------------------------------------- #
 # Displacement bc boundary u(x) = 0 ∀ x ∈ Γ_0 #
 # ------------------------------------------- #
-addfaceset!(dh.grid, "Γ_left", x -> x[1] ≈ xr )
+addfaceset!(dh.grid, "Γ_left", x -> x[1] ≈ xr)
 Γ_left = getfaceset(dh.grid, "Γ_left")
 #
-addnodeset!(dh.grid, "n_left", x -> x[1] ≈ xr )
+addnodeset!(dh.grid, "n_left", x -> x[1] ≈ xr)
 n_left = getnodeset(dh.grid, "n_left")
 # ------ #
 # bottom #
@@ -124,7 +124,7 @@ n_top = getnodeset(dh.grid, "n_top")
 Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right))
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
-n_robin = getBoundarySet(dh.grid,Γ_robin)
+n_robin = getBoundarySet(dh.grid, Γ_robin)
 addnodeset!(dh.grid, "n_robin", n_robin)
 # # # # # # # # # # # # #
 # Collect contact dofs  #
@@ -166,26 +166,26 @@ end
 #end
 
 # Initialize tangents
-global K          = create_sparsity_pattern(dh)
-global Kψ         = create_sparsity_pattern(dh)
-global a          = zeros(dh.ndofs.x)
-global d          = zeros(dh.ndofs.x)
-global Ψ          = zeros(dh.ndofs.x)
-global Fᵢₙₜ       = zeros(dh.ndofs.x)
-global rc         = zeros(dh.ndofs.x)
-global Fₑₓₜ       = zeros(dh.ndofs.x)
-global a          = zeros(dh.ndofs.x)
-global Δa         = zeros(dh.ndofs.x)
-global res        = zeros(dh.ndofs.x)
-global dr_dd      = similar(K)
-global ∂rψ_∂d     = similar(K)
-global ∂g_∂x      = zeros(size(a)) # behövs inte om vi har lokal funktion?
-global ∂g_∂u      = zeros(size(d)) # behövs inte om vi har lokal funktion?
-global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion?
-global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
-global λᵤ         = similar(a)
-global λψ         = similar(a)
-global Δ          = 0.05/2
+global K = create_sparsity_pattern(dh)
+global Kψ = create_sparsity_pattern(dh)
+global a = zeros(dh.ndofs.x)
+global d = zeros(dh.ndofs.x)
+global Ψ = zeros(dh.ndofs.x)
+global Fᵢₙₜ = zeros(dh.ndofs.x)
+global rc = zeros(dh.ndofs.x)
+global Fₑₓₜ = zeros(dh.ndofs.x)
+global a = zeros(dh.ndofs.x)
+global Δa = zeros(dh.ndofs.x)
+global res = zeros(dh.ndofs.x)
+global dr_dd = similar(K)
+global ∂rψ_∂d = similar(K)
+global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
+global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
+global ∂g₂_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
+global ∂g₂_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
+global λᵤ = similar(a)
+global λψ = similar(a)
+global Δ = 0.05
 global nloadsteps = 10
 # # # # # # # # # # # # # # # #
 # Init optimization variables #
@@ -194,15 +194,15 @@ include("initOptLinHook.jl")
 # ------------------- #
 # Boundary conditions #
 # ------------------- #
-bcdof_left, _    = setBCXY_X(0.0, dh, n_left)
-bcdof_right, _   = setBCXY_X(0.0, dh, n_right)
-bcdof_bot, _     = setBCY(0.0, dh, n_bot)
-bcdof_top, _     = setBCY(0.0, dh, n_top)
+bcdof_left, _ = setBCXY_X(0.0, dh, n_left)
+bcdof_right, _ = setBCXY_X(0.0, dh, n_right)
+bcdof_bot, _ = setBCY(0.0, dh, n_bot)
+bcdof_top, _ = setBCY(0.0, dh, n_top)
 #bcdof_bot, _     = Vector{Int64}(), Vector{Float64}()
-bcdof_top, _     = Vector{Int64}(), Vector{Float64}()
-bcdofs_opt       = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
-ϵᵢⱼₖ            = sortperm(bcdofs_opt)
-global bcdofs_opt= bcdofs_opt[ϵᵢⱼₖ]
+bcdof_top, _ = Vector{Int64}(), Vector{Float64}()
+bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
+ϵᵢⱼₖ = sortperm(bcdofs_opt)
+global bcdofs_opt = bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt = bcdofs_opt .* 0.0
 
 
@@ -211,98 +211,98 @@ global asy_counter = zeros(dh.ndofs.x, 400)
 # Optimization program #
 # -------------------- #
 function Optimize(dh)
-        # Flytta allt nedan till init_opt?
-        global dh0     = deepcopy(dh)
-        global λψ      = similar(a)
-        global λᵤ      = similar(a)
-        global λᵥₒₗ   = similar(a)
-        Vₘₐₓ          = 1.2  #
-        tol            = 1e-3
-        OptIter        = 0
-        global true_iteration = 0
-        global coord₀
-        v_hist         = zeros(1000)
-        g_hist         = zeros(1000)
-        historia       = zeros(200,4)
-        global T       = zeros(size(a))
-        #global T[bcdof_left]  .=  1.0
-        #global T[bcdof_right] .= -1.0
-        #global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
-        global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
-        g₁ = 0.0
+    # Flytta allt nedan till init_opt?
+    global dh0 = deepcopy(dh)
+    global λψ = similar(a)
+    global λᵤ = similar(a)
+    global λᵥₒₗ = similar(a)
+    Vₘₐₓ = 2.0  #
+    tol = 1e-3
+    OptIter = 0
+    global true_iteration = 0
+    global coord₀
+    v_hist = zeros(1000)
+    g_hist = zeros(1000)
+    historia = zeros(200, 4)
+    global T = zeros(size(a))
+    #global T[bcdof_left]  .=  1.0
+    #global T[bcdof_right] .= -1.0
+    #global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
+    global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
+    g₁ = 0.0
     #
     while kktnorm > tol || OptIter < 2
 
-            global d
-            global Ψ
-            global a
-            global Fₑₓₜ
-            global K
-            global Kψ
-            global ∂rᵤ_∂x
-            global dr_dd
-            global ∂rψ_∂d
-            global ∂g_∂d
-            global mp
-            global mp₀
-            global t
-            global m
-            global n
-            global epsimin
-            global xval
-            global xold1
-            global xold2
-            global xmin
-            global xmax
-            global low #A() = A(Float64[],[]).
-            global C
-            global d2
-            global a0
-            global outeriter
-            global am
-            global kkttol
-            global changetol
-            global kktnorm
-            global outit
-            global change
+        global d
+        global Ψ
+        global a
+        global Fₑₓₜ
+        global K
+        global Kψ
+        global ∂rᵤ_∂x
+        global dr_dd
+        global ∂rψ_∂d
+        global ∂g_∂d
+        global mp
+        global mp₀
+        global t
+        global m
+        global n
+        global epsimin
+        global xval
+        global xold1
+        global xold2
+        global xmin
+        global xmax
+        global low #A() = A(Float64[],[]).
+        global C
+        global d2
+        global a0
+        global outeriter
+        global am
+        global kkttol
+        global changetol
+        global kktnorm
+        global outit
+        global change
 
-            global g_ini
-            global pdofs    = bcdofs_opt
-            global fdofs    = setdiff(1:length(a), pdofs)
-            #global locked_d = setdiff(1:length(a),free_d)
-            global low
-            global upp
-            global traction
+        global g_ini
+        global pdofs = bcdofs_opt
+        global fdofs = setdiff(1:length(a), pdofs)
+        #global locked_d = setdiff(1:length(a),free_d)
+        global low
+        global upp
+        global traction
         # # # # # # # # # # # # # #
-        OptIter        += 1
+        OptIter += 1
         true_iteration += 1
 
         # # # # #
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ          = 1e4 # var μ = 1e4
+        global μ = 1e4 # var μ = 1e4
 
-        if OptIter % 5 == 0 # OptIter % 5 == 0 #
+        if OptIter % 10 == 0 # OptIter % 5 == 0 #
             dh0 = deepcopy(dh)
-            global d          = zeros(dh.ndofs.x)
-            global xold1      = d[:]
-            global xold2      = d[:]
-            global low        = xmin
-            global upp        = xmax
-            OptIter           = 1
+            global d = zeros(dh.ndofs.x)
+            global xold1 = d[:]
+            global xold2 = d[:]
+            global low = xmin
+            global upp = xmax
+            OptIter = 1
         end
 
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
-        global coord₀  = getCoord(getX(dh0), dh0) # x₀
+        global coord₀ = getCoord(getX(dh0), dh0) # x₀
         Ψ, _, Kψ, _, λ = fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
 
         # # # # # #
         # Filter  #
         # # # # # #
-        global dh    = deepcopy(dh0)
+        global dh = deepcopy(dh0)
         updateCoords!(dh, Ψ) # x₀ + Ψ = x
         global coord = getCoord(getX(dh), dh)
 
@@ -310,7 +310,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε          = 1e3 # eller?
+        global ε = 1e5 # eller?
 
         # # # # # # # # #
         # Equillibrium  #
@@ -322,14 +322,14 @@ function Optimize(dh)
         # # # # # # # # #
         ∂rᵤ_∂x = similar(K)
         ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
-        dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
+        dr_dd = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 
         # # # # # # #
         # Objective #
         # # # # # # #
         # Max reaction force
-        g     = -T' * Fᵢₙₜ
-        ∂g_∂x = -T' * ∂rᵤ_∂x ## stämmer? innehåller kontaktkänslighet men dessa träffar bara kontaktdofs som inte är kopplade till bc.
+        g = -T' * Fᵢₙₜ
+        ∂g_∂x = -T' * ∂rᵤ_∂x
         ∂g_∂u = -T' * K
         # Compliance
         # g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
@@ -339,21 +339,21 @@ function Optimize(dh)
         # # # # # # #
         # Adjoints  #
         # # # # # # #
-        solveq!(λᵤ, K',  ∂g_∂u, bcdofs_opt, bcval_opt)
+        solveq!(λᵤ, K', ∂g_∂u, bcdofs_opt, bcval_opt)
         solveq!(λψ, Kψ', ∂g_∂x' - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt)
 
         # # # # # # # # # # #
         # Full sensitivity  #
         # # # # # # # # # # #
-        ∂g_∂d            = (-transpose(λψ) * dr_dd)'
+        ∂g_∂d = (-transpose(λψ) * dr_dd)'
 
         # # # # # # # # # # #
         # Volume constraint #
         # # # # # # # # # # #
-        g₁    = volume(dh,coord,enod) / Vₘₐₓ - 1.0
-        ∂Ω_∂x = volume_sens(dh,coord)
-        solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt);
-        ∂Ω∂d  = Real.( -transpose(λᵥₒₗ)*dr_dd ./ Vₘₐₓ) ;
+        g₁ = volume(dh, coord, enod) / Vₘₐₓ - 1.0
+        ∂Ω_∂x = volume_sens(dh, coord)
+        solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
+        ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd ./ Vₘₐₓ)
 
         # # # # # # # # # # # #
         # Pressure constraint #
@@ -363,7 +363,7 @@ function Optimize(dh)
         #g₂        = contact_pnorm_s(X_ordered, a, ε, p) / 0.5 - 1.0
         #∂g₂_∂x    = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
         #∂g₂_∂u    = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
-#
+        #
         #solveq!(λᵤ, K', ∂g₂_∂u, bcdofs_opt, bcval_opt)
         #solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt)
         #∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' ./ 0.5)'
@@ -371,11 +371,11 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g.*100, ∂g_∂d.*100, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g .* 100, ∂g_∂d .* 100, g₁ .* 100, ∂Ω∂d .* 100, low, upp, a0, am, C, d2)
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .* 100, ∂g_∂d .* 100, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
-        xold2  = xold1
-        xold1  = d
-        d      = d_new
+        xold2 = xold1
+        xold1 = d
+        d = d_new
         change = norm(d .- xold1)
 
         # # # # # # # # # #
@@ -388,12 +388,12 @@ function Optimize(dh)
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
         kktnorm = change
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
-        postprocess_opt(Ψ, dh0, "results/Current design"   * string(true_iteration))
+        postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
         postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
         postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
         # append?
-        p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100, g_hist[1:true_iteration]].*100,label = ["Volume Constraint" "Objective"])
+        p2 = plot(1:true_iteration, [v_hist[1:true_iteration] .* 100, g_hist[1:true_iteration]] .* 100, label=["Volume Constraint" "Objective"])
         display(p2)
     end
     #jld2save("färdig.jld2",a,dh,dh0,Opiter,v_hist,g_hist,d)
@@ -414,6 +414,21 @@ function main()
     # ------------------ #
     Optimize(dh);
 end
+=#
 
-main
-postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))=#
+for face in Γm
+    @show Ferrite.faces(dh.grid.cells[face[1]])[face[2]]
+    @show sort(Ferrite.faces(dh.grid.cells[face[1]])[face[2]], rev=true)
+end
+
+for face in Γs
+    faces = Ferrite.faces(dh.grid.cells[face[1]])[face[2]]
+    nod1 = coord[faces[1],:]
+    nod2 = coord[faces[2],:]
+    mid = (nod1 + nod2) / 2
+
+    tangent = [nod2[1]-nod1[1],nod2[2]-nod1[2],0.]
+    normal = cross(tangent,[0.,0.,1.])
+    #quiver!([nod1[1], nod2[1]], [nod1[2], nod2[2]], quiver=([normal[1], normal[1]], [normal[2], normal[2]]), color=:blue, lw=5)
+    plot!([mid[1], mid[1] + normal[1]], [mid[2], mid[2] + normal[2]], legend=false, color=:red)
+end

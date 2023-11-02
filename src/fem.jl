@@ -15,7 +15,8 @@ function solveq!(x,K,f,bcdofs_in,bcval_in)
     #    UMFPACKFactorization(),
     #    KLUFactorization())
     #x[fdofs_in] = solve(prob, LUFactorization()).u
-    x[fdofs_in] = solve(prob, UMFPACKFactorization()).u
+    #x[fdofs_in] = solve(prob, UMFPACKFactorization()).u
+    x[fdofs_in] = solve(prob, KLUFactorization()).u
 
     # Algebraic multigrid
     #ml = ruge_stuben(K[fdofs_in,fdofs_in]) # Construct x Ruge-Stuben solver
