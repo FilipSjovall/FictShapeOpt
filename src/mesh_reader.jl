@@ -1344,11 +1344,10 @@ function createLMesh(filename,x₀,y₀,Δx,Δy,t,r1,r2,h)
 
     gmsh.model.geo.synchronize()
     # Funkar
-    #gmsh.model.add_physical_group(1, [l6, l5], -1, "hej")
+   # gmsh.model.add_physical_group(1, [l6], -1, "hej")
 
-    gmsh.model.add_physical_group(1, [l6, l5, l4], -1, "hej")
+    gmsh.model.add_physical_group(1, [l7, l6, l5, l4, l3], -1, "hej")
     #gmsh.model.add_physical_group(1, [l8, l7, l6, l5, l4, l3], -1, "hej")
-    #gmsh.model.add_physical_group(1, [l3, l4, l5, l6, l7, l8], -1, "hej")
     gmsh.model.add_physical_group(2, [surf], -1, "då")
 
     gmsh.model.mesh.generate(2)
@@ -1421,12 +1420,10 @@ function createLMeshRev(filename, x₀, y₀, Δx, Δy, t, r1, r2, h)
 
     gmsh.model.geo.synchronize()
     # Funkar
-    #gmsh.model.add_physical_group(1, [l4,l5], -1, "hej")
+    #gmsh.model.add_physical_group(1, [l4], -1, "hej")
 
-    gmsh.model.add_physical_group(1, [l4, l5, l6], -1, "hej")
+    gmsh.model.add_physical_group(1, [l3, l4, l5, l6, l7], -1, "hej")
 
-    #gmsh.model.add_physical_group(1, [l2, l3, l4, l5, l6, l7], -1, "hej")
-    #gmsh.model.add_physical_group(1, [l8, l7, l6], -1, "hej")
     #gmsh.model.add_physical_group(1, [l2, l3, l4, l5, l6, l7], -1, "hej")
 
     gmsh.model.add_physical_group(2, [surf], -1, "Γr")

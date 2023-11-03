@@ -18,15 +18,15 @@ include("..//mma.jl")
 # ------------------- #
 xl = 0.0
 yl = 0.0
-xr = -0.75 + 0.1 #+ 0.05
-yr = 1.51
+xr = -0.75 + 1.11 #+ 0.05
+yr = 1.36
 Δx = 1.25
 Δy = 1.0
 th = 0.3
-r1 = 0.05
-r2 = 0.1
+r1 = 0.025
+r2 = 0.05
 # grid size
-h = 0.1
+h = 0.055
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -227,8 +227,8 @@ function Optimize(dh)
     global T = zeros(size(a))
     #global T[bcdof_left]  .=  1.0
     #global T[bcdof_right] .= -1.0
-    #global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
-    global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
+    global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
+    #global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
     g₁ = 0.0
     #
     while kktnorm > tol || OptIter < 2
@@ -281,7 +281,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ = 1e4 # var μ = 1e4
+        global μ = 1e2 # var μ = 1e4
 
         if OptIter % 10 == 0 # OptIter % 5 == 0 #
             dh0 = deepcopy(dh)
@@ -310,7 +310,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 1e5 # eller?
+        global ε = 5e3
 
         # # # # # # # # #
         # Equillibrium  #
@@ -354,19 +354,6 @@ function Optimize(dh)
         ∂Ω_∂x = volume_sens(dh, coord)
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
         ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd ./ Vₘₐₓ)
-
-        # # # # # # # # # # # #
-        # Pressure constraint #
-        # # # # # # # # # # # #
-        #p = 2
-        #X_ordered = getXfromCoord(coord)
-        #g₂        = contact_pnorm_s(X_ordered, a, ε, p) / 0.5 - 1.0
-        #∂g₂_∂x    = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
-        #∂g₂_∂u    = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
-        #
-        #solveq!(λᵤ, K', ∂g₂_∂u, bcdofs_opt, bcval_opt)
-        #solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt)
-        #∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' ./ 0.5)'
 
         # # # # #
         # M M A #
@@ -415,20 +402,26 @@ function main()
     Optimize(dh);
 end
 =#
-
+p_normal = plot([0.5], [0.5])
 for face in Γm
-    @show Ferrite.faces(dh.grid.cells[face[1]])[face[2]]
-    @show sort(Ferrite.faces(dh.grid.cells[face[1]])[face[2]], rev=true)
+    faces = Ferrite.faces(dh.grid.cells[face[1]])[face[2]]
+    nod1 = coord[faces[1], :]
+    nod2 = coord[faces[2], :]
+    mid = (nod1 + nod2) / 2
+    tangent = [nod2[1] - nod1[1], nod2[2] - nod1[2], 0.0]
+    normal = cross(tangent, [0.0, 0.0, -1.0])
+    p_normal = quiver!([nod1[1], nod2[1]], [nod1[2], nod2[2]], quiver=([normal[1], normal[1]], [normal[2], normal[2]]), color=:red, lw=1)
+    display(p_normal)
 end
-
 for face in Γs
     faces = Ferrite.faces(dh.grid.cells[face[1]])[face[2]]
     nod1 = coord[faces[1],:]
     nod2 = coord[faces[2],:]
     mid = (nod1 + nod2) / 2
-
     tangent = [nod2[1]-nod1[1],nod2[2]-nod1[2],0.]
-    normal = cross(tangent,[0.,0.,1.])
-    #quiver!([nod1[1], nod2[1]], [nod1[2], nod2[2]], quiver=([normal[1], normal[1]], [normal[2], normal[2]]), color=:blue, lw=5)
-    plot!([mid[1], mid[1] + normal[1]], [mid[2], mid[2] + normal[2]], legend=false, color=:red)
+    normal = cross(tangent,[0.,0.,-1.])
+    p_normal = quiver!([nod1[1], nod2[1]], [nod1[2], nod2[2]], quiver=([normal[1], normal[1]], [normal[2], normal[2]]), color=:blue, lw=1)
+    display(p_normal)
+    xlims!(-0.75 , 1.25)
+    ylims!(0.0, 1.5)
 end

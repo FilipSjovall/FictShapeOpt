@@ -580,8 +580,9 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             residual        = norm(res, 2)
             Ψ[bcdofs_opt]  .= 0.0
             if loadstep < 40
-                postprocess_opt(Ψ + ΔΨ, dh0, "results/fictitious" * string(loadstep))
-               # postprocess_opt(Ψ, dh0, "results/fictitious" * string(iter))
+                postprocess_opt(Ψ , dh0, "results/fictitious" * string(loadstep))
+                postprocess_opt(res, dh0, "results/fictres" * string(loadstep))
+                # postprocess_opt(Ψ+ ΔΨ, dh0, "results/fictitious" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
             # if loadstep < 40
@@ -601,22 +602,6 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             #     display(p)
             # end
         end
-        # if loadstep < 40
-        #     # Plot traction , can be moved to function...
-        #     τ_c = ExtractContactTraction(Ψ, μ, coord₀)
-        #     traction = ExtractContactTraction(Ψ, μ, coord₀)
-        #     X_c = []
-        #     tract = []
-        #     for (key, val) ∈ traction
-        #         append!(X_c, coord₀[key, 2])
-        #         append!(tract, val)
-        #     end
-        #     ϵᵢⱼₖ = sortperm(X_c)
-        #     tract = tract[ϵᵢⱼₖ]
-        #     X_c = X_c[ϵᵢⱼₖ]
-        #     p = plot(tract, X_c, legend=false, marker=4, lc=:tomato, mc=:tomato)
-        #     display(p)
-        # end
     end
     return Ψ, dh0, Kψ, FΨ, λ
 end
