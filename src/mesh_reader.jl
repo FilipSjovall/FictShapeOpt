@@ -1344,7 +1344,7 @@ function createLMesh(filename,x₀,y₀,Δx,Δy,t,r1,r2,h)
 
     gmsh.model.geo.synchronize()
     # Funkar
-   # gmsh.model.add_physical_group(1, [l6], -1, "hej")
+    #gmsh.model.add_physical_group(1, [l6], -1, "hej")
 
     gmsh.model.add_physical_group(1, [l7, l6, l5, l4, l3], -1, "hej")
     #gmsh.model.add_physical_group(1, [l8, l7, l6, l5, l4, l3], -1, "hej")

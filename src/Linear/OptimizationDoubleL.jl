@@ -18,15 +18,15 @@ include("..//mma.jl")
 # ------------------- #
 xl = 0.0
 yl = 0.0
-xr = -0.75 + 1.11 #+ 0.05
-yr = 1.36
+xr = -0.75 + 0.1 #+ 0.2
+yr = 1.46
 Δx = 1.25
 Δy = 1.0
-th = 0.3
-r1 = 0.025
-r2 = 0.05
+th = 0.3 #+ .1
+r1 = 0.1
+r2 = 0.1
 # grid size
-h = 0.055
+h = 0.05
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -194,10 +194,10 @@ include("initOptLinHook.jl")
 # ------------------- #
 # Boundary conditions #
 # ------------------- #
-bcdof_left, _ = setBCXY_X(0.0, dh, n_left)
+bcdof_left, _  = setBCXY_X(0.0, dh, n_left)
 bcdof_right, _ = setBCXY_X(0.0, dh, n_right)
-bcdof_bot, _ = setBCY(0.0, dh, n_bot)
-bcdof_top, _ = setBCY(0.0, dh, n_top)
+bcdof_bot, _   = setBCY(0.0, dh, n_bot)
+bcdof_top, _   = setBCY(0.0, dh, n_top)
 #bcdof_bot, _     = Vector{Int64}(), Vector{Float64}()
 bcdof_top, _ = Vector{Int64}(), Vector{Float64}()
 bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
@@ -225,8 +225,6 @@ function Optimize(dh)
     g_hist = zeros(1000)
     historia = zeros(200, 4)
     global T = zeros(size(a))
-    #global T[bcdof_left]  .=  1.0
-    #global T[bcdof_right] .= -1.0
     global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
     #global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
     g₁ = 0.0
@@ -281,7 +279,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ = 1e2 # var μ = 1e4
+        global μ = 5e3 # var μ = 1e4
 
         if OptIter % 10 == 0 # OptIter % 5 == 0 #
             dh0 = deepcopy(dh)
@@ -310,7 +308,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 5e3
+        global ε = 1e4
 
         # # # # # # # # #
         # Equillibrium  #
@@ -328,7 +326,7 @@ function Optimize(dh)
         # Objective #
         # # # # # # #
         # Max reaction force
-        g = -T' * Fᵢₙₜ
+        g     = -T' * Fᵢₙₜ
         ∂g_∂x = -T' * ∂rᵤ_∂x
         ∂g_∂u = -T' * K
         # Compliance
@@ -380,7 +378,7 @@ function Optimize(dh)
         postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
         # append?
-        p2 = plot(1:true_iteration, [v_hist[1:true_iteration] .* 100, g_hist[1:true_iteration]] .* 100, label=["Volume Constraint" "Objective"])
+        p2 = plot(1:true_iteration, [v_hist[1:true_iteration], g_hist[1:true_iteration]] .* 100, label=["Volume Constraint" "Objective"])
         display(p2)
     end
     #jld2save("färdig.jld2",a,dh,dh0,Opiter,v_hist,g_hist,d)

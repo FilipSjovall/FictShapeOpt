@@ -579,10 +579,10 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             res[bcdofs_opt] = res[bcdofs_opt] .* 0
             residual        = norm(res, 2)
             Ψ[bcdofs_opt]  .= 0.0
-            if loadstep < 40
-                postprocess_opt(Ψ , dh0, "results/fictitious" * string(loadstep))
-                postprocess_opt(res, dh0, "results/fictres" * string(loadstep))
-                # postprocess_opt(Ψ+ ΔΨ, dh0, "results/fictitious" * string(iter))
+            if loadstep < 40 && iter < 20
+                #postprocess_opt(Ψ , dh0, "results/fictitious" * string(loadstep))
+                postprocess_opt(res, dh0, "results/fictres" * string(iter))
+                postprocess_opt(Ψ+ ΔΨ, dh0, "results/fictitious" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
             # if loadstep < 40
@@ -724,7 +724,7 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
             #     end
             # end
         end
-        if loadstep < 40
+        if loadstep < 40 && iter < 20
             σx, σy = StressExtract(dh, a, mp)
             vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
                 vtk_point_data(vtkfile, dh, a) # displacement field

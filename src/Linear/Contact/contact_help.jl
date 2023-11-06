@@ -303,7 +303,10 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
         # To compute the projected gap vector we multiply g[j,:] with the normal at node j
         g[j, :] = slave - master
     end
-
+    #@show g
+    #@show normals
+    #@show D
+    #@show M
     # Initialize r_c
     r_c = zeros(eltype(X_float), length(contact_dofs)) # sparse...?
 
