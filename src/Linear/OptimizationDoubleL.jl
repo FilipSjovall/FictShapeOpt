@@ -16,15 +16,15 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
+th = 0.25 #+ .1
 xl = 0.0
 yl = 0.0
-xr = -0.75 + 0.1 #+ 0.2
-yr = 1.46
-Δx = 1.25
+xr = -0.75 + 0.24999  #+ 0.1 #+ 0.2
+yr = 1.51
+Δx = 1.0
 Δy = 1.0
-th = 0.3 #+ .1
-r1 = 0.1
-r2 = 0.1
+r1 = 0.025
+r2 = 0.025
 # grid size
 h = 0.05
 # # # # # # # # # #
@@ -198,7 +198,7 @@ bcdof_left, _  = setBCXY_X(0.0, dh, n_left)
 bcdof_right, _ = setBCXY_X(0.0, dh, n_right)
 bcdof_bot, _   = setBCY(0.0, dh, n_bot)
 bcdof_top, _   = setBCY(0.0, dh, n_top)
-#bcdof_bot, _     = Vector{Int64}(), Vector{Float64}()
+bcdof_bot, _     = Vector{Int64}(), Vector{Float64}()
 bcdof_top, _ = Vector{Int64}(), Vector{Float64}()
 bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
 ϵᵢⱼₖ = sortperm(bcdofs_opt)
@@ -226,7 +226,7 @@ function Optimize(dh)
     historia = zeros(200, 4)
     global T = zeros(size(a))
     global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
-    #global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
+    global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
     g₁ = 0.0
     #
     while kktnorm > tol || OptIter < 2
@@ -279,7 +279,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ = 5e3 # var μ = 1e4
+        global μ = 1e3
 
         if OptIter % 10 == 0 # OptIter % 5 == 0 #
             dh0 = deepcopy(dh)

@@ -2,8 +2,7 @@
 kktnorm = 1.0
 dr_dd = similar(K) # ?
 # Material parameters
-# mp₀ = [1.0 1.0]
-mp₀= [0. 2.]
+mp₀= [0. 3.]
 #mp₀ = [1. 1.]
 mp  = [175 80.769230769230759]
 #
@@ -26,8 +25,8 @@ global kkttol    = 0.001;
 global changetol = 0.001;
 global outit     = 0;
 global change    = 1;
-global xmax      =  0.01 * ones(n_mma);
-global xmin      = -0.01 * ones(n_mma);
+global xmax      =  0.005 * ones(n_mma);
+global xmin      = -0.005 * ones(n_mma);
 #global xmin[contact_dofs] .= -0.0 # behöver skrivas över
 #global xmax[contact_dofs] .=  0.0 # behöver skrivas över
 global low = xmin;

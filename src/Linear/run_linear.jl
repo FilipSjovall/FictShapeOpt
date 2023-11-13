@@ -564,8 +564,8 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
                     global λ += Δλ  #* loadstep
                     remaining_steps = nloadsteps - loadstep
                     nloadsteps = loadstep + round((1 - λ) / Δλ)
-                #else
-                #    global μ = μ * 0.9
+                else
+                    global μ = μ * 0.9
                 end
                 fill!(ΔΨ, 0.0)
                 println("Step length updated: $Δλ, penalty parameter: $μ")
@@ -580,9 +580,13 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             residual        = norm(res, 2)
             Ψ[bcdofs_opt]  .= 0.0
             if loadstep < 40 && iter < 20
-                #postprocess_opt(Ψ , dh0, "results/fictitious" * string(loadstep))
+                postprocess_opt(Ψ , dh0, "results/fictitious" * string(loadstep))
+
+
+            end
+            if iter < 20
                 postprocess_opt(res, dh0, "results/fictres" * string(iter))
-                postprocess_opt(Ψ+ ΔΨ, dh0, "results/fictitious" * string(iter))
+                postprocess_opt(Ψ + ΔΨ, dh0, "results/fictitious_iter" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
             # if loadstep < 40
@@ -655,7 +659,7 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
     bcdof_bot, bcval_bot       = setBCY(0.0, dh, n_bot)
     bcdof_top, bcval_top       = setBCY(0.0, dh, n_top)
 
-    #bcdof_bot, bcval_bot       = Vector{Int64}(), Vector{Float64}()
+    bcdof_bot, bcval_bot       = Vector{Int64}(), Vector{Float64}()
     bcdof_top, bcval_top       = Vector{Int64}(), Vector{Float64}()
 
     bcdofs                     = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top]
