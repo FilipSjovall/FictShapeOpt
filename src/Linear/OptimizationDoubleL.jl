@@ -16,35 +16,35 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
-th = 0.25 #+ .1
+th = 0.3 #+ .1
 xl = 0.0
 yl = 0.0
-xr = -0.75 + 0.24999  #+ 0.1 #+ 0.2
+xr = -0.75 + 0.25 + 0.1 #+ 0.2
 yr = 1.51
 Δx = 1.0
 Δy = 1.0
-r1 = 0.025
-r2 = 0.025
+r1 = 0.075
+r2 = 0.075
 # grid size
 h = 0.05
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
-ip = Lagrange{2,RefTetrahedron,1}()
-qr = QuadratureRule{2,RefTetrahedron}(3)
+ip      = Lagrange{2,RefTetrahedron,1}()
+qr      = QuadratureRule{2,RefTetrahedron}(3)
 qr_face = QuadratureRule{1,RefTetrahedron}(2)
-cv = CellVectorValues(qr, ip)
-fv = FaceVectorValues(qr_face, ip)
+cv      = CellVectorValues(qr, ip)
+fv      = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
 grid1 = createLMesh("mesh_1", xl, yl, Δx, Δy, th, r1, r2, h);
-Γ_1 = getBoundarySet(grid1);
+Γ_1   = getBoundarySet(grid1);
 grid2 = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, h);
-Γ_2 = getBoundarySet(grid2);
+Γ_2   = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);
-grid1 = nothing;
-grid2 = nothing;
+grid1    = nothing;
+grid2    = nothing;
 # ------------------------------------------- #
 # Create dofhandler with displacement field u #
 # ------------------------------------------- #
@@ -53,7 +53,7 @@ add!(dh, :u, 2);
 close!(dh);
 # Extract CALFEM-style matrices
 global coord, enod = getTopology(dh);
-global register = index_nod_to_grid(dh, coord);
+global register    = index_nod_to_grid(dh, coord);
 # Exrtact full boundary
 Γ_all = Ferrite.__collect_boundary_faces(dh.grid);
 addfaceset!(dh.grid, "Γ_all", Γ_all);
@@ -99,6 +99,7 @@ addfaceset!(dh.grid, "Γ_left", x -> x[1] ≈ xr)
 #
 addnodeset!(dh.grid, "n_left", x -> x[1] ≈ xr)
 n_left = getnodeset(dh.grid, "n_left")
+
 # ------ #
 # bottom #
 # ------ #
@@ -131,7 +132,7 @@ addnodeset!(dh.grid, "n_robin", n_robin)
 # # # # # # # # # # # # #
 global contact_dofs = getContactDofs(nₛ, nₘ)
 global contact_nods = getContactNods(nₛ, nₘ)
-global order = Dict{Int64,Int64}()
+global order        = Dict{Int64,Int64}()
 for (i, nod) ∈ enumerate(contact_nods)
     push!(order, nod => i)
 end
@@ -198,8 +199,10 @@ bcdof_left, _  = setBCXY_X(0.0, dh, n_left)
 bcdof_right, _ = setBCXY_X(0.0, dh, n_right)
 bcdof_bot, _   = setBCY(0.0, dh, n_bot)
 bcdof_top, _   = setBCY(0.0, dh, n_top)
-bcdof_bot, _     = Vector{Int64}(), Vector{Float64}()
-bcdof_top, _ = Vector{Int64}(), Vector{Float64}()
+
+#bcdof_bot, _   = Vector{Int64}(), Vector{Float64}()
+bcdof_top, _   = Vector{Int64}(), Vector{Float64}()
+
 bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
 ϵᵢⱼₖ = sortperm(bcdofs_opt)
 global bcdofs_opt = bcdofs_opt[ϵᵢⱼₖ]
@@ -282,19 +285,19 @@ function Optimize(dh)
         global μ = 1e3
 
         if OptIter % 10 == 0 # OptIter % 5 == 0 #
-            dh0 = deepcopy(dh)
-            global d = zeros(dh.ndofs.x)
+            dh0          = deepcopy(dh)
+            global d     = zeros(dh.ndofs.x)
             global xold1 = d[:]
             global xold2 = d[:]
-            global low = xmin
-            global upp = xmax
-            OptIter = 1
+            global low   = xmin
+            global upp   = xmax
+            OptIter      = 1
         end
 
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
-        global coord₀ = getCoord(getX(dh0), dh0) # x₀
+        global coord₀  = getCoord(getX(dh0), dh0) # x₀
         Ψ, _, Kψ, _, λ = fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
 
         # # # # # #
@@ -308,7 +311,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 1e4
+        global ε          = 1e4
 
         # # # # # # # # #
         # Equillibrium  #
@@ -320,7 +323,7 @@ function Optimize(dh)
         # # # # # # # # #
         ∂rᵤ_∂x = similar(K)
         ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
-        dr_dd = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
+        dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 
         # # # # # # #
         # Objective #
@@ -348,7 +351,7 @@ function Optimize(dh)
         # # # # # # # # # # #
         # Volume constraint #
         # # # # # # # # # # #
-        g₁ = volume(dh, coord, enod) / Vₘₐₓ - 1.0
+        g₁    = volume(dh, coord, enod) / Vₘₐₓ - 1.0
         ∂Ω_∂x = volume_sens(dh, coord)
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
         ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd ./ Vₘₐₓ)
@@ -358,9 +361,9 @@ function Optimize(dh)
         # # # # #
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g .* 100, ∂g_∂d .* 100, g₁ .* 100, ∂Ω∂d .* 100, low, upp, a0, am, C, d2)
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .* 100, ∂g_∂d .* 100, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
-        xold2 = xold1
-        xold1 = d
-        d = d_new
+        xold2  = xold1
+        xold1  = d
+        d      = d_new
         change = norm(d .- xold1)
 
         # # # # # # # # # #

@@ -1309,10 +1309,10 @@ function createLMesh(filename,x₀,y₀,Δx,Δy,t,r1,r2,h)
     p11= gmsh.model.geo.add_point( x₀ + r2, y₀ + Δy - r2, 0.0, h)
     p12= gmsh.model.geo.add_point( x₀, y₀ + Δy - r2, 0.0, h)
 
-    p13= gmsh.model.geo.add_point(x₀, y₀ + r1, 0.0, h)
-    p14= gmsh.model.geo.add_point(x₀ + r1, y₀ + r1, 0.0, h)
+    #p13= gmsh.model.geo.add_point(x₀, y₀ + r1, 0.0, h)
+    #p14= gmsh.model.geo.add_point(x₀ + r1, y₀ + r1, 0.0, h)
 
-    # p13 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p13 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
 
     # Lines
     # l1 = gmsh.model.geo.add_line(p1, p2)
@@ -1334,8 +1334,8 @@ function createLMesh(filename,x₀,y₀,Δx,Δy,t,r1,r2,h)
     l4  = gmsh.model.geo.add_line(p10, p9)
     l3  = gmsh.model.geo.add_circle_arc(p12, p11, p10)
     l2  = gmsh.model.geo.add_line(p13, p12)
-    #l1  = gmsh.model.geo.add_line(p1, p13)
-    l1 = gmsh.model.geo.add_circle_arc(p1, p14, p13)
+    l1  = gmsh.model.geo.add_line(p1, p13)
+    #l1 = gmsh.model.geo.add_circle_arc(p1, p14, p13)
 
     loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7 ,l8, l9, l10])
     #loop = gmsh.model.geo.add_curve_loop([l10, l9, l8, l7, l6, l5, l4, l3, l2, l1])

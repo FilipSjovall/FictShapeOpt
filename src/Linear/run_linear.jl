@@ -556,7 +556,7 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
         # # # # # # # # # #
         while residual > TOL || iter < 2
             iter += 1
-            if iter % 10 == 0 || norm(res) > 1e2 #&& Δλ > 1/16
+            if iter % 20 == 0 || norm(res) > 1e2 #&& Δλ > 1/16
                 Ψ = Ψ_old
                 if Δλ > 0.1 * 1 / 64
                     global λ -= Δλ #* loadstep
@@ -659,7 +659,7 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
     bcdof_bot, bcval_bot       = setBCY(0.0, dh, n_bot)
     bcdof_top, bcval_top       = setBCY(0.0, dh, n_top)
 
-    bcdof_bot, bcval_bot       = Vector{Int64}(), Vector{Float64}()
+    #bcdof_bot, bcval_bot       = Vector{Int64}(), Vector{Float64}()
     bcdof_top, bcval_top       = Vector{Int64}(), Vector{Float64}()
 
     bcdofs                     = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top]
