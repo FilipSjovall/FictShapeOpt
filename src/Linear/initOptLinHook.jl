@@ -6,7 +6,7 @@ mp₀= [1. 5.]
 #mp₀ = [1. 1.]
 mp  = [175 80.769230769230759]
 #
-#mp₀ = mp
+#mp₀ = mp ./ mp[1]
 #
 t = 1.0
 # Optimization parameters
@@ -25,9 +25,9 @@ global kkttol    = 0.001;
 global changetol = 0.001;
 global outit     = 0;
 global change    = 1;
-global xmax      =  0.1 * ones(n_mma);
-global xmin      = -0.1 * ones(n_mma);
-global xmin[contact_dofs] .= -0.005 # behöver skrivas över
-global xmax[contact_dofs] .=  0.005 # behöver skrivas över
+global xmax      =  0.01 * ones(n_mma);
+global xmin      = -0.01 * ones(n_mma);
+global xmin[contact_dofs] .= -0.001 # behöver skrivas över
+global xmax[contact_dofs] .=  0.001 # behöver skrivas över
 global low = xmin;
 global upp = xmax;

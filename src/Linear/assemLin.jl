@@ -157,7 +157,13 @@ function assemGlobal!(Kψ, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_rob
                 ke[face_dofs, face_dofs], fe[face_dofs] = Robin(Xc, Ψ[cell_dofs[face_dofs]], d[cell_dofs[face_dofs]], λ)
             end
         end
-        assemble!(assembler, cell_dofs, kₑ + ke, fₑ + fe)
+        ##### Test penalty framför Robin-term
+        #if OptIter == 1
+        # assemble!(assembler, cell_dofs, kₑ + 0.01*ke, fₑ + 0.01*fe)
+        #### Penalty = 1.0
+        #else
+         assemble!(assembler, cell_dofs, kₑ +  ke, fₑ +  fe)
+        #end
     end
     # Contact
     X_ordered = getXfromCoord(coord₀)
@@ -167,6 +173,7 @@ function assemGlobal!(Kψ, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_rob
     #Fψ[contact_dofs]            -= rc[contact_dofs]
 
     rc = contact_residual_reduced(X_ordered, Ψ[contact_dofs], Ψ[freec_dofs], μ)
+    @show sum(rc)
     Kc = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, Ψ[freec_dofs], μ), Ψ[contact_dofs])
     Kψ[contact_dofs, contact_dofs] -= Kc
     Fψ[contact_dofs]               -= rc

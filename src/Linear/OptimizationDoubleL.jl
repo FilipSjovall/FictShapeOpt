@@ -16,7 +16,7 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
-th = 0.3 #+ .1
+th = 0.30 #+ .1
 xl = 0.0
 yl = 0.0
 xr = -0.75 + 0.25 + 0.1 #+ 0.2
@@ -221,14 +221,14 @@ function Optimize(dh)
     global λᵥₒₗ = similar(a)
     Vₘₐₓ = 2.0  #
     tol = 1e-3
-    OptIter = 0
+    global OptIter = 0
     global true_iteration = 0
     global coord₀
     v_hist = zeros(1000)
     g_hist = zeros(1000)
     historia = zeros(200, 4)
     global T = zeros(size(a))
-    global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
+    #global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
     global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
     g₁ = 0.0
     #
@@ -275,7 +275,7 @@ function Optimize(dh)
         global upp
         global traction
         # # # # # # # # # # # # # #
-        OptIter += 1
+        global OptIter += 1
         true_iteration += 1
 
         # # # # #
@@ -284,7 +284,7 @@ function Optimize(dh)
         global nloadsteps = 20
         global μ = 1e3
 
-        if OptIter % 10 == 0 # OptIter % 5 == 0 #
+        if OptIter % 3 == 0 # OptIter % 5 == 0 #
             dh0          = deepcopy(dh)
             global d     = zeros(dh.ndofs.x)
             global xold1 = d[:]
