@@ -1464,3 +1464,49 @@ function getBoundarySet(grid, FaceSet)
     end
     return setCoordinates
 end
+
+
+function createCircleRotated(filename, x₀, y₀, r, h)
+
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀, y₀ + r, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀, y₀ - r, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h)
+
+    # Add lines
+    #    # Start - Center - End
+    l1 = gmsh.model.geo.add_circle_arc(p2, p1, p4)
+    l2 = gmsh.model.geo.add_circle_arc(p4, p1, p3)
+    l3 = gmsh.model.geo.add_line(p3, p1)
+    l4 = gmsh.model.geo.add_line(p1, p2)
+
+    # Create the closed curve loop and the surface
+    loop = gmsh.model.geo.add_curve_loop([l4, l3, l2, l1])
+    surf = gmsh.model.geo.add_plane_surface([loop])
+
+    # Synchronize the model
+    gmsh.model.geo.synchronize()
+
+    # Create the physical domains
+    gmsh.model.add_physical_group(1, [l1, l2], -1, "Γ")
+    gmsh.model.add_physical_group(2, [surf])
+
+    gmsh.model.mesh.generate(2)
+
+    # Save the mesh, and read back in as a Ferrite Grid
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+
+    # Finalize the Gmsh library
+    Gmsh.finalize()
+
+    return grid
+end

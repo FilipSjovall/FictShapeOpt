@@ -37,8 +37,7 @@ end
 
 function penalty(g, ε)
     if g < 0.0
-        p = 0.0
-        #p = 1.0 / ε # relaxering??
+        p = 0.0 #0.1* ε * g
     else
         p = ε * g #
     end

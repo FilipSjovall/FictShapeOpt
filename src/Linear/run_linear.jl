@@ -579,37 +579,22 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             Ψ += ΔΨ
             assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
             solveq!(ΔΨ, Kψ, -FΨ, bcdofs_opt, bcval_opt)
+
+            # assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
+
             bcval_opt       = bcval_opt .* 0
             res             = FΨ #- Fₑₓₜ
             res[bcdofs_opt] = res[bcdofs_opt] .* 0
             residual        = norm(res, 2)
             Ψ[bcdofs_opt]  .= 0.0
             if loadstep < 40 && iter < 20
-                postprocess_opt(Ψ , dh0, "results/fictitious_t2" * string(loadstep))
-
-
+                postprocess_opt(Ψ, dh0, "results/fictitious_t2" * string(loadstep))
             end
             if iter < 20
                 postprocess_opt(res, dh0, "results/fictres_t2" * string(iter))
-                postprocess_opt(Ψ , dh0, "results/fictitious_iter_t2" * string(iter))
+                postprocess_opt(Ψ, dh0, "results/fictitious_iter_t2" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
-            if loadstep < 40
-                # Plot traction , can be moved to function...
-                τ_c = ExtractContactTraction(Ψ+ΔΨ, μ, coord₀)
-                traction = ExtractContactTraction(Ψ+ΔΨ, μ, coord₀)
-                X_c = []
-                tract = []
-                for (key, val) ∈ traction
-                    append!(X_c, coord₀[key, 1])
-                    append!(tract, val)
-                end
-                ϵᵢⱼₖ = sortperm(X_c)
-                tract = tract[ϵᵢⱼₖ]
-                X_c = X_c[ϵᵢⱼₖ]
-                p = plot(X_c,tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
-                display(p)
-            end
         end
     end
     return Ψ, dh0, Kψ, FΨ, λ

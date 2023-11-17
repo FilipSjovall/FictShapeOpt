@@ -38,9 +38,9 @@ fv      = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createLMesh("mesh_1", xl, yl, Δx, Δy, th, r1, r2, h);
+grid1 = createLMeshRev("mesh_1", xr, yr, Δx, Δy, th, r1, r2, h);
 Γ_1   = getBoundarySet(grid1);
-grid2 = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, h);
+grid2 = createCircleRotated("mesh_2", 0.0, 0.75, 0.3, h);
 Γ_2   = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);
 grid1    = nothing;
