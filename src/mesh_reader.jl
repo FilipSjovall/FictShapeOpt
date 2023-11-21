@@ -1346,9 +1346,9 @@ function createLMesh(filename,x₀,y₀,Δx,Δy,t,r1,r2,h)
     # Funkar
     #gmsh.model.add_physical_group(1, [l6], -1, "hej")
     # Funkar nu också
-    gmsh.model.add_physical_group(1, [l7, l6, l5, l4, l3], -1, "hej")
+    #gmsh.model.add_physical_group(1, [l7, l6, l5, l4, l3], -1, "hej")
 
-    #gmsh.model.add_physical_group(1, [l8, l7, l6, l5, l4, l3], -1, "hej")
+    gmsh.model.add_physical_group(1, [l8, l7, l6, l5, l4, l3], -1, "hej")
     gmsh.model.add_physical_group(2, [surf], -1, "då")
 
     gmsh.model.mesh.generate(2)
@@ -1423,9 +1423,9 @@ function createLMeshRev(filename, x₀, y₀, Δx, Δy, t, r1, r2, h)
     # Funkar
     #gmsh.model.add_physical_group(1, [l4], -1, "hej")
     # Funkar också nu
-    gmsh.model.add_physical_group(1, [l3, l4, l5, l6, l7], -1, "hej")
+    #gmsh.model.add_physical_group(1, [l3, l4, l5, l6, l7], -1, "hej")
 
-    #gmsh.model.add_physical_group(1, [l2, l3, l4, l5, l6, l7], -1, "hej")
+    gmsh.model.add_physical_group(1, [l2, l3, l4, l5, l6, l7], -1, "hej")
 
     gmsh.model.add_physical_group(2, [surf], -1, "Γr")
 
@@ -1508,5 +1508,47 @@ function createCircleRotated(filename, x₀, y₀, r, h)
     # Finalize the Gmsh library
     Gmsh.finalize()
 
+    return grid
+end
+
+function createUmesh(filename,x₀,y₀,Δx,Δy,tx,ty,h)
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+    # Points
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀, y₀ + Δy, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + tx, y₀ + Δy, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀ + tx, y₀ + ty, 0.0, h)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx - tx, y₀ + ty, 0.0, h)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx - tx, y₀ + Δy, 0.0, h)
+    p7 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h)
+    p8 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, h)
+    # Lines
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    l3 = gmsh.model.geo.add_line(p3, p4)
+    l4 = gmsh.model.geo.add_line(p4, p5)
+    l5 = gmsh.model.geo.add_line(p5, p6)
+    l6 = gmsh.model.geo.add_line(p6, p7)
+    l7 = gmsh.model.geo.add_line(p7, p8)
+    l8 = gmsh.model.geo.add_line(p8, p1)
+    #
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7, l8])
+    surf = gmsh.model.geo.add_plane_surface([loop])
+    gmsh.model.geo.synchronize()
+    # Physical group create sets
+    gmsh.model.add_physical_group(1, [l3 ,l4 ,l5, l6], -1, "hej")
+    gmsh.model.add_physical_group(2, [surf], -1, "Γall")
+    # Mesh
+    gmsh.model.mesh.generate(2)
+    #gmsh.model.mesh.reverse(2)
+    # Finalize
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
     return grid
 end

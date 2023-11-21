@@ -16,17 +16,17 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
-th = 0.40 #+ .1
-xl = 0.0
-yl = 0.0
-xr = -0.75 + 0.25 + 0.1 + 0.2 #+ 0.2
-yr = 1.51
+x₀ = 0.5
+y₀ = 0.449
+r  = 0.2#35
+xᵤ = 0.0
+yᵤ = 0.0
 Δx = 1.0
-Δy = 1.0
-r1 = 0.1
-r2 = 0.1
+Δy = 0.75
+tx = 0.25
+ty = 0.25
 # grid size
-h = 0.05
+h = 0.04
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -38,10 +38,10 @@ fv      = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createLMesh("mesh_1", xl, yl, Δx, Δy, th, r1, r2, h);
-Γ_1   = getBoundarySet(grid1);
-grid2 = createLMeshRev("mesh_2", xr, yr, Δx, Δy, th, r1, r2, h);
-Γ_2   = getBoundarySet(grid2);
+grid1    = createCircleMesh("mesh_1", x₀, y₀, r, h)
+Γ_1      = getBoundarySet(grid1);
+grid2    = createUmesh("mesh_2",xᵤ, yᵤ, Δx, Δy, tx, ty, h)
+Γ_2      = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);
 grid1    = nothing;
 grid2    = nothing;
@@ -82,47 +82,28 @@ addfaceset!(dh.grid, "Γ_slave", x -> x ∈ Γ_1);
 #
 global nₛ = getBoundarySet(dh.grid, Γs)
 addnodeset!(dh.grid, "nₛ", nₛ)
-#
-# ---------------
-# Displacement bc boundary u(x) = Δ ∀ x ∈ Γ_Δ
-addfaceset!(dh.grid, "Γ_right", x -> x[1] ≈ xl + Δx)
-Γ_right = getfaceset(dh.grid, "Γ_right")
-#
-addnodeset!(dh.grid, "n_right", x -> x[1] ≈ xl + Δx)
-n_right = getnodeset(dh.grid, "n_right")
-
-# -------------------------------------------- #
-# Displacement bc boundary u(x) = 0 ∀ x ∈ Γ_0 #
-# ------------------------------------------- #
-addfaceset!(dh.grid, "Γ_left", x -> x[1] ≈ xr)
-Γ_left = getfaceset(dh.grid, "Γ_left")
-#
-addnodeset!(dh.grid, "n_left", x -> x[1] ≈ xr)
-n_left = getnodeset(dh.grid, "n_left")
 
 # ------ #
 # bottom #
 # ------ #
-addfaceset!(dh.grid, "Γ_bot", x -> x[2] ≈ yl)
+addfaceset!(dh.grid, "Γ_bot", x -> x[2] ≈ yᵤ + Δy)
 Γ_bot = getfaceset(dh.grid, "Γ_bot")
 
-addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ yl)
+addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ yᵤ + Δy)
 n_bot = getnodeset(dh.grid, "n_bot")
 # --- #
 # Top #
 # --- #
-addfaceset!(dh.grid, "Γ_top", x -> x[2] ≈ yr)
+addfaceset!(dh.grid, "Γ_top", x -> x[2] ≈ y₀ && x[1] ≤ x₀ + r && x[1] ≥ x₀ - r)
 Γ_top = getfaceset(dh.grid, "Γ_top")
 
-addnodeset!(dh.grid, "n_top", x -> x[2] ≈ yr)
+addnodeset!(dh.grid, "n_top", x -> x[2] ≈ y₀ && x[1] ≤ x₀ + r && x[1] ≥ x₀ - r)
 n_top = getnodeset(dh.grid, "n_top")
 
 # ----------------- #
 # Design boundaries #
 # ----------------- #
-#Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γm, Γs))
-#Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γ_bot, Γ_top))
-Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right))
+Γ_robin = setdiff(Γ_all, union(Γ_bot, Γ_top))
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
 n_robin = getBoundarySet(dh.grid, Γ_robin)
@@ -132,7 +113,7 @@ addnodeset!(dh.grid, "n_robin", n_robin)
 # # # # # # # # # # # # #
 global contact_dofs = getContactDofs(nₛ, nₘ)
 global contact_nods = getContactNods(nₛ, nₘ)
-global order        = Dict{Int64,Int64}()
+global order = Dict{Int64,Int64}()
 for (i, nod) ∈ enumerate(contact_nods)
     push!(order, nod => i)
 end
@@ -155,16 +136,6 @@ for jnod in n_robin
     append!(free_d, register[jnod, 1])
     append!(free_d, register[jnod, 2])
 end
-##global locked_d = setdiff(1:dh.ndofs.x, free_d)
-#global locked_d = Vector{Int64}()
-#for n ∈ n_left
-#    push!(locked_d,register[n,1])
-#    push!(locked_d,register[n,2])
-#end
-#for n ∈ n_right
-#    push!(locked_d,register[n,1])
-#    push!(locked_d,register[n,2])
-#end
 
 # Initialize tangents
 global K = create_sparsity_pattern(dh)
@@ -195,21 +166,15 @@ include("initOptLinHook.jl")
 # ------------------- #
 # Boundary conditions #
 # ------------------- #
-bcdof_left, _  = setBCXY_X(0.0, dh, n_left)
-bcdof_right, _ = setBCXY_X(0.0, dh, n_right)
-bcdof_bot, _   = setBCY(0.0, dh, n_bot)
-bcdof_top, _   = setBCY(0.0, dh, n_top)
+bcdof_bot, _ = setBCXY_both(0.0, dh, n_bot)
+bcdof_top, _ = setBCXY(0.0, dh, n_top)
 
-#bcdof_bot, _   = Vector{Int64}(), Vector{Float64}()
-bcdof_top, _   = Vector{Int64}(), Vector{Float64}()
-
-bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
-ϵᵢⱼₖ = sortperm(bcdofs_opt)
-global bcdofs_opt = bcdofs_opt[ϵᵢⱼₖ]
-global bcval_opt = bcdofs_opt .* 0.0
-
-
+bcdofs_opt         = [bcdof_bot; bcdof_top];
+ϵᵢⱼₖ              = sortperm(bcdofs_opt)
+global bcdofs_opt  = bcdofs_opt[ϵᵢⱼₖ]
+global bcval_opt   = bcdofs_opt .* 0.0
 global asy_counter = zeros(dh.ndofs.x, 400)
+
 # -------------------- #
 # Optimization program #
 # -------------------- #
@@ -219,7 +184,7 @@ function Optimize(dh)
     global λψ = similar(a)
     global λᵤ = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = 2.0  #
+    Vₘₐₓ = 0.5  #
     tol = 1e-3
     global OptIter = 0
     global true_iteration = 0
@@ -229,7 +194,7 @@ function Optimize(dh)
     historia = zeros(200, 4)
     global T = zeros(size(a))
     #global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
-    global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
+    global T[bcdof_bot[iseven.(bcdof_bot)]] .= -1.0
     g₁ = 0.0
     #
     while kktnorm > tol || OptIter < 2
@@ -284,23 +249,21 @@ function Optimize(dh)
         global nloadsteps = 20
         global μ = 1e4
 
-        if OptIter % 15 == 0 # OptIter % 5 == 0 #
-            xmin  = xmin.*2
-            xmax  = xmax.*2
-            #dh0          = deepcopy(dh)
-            #global d     = zeros(dh.ndofs.x)
-            #global xold1 = d[:]
-            #global xold2 = d[:]
-            #global low   = xmin
-            #global upp   = xmax
-            #OptIter      = 1
+        if OptIter % 10 == 0 # OptIter % 5 == 0 #
+            dh0          = deepcopy(dh)
+            global d     = zeros(dh.ndofs.x)
+            global xold1 = d[:]
+            global xold2 = d[:]
+            global low   = xmin
+            global upp   = xmax
+            OptIter      = 1
         end
 
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
-        global coord₀  = getCoord(getX(dh0), dh0) # x₀
-        Ψ, _, Kψ, _, λ = fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
+        global coord₀ = getCoord(getX(dh0), dh0) # x₀
+        Ψ, _, Kψ, FΨ, λ = fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
 
         # # # # # #
         # Filter  #
@@ -313,25 +276,25 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε          = 1e4
+        global ε = 1e5
 
         # # # # # # # # #
         # Equillibrium  #
         # # # # # # # # #
-        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C_hook(dh, coord, Δ, nloadsteps)
+        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C_U(dh, coord, Δ, nloadsteps)
 
         # # # # # # # # #
         # Sensitivities #
         # # # # # # # # #
         ∂rᵤ_∂x = similar(K)
         ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
-        dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
+        dr_dd = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 
         # # # # # # #
         # Objective #
         # # # # # # #
         # Max reaction force
-        g     = -T' * Fᵢₙₜ
+        g = -T' * Fᵢₙₜ
         ∂g_∂x = -T' * ∂rᵤ_∂x
         ∂g_∂u = -T' * K
         # Compliance
@@ -353,7 +316,7 @@ function Optimize(dh)
         # # # # # # # # # # #
         # Volume constraint #
         # # # # # # # # # # #
-        g₁    = volume(dh, coord, enod) / Vₘₐₓ - 1.0
+        g₁ = volume(dh, coord, enod) / Vₘₐₓ - 1.0
         ∂Ω_∂x = volume_sens(dh, coord)
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
         ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd ./ Vₘₐₓ)
@@ -377,9 +340,9 @@ function Optimize(dh)
         # # # # #
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g .* 100, ∂g_∂d .* 100, g₁ .* 100, ∂Ω∂d .* 100, low, upp, a0, am, C, d2)
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .* 100, ∂g_∂d .* 100, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
-        xold2  = xold1
-        xold1  = d
-        d      = d_new
+        xold2 = xold1
+        xold1 = d
+        d = d_new
         change = norm(d .- xold1)
 
         # # # # # # # # # #
@@ -392,53 +355,30 @@ function Optimize(dh)
         #residu,kktnorm,residumax = kktcheck(m,n,X,ymma,zmma,lam,xsi,eta,mu,zet,S, xmin,xmax,∂g_∂d,[0.0],zeros(size(d)),a0,a,C,d2);
         kktnorm = change
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
-        postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
-        postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
+        #postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
+        #postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
         postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
+
+        Wψ = energy(dh0, Ψ, mp₀)
+        vtk_grid("results//fictitious" * string(true_iteration), dh0) do vtkfile
+            vtk_point_data(vtkfile, dh0, Ψ)
+            vtk_cell_data(vtkfile, Wψ, "Energy W")
+        end
+        Wᵤ = energy(dh, a, mp)
+        vtk_grid("results//state" * string(true_iteration), dh) do vtkfile
+            vtk_point_data(vtkfile, dh, a)
+            vtk_cell_data(vtkfile, Wᵤ, "Energy Wᵤ")
+        end
+
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
         # append?
         p2 = plot(1:true_iteration, [v_hist[1:true_iteration], g_hist[1:true_iteration]] .* 100, label=["Volume Constraint" "Objective"])
         display(p2)
+        #@save "tunnt_u_som_strular.jld2" a Ψ dh dh0 OptIter g d Wᵤ Wψ FΨ Fᵢₙₜ
+        @save "tjockt_u_som_inte_strular.jld2" a Ψ dh dh0 OptIter g d Wᵤ Wψ FΨ Fᵢₙₜ
     end
-    #jld2save("färdig.jld2",a,dh,dh0,Opiter,v_hist,g_hist,d)
+    #jld2save("färdig.jld2",a,Ψ,dh,dh0,Opiter,v_hist,g_hist,d)
     return g_hist, v_hist, OptIter, traction, historia
 end
 
 g_hist, v_hist, OptIter, traction, historia = Optimize(dh)
-
-
-#=
-function main()
-    # ----- #
-    # Inits #
-    # ----- #
-
-    # ------------------ #
-    # Shape optimziation #
-    # ------------------ #
-    Optimize(dh);
-end
-=#
-p_normal = plot([0.5], [0.5])
-for face in Γm
-    faces = Ferrite.faces(dh.grid.cells[face[1]])[face[2]]
-    nod1 = coord[faces[1], :]
-    nod2 = coord[faces[2], :]
-    mid = (nod1 + nod2) / 2
-    tangent = [nod2[1] - nod1[1], nod2[2] - nod1[2], 0.0]
-    normal = cross(tangent, [0.0, 0.0, -1.0])
-    p_normal = quiver!([nod1[1], nod2[1]], [nod1[2], nod2[2]], quiver=([normal[1], normal[1]], [normal[2], normal[2]]), color=:red, lw=1)
-    display(p_normal)
-end
-for face in Γs
-    faces = Ferrite.faces(dh.grid.cells[face[1]])[face[2]]
-    nod1 = coord[faces[1],:]
-    nod2 = coord[faces[2],:]
-    mid = (nod1 + nod2) / 2
-    tangent = [nod2[1]-nod1[1],nod2[2]-nod1[2],0.]
-    normal = cross(tangent,[0.,0.,-1.])
-    p_normal = quiver!([nod1[1], nod2[1]], [nod1[2], nod2[2]], quiver=([normal[1], normal[1]], [normal[2], normal[2]]), color=:blue, lw=1)
-    display(p_normal)
-    xlims!(-0.75 , 1.25)
-    ylims!(0.0, 1.5)
-end

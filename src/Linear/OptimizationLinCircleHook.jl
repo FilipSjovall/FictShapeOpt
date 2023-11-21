@@ -16,15 +16,19 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
-th = 0.30 #+ .1
+th = 0.50 #+ .1
 xl = 0.0
 yl = 0.0
 xr = -0.75 + 0.25 + 0.1 #+ 0.2
 yr = 1.51
-Δx = 1.0
-Δy = 1.0
+Δx = 1.5
+Δy = 1.5
 r1 = 0.1
 r2 = 0.1
+# Cylinder
+r  = 0.5
+x₀ = 0.1
+y₀ = 0.5
 # grid size
 h = 0.05
 # # # # # # # # # #
@@ -40,7 +44,7 @@ fv      = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 grid1 = createLMeshRev("mesh_1", xr, yr, Δx, Δy, th, r1, r2, h);
 Γ_1   = getBoundarySet(grid1);
-grid2 = createCircleRotated("mesh_2", 0.0, 0.75, 0.3, h);
+grid2 = createCircleRotated("mesh_2", x₀, y₀, r, h);
 Γ_2   = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);
 grid1    = nothing;
@@ -82,14 +86,6 @@ addfaceset!(dh.grid, "Γ_slave", x -> x ∈ Γ_1);
 #
 global nₛ = getBoundarySet(dh.grid, Γs)
 addnodeset!(dh.grid, "nₛ", nₛ)
-#
-# ---------------
-# Displacement bc boundary u(x) = Δ ∀ x ∈ Γ_Δ
-addfaceset!(dh.grid, "Γ_right", x -> x[1] ≈ xl + Δx)
-Γ_right = getfaceset(dh.grid, "Γ_right")
-#
-addnodeset!(dh.grid, "n_right", x -> x[1] ≈ xl + Δx)
-n_right = getnodeset(dh.grid, "n_right")
 
 # -------------------------------------------- #
 # Displacement bc boundary u(x) = 0 ∀ x ∈ Γ_0 #
@@ -100,29 +96,33 @@ addfaceset!(dh.grid, "Γ_left", x -> x[1] ≈ xr)
 addnodeset!(dh.grid, "n_left", x -> x[1] ≈ xr)
 n_left = getnodeset(dh.grid, "n_left")
 
-# ------ #
-# bottom #
-# ------ #
-addfaceset!(dh.grid, "Γ_bot", x -> x[2] ≈ yl)
-Γ_bot = getfaceset(dh.grid, "Γ_bot")
-
-addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ yl)
-n_bot = getnodeset(dh.grid, "n_bot")
-# --- #
 # Top #
 # --- #
-addfaceset!(dh.grid, "Γ_top", x -> x[2] ≈ yr)
+addfaceset!(dh.grid, "Γ_top", x -> x[2] ≈ yr )
 Γ_top = getfaceset(dh.grid, "Γ_top")
 
-addnodeset!(dh.grid, "n_top", x -> x[2] ≈ yr)
+addnodeset!(dh.grid, "n_top", x -> x[2] ≈ yr )
 n_top = getnodeset(dh.grid, "n_top")
+# addfaceset!(dh.grid, "Γ_top", x -> x[2] ≈ yr || x[1] ≈ xr + Δx )
+# Γ_top = getfaceset(dh.grid, "Γ_top")
+
+# addnodeset!(dh.grid, "n_top", x -> x[2] ≈ yr || x[1] ≈ xr + Δx )
+# n_top = getnodeset(dh.grid, "n_top")
+
+# Cylinder #
+# --- #
+addfaceset!(dh.grid, "Γ_cyl", x -> x[1] == x₀ && x[2] ≤ y₀ + r && x[2] ≥ y₀ - r)
+Γ_cyl = getfaceset(dh.grid, "Γ_cyl")
+
+addnodeset!(dh.grid, "n_cyl", x -> x[1] == x₀ && x[2] ≤ y₀ + r && x[2] ≥ y₀ - r)
+n_cyl = getnodeset(dh.grid, "n_cyl")
 
 # ----------------- #
 # Design boundaries #
 # ----------------- #
-Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γm, Γs))
+#Γ_robin = setdiff(Γ_all, union(Γ_left, Γm, Γs))
 #Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γ_bot, Γ_top))
-#Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right))
+Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_top, Γ_cyl))
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
 n_robin = getBoundarySet(dh.grid, Γ_robin)
@@ -195,21 +195,21 @@ include("initOptLinHook.jl")
 # ------------------- #
 # Boundary conditions #
 # ------------------- #
-bcdof_left, _  = setBCXY_X(0.0, dh, n_left)
-bcdof_right, _ = setBCXY_X(0.0, dh, n_right)
-bcdof_bot, _   = setBCY(0.0, dh, n_bot)
-bcdof_top, _   = setBCY(0.0, dh, n_top)
-
-#bcdof_bot, _   = Vector{Int64}(), Vector{Float64}()
-bcdof_top, _   = Vector{Int64}(), Vector{Float64}()
-
-bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
+# L structure
+bcdof_left, bcval_left = setBCXY_X(0.0, dh, n_left)
+bcdof_top, bcval_top   = setBCXY_both(0.0, dh, n_top)
+#bcdof_top, bcval_top = Vector{Int64}(), Vector{Float64}()
+# Cylinder
+bcdof_cyl, bcval_cyl = setBCXY_X(Δ / nloadsteps, dh, n_cyl)
+# Collect
+bcdofs_opt = [bcdof_left; bcdof_top; bcdof_cyl]
+#
 ϵᵢⱼₖ = sortperm(bcdofs_opt)
 global bcdofs_opt = bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt = bcdofs_opt .* 0.0
 
-
 global asy_counter = zeros(dh.ndofs.x, 400)
+
 # -------------------- #
 # Optimization program #
 # -------------------- #
@@ -228,8 +228,7 @@ function Optimize(dh)
     g_hist = zeros(1000)
     historia = zeros(200, 4)
     global T = zeros(size(a))
-    #global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
-    global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
+    global T[bcdof_cyl[isodd.(bcdof_cyl)]] .= -1.0
     g₁ = 0.0
     #
     while kktnorm > tol || OptIter < 2
@@ -282,7 +281,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ = 1e3
+        global μ = 1e4
 
         if OptIter % 10 == 0 # OptIter % 5 == 0 #
             dh0          = deepcopy(dh)
@@ -298,7 +297,7 @@ function Optimize(dh)
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
         global coord₀  = getCoord(getX(dh0), dh0) # x₀
-        Ψ, _, Kψ, _, λ = fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
+        Ψ, _, Kψ, _, λ = fictitious_solver_with_contact_hook_half(d, dh0, coord₀, nloadsteps)
 
         # # # # # #
         # Filter  #
@@ -311,12 +310,12 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε          = 1e4
+        global ε          = 1e5
 
         # # # # # # # # #
         # Equillibrium  #
         # # # # # # # # #
-        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C_hook(dh, coord, Δ, nloadsteps)
+        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C_hook_half(dh, coord, Δ, nloadsteps)
 
         # # # # # # # # #
         # Sensitivities #

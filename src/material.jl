@@ -4,6 +4,23 @@
 #
 using LinearAlgebra
 
+function neohooke_energy(defgrad,mp)
+    Kₘ = mp[1]
+    Gₘ = mp[2]
+    C  = zeros(3,3)
+    Fₚ = zeros(3,3)
+
+    Fₚ[1,:] = [defgrad[1] defgrad[2] 0.0]
+    Fₚ[2,:] = [defgrad[3] defgrad[4] 0.0]
+    Fₚ[3,:] = [0.0 0.0 1.0]
+    J       = det(Fₚ)
+    C       = transpose(Fₚ)*Fₚ
+
+    W  = Kₘ/2 * ( 1/2 *(J^2 -1 ) - log(J) ) + Gₘ/2 * (J^(-2/3) * tr(C) - 3)
+    return W
+end
+
+
 function neohooke1(defgrad,mp)
 
     Kₘ = mp[1]

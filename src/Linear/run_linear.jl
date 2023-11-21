@@ -952,3 +952,323 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
     τ_c = ExtractContactTraction(a, ε, coord)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
 end
+
+
+##
+function fictitious_solver_with_contact_hook_half(d, dh0, coord₀, nloadsteps)
+    # allt överflödigt bör vid tillfälle flyttas utanför
+    # lösare till ett "init-liknande script så att huvudsaklig kod hålls ren
+    TOL = 1e-10
+    residual = 0.0
+    iter = 1
+    global λ = 0
+    ndof = size(coord₀, 1) * 2
+    nelm = size(enod, 1)
+    t = 1.0
+
+    #  ----- #
+    # Init   #
+    #  ----- #
+    global Kψ = create_sparsity_pattern(dh0)
+    global Ψ = zeros(dh0.ndofs.x)
+    global FΨ = zeros(dh0.ndofs.x)
+    global Ψ = zeros(dh0.ndofs.x)
+    global ΔΨ = zeros(dh0.ndofs.x)
+    global res = zeros(dh0.ndofs.x)
+
+    global bcdof_o2 = bcdofs_opt
+    global bcval_o2 = bcdofs_opt .* 0.0
+    global pdofs = bcdofs_opt
+    global fdofs = setdiff(1:ndof, pdofs)
+
+    bcval₀_o2 = bcval_opt
+    Δλ = (1.0 / nloadsteps)
+    loadstep = 0
+
+    while loadstep < nloadsteps
+        loadstep += 1
+        res = res .* 0
+        bcval_opt = bcval₀_o2
+        residual = 0 * residual
+        iter = 0
+        global λ += Δλ #* loadstep
+        fill!(ΔΨ, 0.0)
+        print("\n", "Starting equilibrium iteration at loadstep: ", loadstep, "\n")
+        Ψ_old = Ψ
+
+        # # # # # # # # # #
+        # Newton solve.  #
+        # # # # # # # # # #
+        while residual > TOL || iter < 2
+            iter += 1
+            if iter % 20 == 0 || norm(res) > 1e2 #&& Δλ > 1/16
+                Ψ = Ψ_old
+                if Δλ > 0.1 * 1 / 64
+                    global λ -= Δλ #* loadstep
+                    Δλ = Δλ / 2
+                    global λ += Δλ  #* loadstep
+                    remaining_steps = nloadsteps - loadstep
+                    nloadsteps = loadstep + round((1 - λ) / Δλ)
+                else
+                    global μ = μ * 0.9
+                end
+                fill!(ΔΨ, 0.0)
+                println("Step length updated: $Δλ, penalty parameter: $μ")
+            end
+
+            Ψ += ΔΨ
+            assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
+            solveq!(ΔΨ, Kψ, -FΨ, bcdofs_opt, bcval_opt)
+            # assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
+
+            bcval_opt = bcval_opt .* 0
+            res = FΨ #- Fₑₓₜ
+            res[bcdofs_opt] = res[bcdofs_opt] .* 0
+            residual = norm(res, 2)
+            Ψ[bcdofs_opt] .= 0.0
+            if loadstep < 40 && iter < 20
+                postprocess_opt(Ψ, dh0, "results/fictitious" * string(loadstep))
+            end
+            if iter < 20
+                postprocess_opt(res, dh0, "results/fictres" * string(iter))
+                postprocess_opt(Ψ, dh0, "results/fictitious_iter" * string(iter))
+            end
+            @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
+        end
+    end
+    return Ψ, dh0, Kψ, FΨ, λ
+end
+#
+#
+function solver_C_hook_half(dh, coord, Δ, nloadsteps)
+
+    # ---------- #
+    # Set params # // Kanske som input till solver???
+    # ---------- # // definiera mp här? och kanske ε ? iofs snyggare utanför!
+    t = 1.0
+
+    # Define material parameters
+    #mp = [175 80.769230769230759]
+
+    # ------------- #
+    # Init-stuff    #
+    # ------------- #
+    imax = 200
+    TOL = 1e-8
+    residual = 0.0
+    iter = 1
+    # ------------- #.0
+    # ------------- #
+    #K = create_sparsity_pattern(dh)
+
+    # ------ #
+    #  Init  #
+    # ------ #
+    global Fᵢₙₜ = zeros(dh.ndofs.x)
+    global rc = zeros(dh.ndofs.x)
+    global Fₑₓₜ = zeros(dh.ndofs.x)
+    global a = zeros(dh.ndofs.x)
+    global Δa = zeros(dh.ndofs.x)
+    global res = zeros(dh.ndofs.x)
+    global K = create_sparsity_pattern(dh)
+
+    # ------------------- #
+    # Boundary conditions #
+    # ------------------- #
+    # L structure
+    bcdof_left, bcval_left = setBCXY_X(0.0, dh, n_left)
+    bcdof_top, bcval_top   = setBCXY_both(0.0, dh, n_top)
+    #bcdof_top, bcval_top   = Vector{Int64}(), Vector{Float64}()
+    # Cylinder
+    bcdof_cyl, bcval_cyl   = setBCXY_X(Δ/nloadsteps, dh, n_cyl)
+    # Collect
+    bcdofs = [bcdof_left; bcdof_top; bcdof_cyl]
+    bcvals = [bcval_left; bcval_top; bcval_cyl]
+    #
+    ϵᵢⱼₖ = sortperm(bcdofs)
+    global bcdofs = bcdofs[ϵᵢⱼₖ]
+    global bcvals = bcvals[ϵᵢⱼₖ]
+
+    # - For Linear solver..
+    global pdofs = bcdofs
+    global fdofs = setdiff(1:dh.ndofs.x, pdofs)
+
+    bcval₀ = bcvals
+    global β = 1.0
+    #for loadstep ∈ 1 : nloadsteps
+    ##
+    loadstep = 0
+    while loadstep < nloadsteps
+        loadstep += 1
+        #global ε = ε * 1.1
+        ##
+        res = res .* 0
+        bcvals = bcval₀
+        residual = 0 * residual
+        iter = 0
+        fill!(Δa, 0.0)
+        print("\n", "Starting equilibrium iteration at loadstep: ", loadstep, "\n")
+        #global ε = ε₀
+        a_old = a
+        # # # # # # # # # #
+        # Newton solve.   #
+        # # # # # # # # # #
+
+        #@show β
+        while residual > TOL || iter < 2
+            iter += 1
+            if iter % 20 == 0 || norm(res) > 1e3 && β > 1 / 8
+                a = a_old
+                bcvals = bcval₀
+                global β = β * 0.5
+                Δ_remaining = (Δ * nloadsteps - β * Δ - loadstep * Δ) / nloadsteps
+                remaining_steps = nloadsteps - loadstep
+                nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
+                bcvals = bcvals ./ 2 #
+                bcval₀ = bcvals
+                fill!(Δa, 0.0)
+                println("Penalty paremeter and updated: $ε, and step length $β ")
+            end
+
+            #a += β * Δa
+            a += Δa
+            assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε)
+            solveq!(Δa, K, -Fᵢₙₜ, bcdofs, bcvals)
+            bcvals = 0 * bcvals
+            res = Fᵢₙₜ - Fₑₓₜ
+            res[bcdofs] = 0 * res[bcdofs]
+            residual = norm(res, 2)
+            @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_cyl[1]]
+            # if loadstep < 40
+            #     σx, σy = StressExtract(dh, a, mp)
+            #     vtk_grid("results/contact" * string(iter), dh) do vtkfile
+            #         vtk_point_data(vtkfile, dh, a) # displacement field
+            #         vtk_point_data(vtkfile, σx, "σx")
+            #         vtk_point_data(vtkfile, σy, "σy")
+            #     end
+            # end
+        end
+        if loadstep < 40 && iter < 20
+            σx, σy = StressExtract(dh, a, mp)
+            vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
+                vtk_point_data(vtkfile, dh, a) # displacement field
+                vtk_point_data(vtkfile, σx, "σx")
+                vtk_point_data(vtkfile, σy, "σy")
+            end
+        end
+        Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
+    end
+    τ_c = ExtractContactTraction(a, ε, coord)
+    return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
+end
+
+function solver_C_U(dh, coord, Δ, nloadsteps)
+
+    # ---------- #
+    # Set params # // Kanske som input till solver???
+    # ---------- # // definiera mp här? och kanske ε ? iofs snyggare utanför!
+    t = 1.0
+
+    # Define material parameters
+    #mp = [175 80.769230769230759]
+
+    # ------------- #
+    # Init-stuff    #
+    # ------------- #
+    imax = 200
+    TOL = 1e-8
+    residual = 0.0
+    iter = 1
+    # ------------- #.0
+    # ------------- #
+    #K = create_sparsity_pattern(dh)
+
+    # ------ #
+    #  Init  #
+    # ------ #
+    global Fᵢₙₜ = zeros(dh.ndofs.x)
+    global rc = zeros(dh.ndofs.x)
+    global Fₑₓₜ = zeros(dh.ndofs.x)
+    global a = zeros(dh.ndofs.x)
+    global Δa = zeros(dh.ndofs.x)
+    global res = zeros(dh.ndofs.x)
+    global K = create_sparsity_pattern(dh)
+
+    # ------------------- #
+    # Boundary conditions #
+    # ------------------- #
+    # L structure
+    bcdof_bot, bcval_bot = setBCXY_both(0.0, dh, n_bot)
+    bcdof_top, bcval_top = setBCXY(-Δ/nloadsteps, dh, n_top)
+    # Collect
+    bcdofs = [bcdof_bot; bcdof_top]
+    bcvals = [bcval_bot; bcval_top]
+    #
+    ϵᵢⱼₖ = sortperm(bcdofs)
+    global bcdofs = bcdofs[ϵᵢⱼₖ]
+    global bcvals = bcvals[ϵᵢⱼₖ]
+
+    # - For Linear solver..
+    global pdofs = bcdofs
+    global fdofs = setdiff(1:dh.ndofs.x, pdofs)
+
+    bcval₀ = bcvals
+    global β = 1.0
+    #for loadstep ∈ 1 : nloadsteps
+    ##
+    loadstep = 0
+    while loadstep < nloadsteps
+        loadstep += 1
+        #global ε = ε * 1.1
+        ##
+        res = res .* 0
+        bcvals = bcval₀
+        residual = 0 * residual
+        iter = 0
+        fill!(Δa, 0.0)
+        print("\n", "Starting equilibrium iteration at loadstep: ", loadstep, "\n")
+        #global ε = ε₀
+        a_old = a
+        # # # # # # # # # #
+        # Newton solve.   #
+        # # # # # # # # # #
+
+        #@show β
+        while residual > TOL || iter < 2
+            iter += 1
+            if iter % 20 == 0 || norm(res) > 1e3 && β > 1 / 8
+                a = a_old
+                bcvals = bcval₀
+                global β = β * 0.5
+                Δ_remaining = (Δ * nloadsteps - β * Δ - loadstep * Δ) / nloadsteps
+                remaining_steps = nloadsteps - loadstep
+                nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
+                bcvals = bcvals ./ 2 #
+                bcval₀ = bcvals
+                fill!(Δa, 0.0)
+                println("Penalty paremeter and updated: $ε, and step length $β ")
+            end
+
+            #a += β * Δa
+            a += Δa
+            assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε)
+            solveq!(Δa, K, -Fᵢₙₜ, bcdofs, bcvals)
+            bcvals = 0 * bcvals
+            res = Fᵢₙₜ - Fₑₓₜ
+            res[bcdofs] = 0 * res[bcdofs]
+            residual = norm(res, 2)
+            @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_top[1]]
+        end
+        if loadstep < 40 && iter < 20
+            σx, σy = StressExtract(dh, a, mp)
+            vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
+                vtk_point_data(vtkfile, dh, a) # displacement field
+                vtk_point_data(vtkfile, σx, "σx")
+                vtk_point_data(vtkfile, σy, "σy")
+            end
+        end
+        Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
+    end
+    τ_c = ExtractContactTraction(a, ε, coord)
+    return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
+end

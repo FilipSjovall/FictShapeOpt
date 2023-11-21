@@ -240,7 +240,7 @@ function energy(dh,a,mp)
         for gp ∈ 1 : 3
             F = defgradGP(coord[el.nodes, :], a[cell_dofs], gp, mp, t)
             C = F'*F
-            W[ie] = Ψ(C, mp)
+            W[ie] += neohooke_energy(F, mp) * 1/3
         end
     end
     return W
