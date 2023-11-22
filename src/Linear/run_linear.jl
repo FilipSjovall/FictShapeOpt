@@ -595,6 +595,9 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
                 postprocess_opt(Ψ, dh0, "results/fictitious_iter_t2" * string(iter))
             end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
+            #Wψ = energy(dh0, Ψ, mp₀)
+            #σψx, σψy = StressExtract(dh0, Ψ, mp₀)
+            #@save "filter forces fat" FΨ Wψ σψx σψy
         end
     end
     return Ψ, dh0, Kψ, FΨ, λ
@@ -1026,9 +1029,9 @@ function fictitious_solver_with_contact_hook_half(d, dh0, coord₀, nloadsteps)
             res[bcdofs_opt] = res[bcdofs_opt] .* 0
             residual = norm(res, 2)
             Ψ[bcdofs_opt] .= 0.0
-            if loadstep < 40 && iter < 20
-                postprocess_opt(Ψ, dh0, "results/fictitious" * string(loadstep))
-            end
+            # if loadstep < 40 && iter < 20
+            #     postprocess_opt(Ψ, dh0, "results/fictitious" * string(loadstep))
+            # end
             if iter < 20
                 postprocess_opt(res, dh0, "results/fictres" * string(iter))
                 postprocess_opt(Ψ, dh0, "results/fictitious_iter" * string(iter))

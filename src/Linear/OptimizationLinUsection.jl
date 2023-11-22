@@ -16,17 +16,28 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
+# Fat
+# x₀ = 0.5
+# y₀ = 0.449
+# r  = 0.2#35
+# xᵤ = 0.0
+# yᵤ = 0.0
+# Δx = 1.0
+# Δy = 0.75
+# tx = 0.25
+# ty = 0.25
+# Thin
 x₀ = 0.5
-y₀ = 0.449
-r  = 0.2#35
+y₀ = 0.4749
+r = 0.35#
 xᵤ = 0.0
 yᵤ = 0.0
 Δx = 1.0
 Δy = 0.75
-tx = 0.25
-ty = 0.25
+tx = 0.125
+ty = 0.125
 # grid size
-h = 0.04
+h = 0.05
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -247,7 +258,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ = 1e4
+        global μ          = 1e3
 
         if OptIter % 10 == 0 # OptIter % 5 == 0 #
             dh0          = deepcopy(dh)
@@ -257,6 +268,8 @@ function Optimize(dh)
             global low   = xmin
             global upp   = xmax
             OptIter      = 1
+            xmin = xmin.*2
+            xmax = xmax.*2
         end
 
         # # # # # # # # # # # # # #
@@ -374,8 +387,9 @@ function Optimize(dh)
         # append?
         p2 = plot(1:true_iteration, [v_hist[1:true_iteration], g_hist[1:true_iteration]] .* 100, label=["Volume Constraint" "Objective"])
         display(p2)
-        #@save "tunnt_u_som_strular.jld2" a Ψ dh dh0 OptIter g d Wᵤ Wψ FΨ Fᵢₙₜ
-        @save "tjockt_u_som_inte_strular.jld2" a Ψ dh dh0 OptIter g d Wᵤ Wψ FΨ Fᵢₙₜ
+        #σx, σy = StressExtract(dh, a, mp)
+        #@save "tunnt_u_som_strular.jld2" a Ψ dh dh0 OptIter g d Wᵤ Wψ FΨ Fᵢₙₜ σx σy
+        #@save "tjockt_u_som_inte_strular.jld2" a Ψ dh dh0 OptIter g d Wᵤ Wψ FΨ Fᵢₙₜ σx σy
     end
     #jld2save("färdig.jld2",a,Ψ,dh,dh0,Opiter,v_hist,g_hist,d)
     return g_hist, v_hist, OptIter, traction, historia
