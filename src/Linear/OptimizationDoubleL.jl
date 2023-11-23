@@ -16,15 +16,15 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
-th = 0.40 #+ .1
+th = 0.30 #+ .1
 xl = 0.0
 yl = 0.0
-xr = -0.75 + 0.25 + 0.1 + 0.2 #+ 0.2
+xr = -0.75 + 0.25 + 0.1 #+ 0.2 #+ 0.2
 yr = 1.51
 Δx = 1.0
 Δy = 1.0
-r1 = 0.1
-r2 = 0.1
+r1 = 0.075
+r2 = 0.075
 # grid size
 h = 0.05
 # # # # # # # # # #
@@ -284,16 +284,16 @@ function Optimize(dh)
         global nloadsteps = 20
         global μ = 1e4
 
-        if OptIter % 15 == 0 # OptIter % 5 == 0 #
-            xmin  = xmin.*2
-            xmax  = xmax.*2
-            #dh0          = deepcopy(dh)
-            #global d     = zeros(dh.ndofs.x)
-            #global xold1 = d[:]
-            #global xold2 = d[:]
-            #global low   = xmin
-            #global upp   = xmax
-            #OptIter      = 1
+        if OptIter % 10 == 0 # OptIter % 5 == 0 #
+            dh0          = deepcopy(dh)
+            global d     = zeros(dh.ndofs.x)
+            global xold1 = d[:]
+            global xold2 = d[:]
+            global low   = xmin
+            global upp   = xmax
+            OptIter      = 1
+            xmin = max.(xmin * 2, -1)
+            xmax = min.(xmax * 2, 1)
         end
 
         # # # # # # # # # # # # # #
