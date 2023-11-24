@@ -20,7 +20,7 @@ th = 0.30 #+ .1
 xl = 0.0
 yl = 0.0
 xr = -0.75 + 0.25 + 0.1 #+ 0.2 #+ 0.2
-yr = 1.51
+yr = 1.71
 Δx = 1.0
 Δy = 1.0
 r1 = 0.075
@@ -228,7 +228,7 @@ function Optimize(dh)
     g_hist = zeros(1000)
     historia = zeros(200, 4)
     global T = zeros(size(a))
-    #global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
+    global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
     global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
     g₁ = 0.0
     #
@@ -292,8 +292,8 @@ function Optimize(dh)
             global low   = xmin
             global upp   = xmax
             OptIter      = 1
-            xmin = max.(xmin * 2, -1)
-            xmax = min.(xmax * 2, 1)
+            xmin = max.(xmin * 2, -16)
+            xmax = min.(xmax * 2, 16)
         end
 
         # # # # # # # # # # # # # #
