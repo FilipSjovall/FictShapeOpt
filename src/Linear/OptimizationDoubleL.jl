@@ -207,9 +207,8 @@ bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
 ϵᵢⱼₖ = sortperm(bcdofs_opt)
 global bcdofs_opt = bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt = bcdofs_opt .* 0.0
-
-
 global asy_counter = zeros(dh.ndofs.x, 400)
+
 # -------------------- #
 # Optimization program #
 # -------------------- #
@@ -219,7 +218,7 @@ function Optimize(dh)
     global λψ = similar(a)
     global λᵤ = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = 2.0  #
+    Vₘₐₓ = volume(dh, coord, enod) # 2.0
     tol = 1e-3
     global OptIter = 0
     global true_iteration = 0
@@ -282,7 +281,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ = 1e4
+        global μ = 1e5
 
         if OptIter % 10 == 0 # OptIter % 5 == 0 #
             dh0          = deepcopy(dh)
@@ -313,7 +312,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε          = 1e4
+        global ε          = 1e5
 
         # # # # # # # # #
         # Equillibrium  #
@@ -375,8 +374,19 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
+        d_old   = d
+        low_old = low
+        upp_old = upp
+        α       = 0.2
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g .* 100, ∂g_∂d .* 100, g₁ .* 100, ∂Ω∂d .* 100, low, upp, a0, am, C, d2)
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .* 100, ∂g_∂d .* 100, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
+        # ----------------- #
+        # Test - new update #
+        # ----------------- #
+        d_new  = d_old   + α .* (d_new - d_old)
+        low    = low_old + α .* (low   - low_old)
+        upp    = upp_old + α .* (upp   - upp_old)
+        # ----------------- #
         xold2  = xold1
         xold1  = d
         d      = d_new
