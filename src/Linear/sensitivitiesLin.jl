@@ -14,7 +14,10 @@ function drψ(dr_dd,dh,Ψ,λ,d,Γ_robin,coord₀)
                 dfe[face_dofs,face_dofs],_ = Robin(X,Ψ[cell_dofs[face_dofs]],d[cell_dofs[face_dofs]],λ)
             end
         end
-        assemble!(assembler, cell_dofs, -dfe)
+        # Dampened
+        assemble!(assembler, cell_dofs, -0.1dfe)
+        # Regular
+        #assemble!(assembler, cell_dofs, -dfe)
     end
     return dr_dd
 end

@@ -207,8 +207,11 @@ bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
 ϵᵢⱼₖ = sortperm(bcdofs_opt)
 global bcdofs_opt = bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt = bcdofs_opt .* 0.0
-global asy_counter = zeros(dh.ndofs.x, 400)
+global asy_counter = zeros(dh.ndofs.x, 600)
 
+global low_hist = zeros(length(d), 600)
+global upp_hist = zeros(length(d), 600)
+global d_hist = zeros(length(d), 600)
 # -------------------- #
 # Optimization program #
 # -------------------- #
@@ -218,14 +221,14 @@ function Optimize(dh)
     global λψ = similar(a)
     global λᵤ = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = volume(dh, coord, enod) # 2.0
+    Vₘₐₓ = volume(dh, coord, enod) * 1.1 # 2.0
     tol = 1e-3
     global OptIter = 0
     global true_iteration = 0
     global coord₀
     v_hist = zeros(1000)
     g_hist = zeros(1000)
-    historia = zeros(200, 4)
+    #historia = zeros(200, 4)
     global T = zeros(size(a))
     global T[bcdof_left[isodd.(bcdof_left)]]   .=  1.0
     global T[bcdof_right[isodd.(bcdof_right)]] .= -1.0
@@ -281,9 +284,9 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 20
-        global μ = 1e5
+        global μ = 1e4 # funkade ok med 1e4
 
-        if OptIter % 10 == 0 # OptIter % 5 == 0 #
+        if OptIter % 30 == 0 # OptIter % 5 == 0 #
             dh0          = deepcopy(dh)
             global d     = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -312,7 +315,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε          = 1e5
+        global ε          = 1e4 # funkade ok med 1e4
 
         # # # # # # # # #
         # Equillibrium  #
@@ -377,7 +380,7 @@ function Optimize(dh)
         d_old   = d
         low_old = low
         upp_old = upp
-        α       = 0.2
+        α       = 0.4
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g .* 100, ∂g_∂d .* 100, g₁ .* 100, ∂Ω∂d .* 100, low, upp, a0, am, C, d2)
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .* 100, ∂g_∂d .* 100, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         # ----------------- #
@@ -407,8 +410,13 @@ function Optimize(dh)
         postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
         # append?
-        p2 = plot(1:true_iteration, [v_hist[1:true_iteration], g_hist[1:true_iteration]] .* 100, label=["Volume Constraint" "Objective"])
+        p2 = plot(1:true_iteration, [v_hist[1:true_iteration], g_hist[1:true_iteration]] .* 100, label=["Volume Constraint" "Objective"], legend=:left)
         display(p2)
+        # For investigative purpose
+        low_hist[:,true_iteration] = low
+        upp_hist[:,true_iteration] = upp
+        d_hist[:, true_iteration]  = d
+        @save "asymptoter.jld2" low_hist upp_hist d_hist
     end
     #jld2save("färdig.jld2",a,dh,dh0,Opiter,v_hist,g_hist,d)
     return g_hist, v_hist, OptIter, traction, historia
@@ -417,6 +425,30 @@ end
 g_hist, v_hist, OptIter, traction, historia = Optimize(dh)
 
 
+
+# Plot 3D
+plotlyjs()
+#
+#
+# Plotta bara "free_d"
+design_indices = free_d
+opt_iters = range(1,100)
+#
+#
+# Create x and y coordinates based on the matrix size
+x = 1:size(low_hist[design_indices, opt_iters], 2)
+y = 1:size(low_hist[design_indices, opt_iters], 1)
+
+# Create a meshgrid from x and y
+xgrid = repeat(x, 1, length(y))
+ygrid = repeat(y, 1, length(x))'
+
+# Create the 3D surface plot
+plot(xgrid, ygrid, low_hist[design_indices,opt_iters]', st=:surface, xlabel="Design iterations", ylabel="Degree of freedom", zlabel="Asymptote value", title="Evolution of asymptotes")
+plot!(xgrid, ygrid, upp_hist[design_indices, opt_iters]', st=:surface)
+
+
+p = plot(xgrid, ygrid, d_hist[design_indices, opt_iters]', st=:surface, xlabel="Design iterations", ylabel="Degree of freedom", zlabel="Design variable d", title="Evolution of design variable")
 #=
 function main()
     # ----- #
