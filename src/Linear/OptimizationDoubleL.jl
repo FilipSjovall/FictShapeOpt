@@ -3,6 +3,7 @@ using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
 using SparseDiffTools, Plots, Printf, JLD2, Statistics, AlgebraicMultigrid
 #
 #pyplot()
+plotlyjs()
 #
 include("..//mesh_reader.jl")
 include("Contact//contact_help.jl")
@@ -20,7 +21,7 @@ th = 0.30 #+ .1
 xl = 0.0
 yl = 0.0
 xr = -0.75 + 0.25 + 0.1 #+ 0.2 #+ 0.2
-yr = 1.71
+yr = 1.31
 Δx = 1.0
 Δy = 1.0
 r1 = 0.075
@@ -186,8 +187,17 @@ global ∂g₂_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g₂_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ = similar(a)
 global λψ = similar(a)
-global Δ = 0.05
+global Δ = 0.1
 global nloadsteps = 10
+
+global a_hist = zeros(dh.ndofs.x, nloadsteps)
+global Ψ_hist = zeros(dh.ndofs.x, nloadsteps)
+global d_hist = zeros(dh.ndofs.x, nloadsteps)
+global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1].*5
+global F_d    = zeros(10)
+global F₀     = zeros(10)
+global g      = 0.0
+
 # # # # # # # # # # # # # # # #
 # Init optimization variables #
 # # # # # # # # # # # # # # # #
@@ -211,7 +221,7 @@ global asy_counter = zeros(dh.ndofs.x, 600)
 
 global low_hist = zeros(length(d), 600)
 global upp_hist = zeros(length(d), 600)
-global d_hist = zeros(length(d), 600)
+global d_hist2 = zeros(length(d), 600)
 # -------------------- #
 # Optimization program #
 # -------------------- #
@@ -245,7 +255,7 @@ function Optimize(dh)
         global ∂rᵤ_∂x
         global dr_dd
         global ∂rψ_∂d
-        global ∂g_∂d
+        global ∂g_∂d = zeros(dh.ndofs.x)
         global mp
         global mp₀
         global t
@@ -283,10 +293,10 @@ function Optimize(dh)
         # # # # #
         # test  #
         # # # # #
-        global nloadsteps = 20
+        global nloadsteps = 10
         global μ = 1e4 # funkade ok med 1e4
 
-        if OptIter % 30 == 0 # OptIter % 5 == 0 #
+        if OptIter % 15 == 0 # OptIter % 5 == 0 #
             dh0          = deepcopy(dh)
             global d     = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -294,15 +304,15 @@ function Optimize(dh)
             global low   = xmin
             global upp   = xmax
             OptIter      = 1
-            xmin = max.(xmin * 2, -16)
-            xmax = min.(xmax * 2, 16)
+            xmin = max.(xmin * 2, -8)
+            xmax = min.(xmax * 2,  8)
         end
 
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
         global coord₀  = getCoord(getX(dh0), dh0) # x₀
-        Ψ, _, Kψ, _, λ = fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
+        Ψ, _, Kψ, _, λ, Ψ_hist, d_hist = fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
 
         # # # # # #
         # Filter  #
@@ -320,38 +330,48 @@ function Optimize(dh)
         # # # # # # # # #
         # Equillibrium  #
         # # # # # # # # #
-        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction = solver_C_hook(dh, coord, Δ, nloadsteps)
+        a, _, Fₑₓₜ, Fᵢₙₜ, K, traction, a_hist = solver_C_hook(dh, coord, Δ, nloadsteps)
+        global g = 0.0
+        for n = 1:nloadsteps
+            a = a_hist[:,n]
+            Ψ = Ψ_hist[:,n]
+            λ = (1/n)*n
+            assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε)
+            assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
+            # # # # # # # # #
+            # Sensitivities #
+            # # # # # # # # #
+            ∂rᵤ_∂x = similar(K)
+            ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
+            dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 
-        # # # # # # # # #
-        # Sensitivities #
-        # # # # # # # # #
-        ∂rᵤ_∂x = similar(K)
-        ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
-        dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
+            # # # # # # #
+            # Objective #
+            # # # # # # #
+            # Max reaction force
+            g     += 0.5*(-T' * Fᵢₙₜ - F_tar[n])^2
+            ∂g_∂x  = -T' * ∂rᵤ_∂x
+            ∂g_∂u  = -T' * K
+            # Compliance
+            # g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
+            # ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
+            # ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
 
-        # # # # # # #
-        # Objective #
-        # # # # # # #
-        # Max reaction force
-        g     = -T' * Fᵢₙₜ
-        ∂g_∂x = -T' * ∂rᵤ_∂x
-        ∂g_∂u = -T' * K
-        # Compliance
-        # g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
-        # ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
-        # ∂g_∂u[fdofs] = -a[pdofs]' * K[pdofs, fdofs]
+            # # # # # # #
+            # Adjoints  #
+            # # # # # # #
+            solveq!(λᵤ, K', ∂g_∂u, bcdofs_opt, bcval_opt)
+            solveq!(λψ, Kψ', ∂g_∂x' - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt)
 
-        # # # # # # #
-        # Adjoints  #
-        # # # # # # #
-        solveq!(λᵤ, K', ∂g_∂u, bcdofs_opt, bcval_opt)
-        solveq!(λψ, Kψ', ∂g_∂x' - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt)
-
-        # # # # # # # # # # #
-        # Full sensitivity  #
-        # # # # # # # # # # #
-        ∂g_∂d = (-transpose(λψ) * dr_dd)'
-
+            # # # # # # # # # # #
+            # Full sensitivity  #
+            # # # # # # # # # # #
+            ∂g_∂d += (-T' * Fᵢₙₜ - F_tar[n]) * (-transpose(λψ) * dr_dd)'
+            F_d[n] = -T' * Fᵢₙₜ
+        end
+        if true_iteration == 1
+            global F₀ = deepcopy(F_d)
+        end
         # # # # # # # # # # #
         # Volume constraint #
         # # # # # # # # # # #
@@ -380,12 +400,12 @@ function Optimize(dh)
         d_old   = d
         low_old = low
         upp_old = upp
-        α       = 0.4
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g .* 100, ∂g_∂d .* 100, g₁ .* 100, ∂Ω∂d .* 100, low, upp, a0, am, C, d2)
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .* 100, ∂g_∂d .* 100, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
         # ----------------- #
         # Test - new update #
         # ----------------- #
+        α      = 1.0
         d_new  = d_old   + α .* (d_new - d_old)
         low    = low_old + α .* (low   - low_old)
         upp    = upp_old + α .* (upp   - upp_old)
@@ -412,10 +432,14 @@ function Optimize(dh)
         # append?
         p2 = plot(1:true_iteration, [v_hist[1:true_iteration], g_hist[1:true_iteration]] .* 100, label=["Volume Constraint" "Objective"], legend=:left)
         display(p2)
+        p3 = plot(0.0:0.01:0.1, vcat(0.0, abs.(F_d)), label="Design", legend=:left)
+        scatter!(0.0:0.01:0.1, vcat(0.0, abs.(F_tar)), label = "Target")
+        plot!(0.0:0.01:0.1, vcat(0.0, abs.(F₀)), label = "Initial")
+        display(p3)
         # For investigative purpose
         low_hist[:,true_iteration] = low
         upp_hist[:,true_iteration] = upp
-        d_hist[:, true_iteration]  = d
+        d_hist2[:, true_iteration]  = d
         @save "asymptoter.jld2" low_hist upp_hist d_hist
     end
     #jld2save("färdig.jld2",a,dh,dh0,Opiter,v_hist,g_hist,d)
@@ -425,10 +449,10 @@ end
 g_hist, v_hist, OptIter, traction, historia = Optimize(dh)
 
 
+# # # # # #
+# Plot 3D #
+# # # # # #
 
-# Plot 3D
-plotlyjs()
-#
 #
 # Plotta bara "free_d"
 design_indices = free_d
@@ -446,7 +470,7 @@ ygrid = repeat(y, 1, length(x))'
 # Create the 3D surface plot
 plot(xgrid, ygrid, low_hist[design_indices,opt_iters]', st=:surface, xlabel="Design iterations", ylabel="Degree of freedom", zlabel="Asymptote value", title="Evolution of asymptotes")
 plot!(xgrid, ygrid, upp_hist[design_indices, opt_iters]', st=:surface)
-
+#plot(xgrid, ygrid, upp_hist[design_indices, opt_iters]'-low_hist[design_indices, opt_iters]', st=:surface, xlabel="Design iterations", ylabel="Degree of freedom", zlabel="Asymptote value", title="Evolution of asymptotes")
 
 p = plot(xgrid, ygrid, d_hist[design_indices, opt_iters]', st=:surface, xlabel="Design iterations", ylabel="Degree of freedom", zlabel="Design variable d", title="Evolution of design variable")
 #=
@@ -484,3 +508,14 @@ for face in Γs
     xlims!(-0.75 , 1.25)
     ylims!(0.0, 1.5)
 end
+
+
+F = zeros(10)
+
+for n = 1:nloadsteps
+    a = a_hist[:,n]
+    assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε)
+    assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
+    F[n] = -T' * Fᵢₙₜ
+end
+plot(0.01:0.01:0.1,abs.(F))

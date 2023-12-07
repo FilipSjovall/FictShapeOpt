@@ -569,8 +569,8 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
                     global λ += Δλ  #* loadstep
                     remaining_steps = nloadsteps - loadstep
                     nloadsteps = loadstep + round((1 - λ) / Δλ)
-                else
-                    global μ = μ * 0.9
+                #else
+                #    global μ = μ * 0.9
                 end
                 fill!(ΔΨ, 0.0)
                 println("Step length updated: $Δλ, penalty parameter: $μ")
@@ -599,8 +599,10 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             #σψx, σψy = StressExtract(dh0, Ψ, mp₀)
             #@save "filter forces fat" FΨ Wψ σψx σψy
         end
+        Ψ_hist[:, loadstep] = Ψ
+        d_hist[:, loadstep] = d
     end
-    return Ψ, dh0, Kψ, FΨ, λ
+    return Ψ, dh0, Kψ, FΨ, λ, Ψ_hist, d_hist
 end
 #
 #
@@ -730,9 +732,10 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
             end
         end
         Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
+        a_hist[:,loadstep] = a
     end
     τ_c = ExtractContactTraction(a, ε, coord)
-    return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
+    return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c, a_hist
 end
 
 function fictitious_solver_with_contact_half(d, dh0, coord₀, nloadsteps)

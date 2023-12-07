@@ -107,18 +107,18 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
       factor = eeen;
       factor[findall(zzz .> 0)] .= asyincr;
       factor[findall(zzz .< 0)] .= asydecr;
-      low = xval .- factor.*(xold1 .- low);
-      upp = xval .+ factor.*(upp .- xold1);
+      low    = xval .- factor.*(xold1 .- low);
+      upp    = xval .+ factor.*(upp .- xold1);
       lowmin = xval - 10*(xmax-xmin);
       #lowmax = xval - 0.01*(xmax-xmin);
       #uppmin = xval + 0.01*(xmax-xmin);
       lowmax = xval - 0.001 * (xmax - xmin) ###### Ändrade värden
       uppmin = xval + 0.001 * (xmax - xmin) ###### Ändrade värden
       uppmax = xval + 10*(xmax-xmin);
-      low = max.(low,lowmin); ### lade till . så att operationen görs elementvis
-      low = min.(low,lowmax); ### lade till . så att operationen görs elementvis
-      upp = min.(upp,uppmax); ### lade till . så att operationen görs elementvis
-      upp = max.(upp,uppmin); ### lade till . så att operationen görs elementvis
+      low    = max.(low,lowmin); ### lade till . så att operationen görs elementvis
+      low    = min.(low,lowmax); ### lade till . så att operationen görs elementvis
+      upp    = min.(upp,uppmax); ### lade till . så att operationen görs elementvis
+      upp    = max.(upp,uppmin); ### lade till . så att operationen görs elementvis
   end
 
   # Calculation of the bounds alfa and beta :
