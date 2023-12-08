@@ -172,9 +172,9 @@ function assemGlobal!(Kψ, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_rob
     #Kψ[contact_dofs, contact_dofs] -= Kc[contact_dofs, contact_dofs]
     #Fψ[contact_dofs]            -= rc[contact_dofs]
 
-    rc = contact_residual_reduced(X_ordered, Ψ[contact_dofs], Ψ[freec_dofs], μ)
+    rc = contact_residual_reduced_filter(X_ordered, Ψ[contact_dofs], Ψ[freec_dofs], μ)
     #@show norm(rc)
-    Kc = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, Ψ[freec_dofs], μ), Ψ[contact_dofs])
+    Kc = ForwardDiff.jacobian(u -> contact_residual_reduced_filter(X_ordered, u, Ψ[freec_dofs], μ), Ψ[contact_dofs])
     Kψ[contact_dofs, contact_dofs] -= Kc
     Fψ[contact_dofs]               -= rc
 end

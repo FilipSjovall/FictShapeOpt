@@ -21,7 +21,7 @@ th = 0.30 #+ .1
 xl = 0.0
 yl = 0.0
 xr = -0.75 + 0.25 + 0.1 #+ 0.2 #+ 0.2
-yr = 1.31
+yr = 1.51
 Δx = 1.0
 Δy = 1.0
 r1 = 0.075
@@ -156,16 +156,6 @@ for jnod in n_robin
     append!(free_d, register[jnod, 1])
     append!(free_d, register[jnod, 2])
 end
-##global locked_d = setdiff(1:dh.ndofs.x, free_d)
-#global locked_d = Vector{Int64}()
-#for n ∈ n_left
-#    push!(locked_d,register[n,1])
-#    push!(locked_d,register[n,2])
-#end
-#for n ∈ n_right
-#    push!(locked_d,register[n,1])
-#    push!(locked_d,register[n,2])
-#end
 
 # Initialize tangents
 global K = create_sparsity_pattern(dh)
@@ -173,27 +163,27 @@ global Kψ = create_sparsity_pattern(dh)
 global a = zeros(dh.ndofs.x)
 global d = zeros(dh.ndofs.x)
 global Ψ = zeros(dh.ndofs.x)
-global Fᵢₙₜ = zeros(dh.ndofs.x)
-global rc = zeros(dh.ndofs.x)
+global Fᵢₙₜ= zeros(dh.ndofs.x)
+global rc   = zeros(dh.ndofs.x)
 global Fₑₓₜ = zeros(dh.ndofs.x)
-global a = zeros(dh.ndofs.x)
-global Δa = zeros(dh.ndofs.x)
+global a   = zeros(dh.ndofs.x)
+global Δa  = zeros(dh.ndofs.x)
 global res = zeros(dh.ndofs.x)
-global dr_dd = similar(K)
+global dr_dd  = similar(K)
 global ∂rψ_∂d = similar(K)
-global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
-global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
+global ∂g_∂x  = zeros(size(a)) # behövs inte om vi har lokal funktion?
+global ∂g_∂u  = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global ∂g₂_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g₂_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ = similar(a)
 global λψ = similar(a)
-global Δ = 0.1
+global Δ  = 0.1
 global nloadsteps = 10
 
 global a_hist = zeros(dh.ndofs.x, nloadsteps)
 global Ψ_hist = zeros(dh.ndofs.x, nloadsteps)
 global d_hist = zeros(dh.ndofs.x, nloadsteps)
-global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1].*5
+global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1].*6
 global F_d    = zeros(10)
 global F₀     = zeros(10)
 global g      = 0.0
