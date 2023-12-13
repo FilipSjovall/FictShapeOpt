@@ -44,8 +44,21 @@ function penalty(g, ε)
     return p
 end
 
+softplus(x) = log(exp(x) + 1)
+gelu(x) = 0.5x * (1 + tanh(√(2 / π) * (x + 0.044715x^3)))
+mish(x) = x * tanh(softplus(x))
+
 function penalty_filter(g, ε)
-    return ε * g * sigmoid(g)
+    if g < 0.0
+        if g < -0.1
+            p = 0.0 #0.1* ε * g
+        else
+            p =  ε * g
+        end
+    else
+        p = ε * g #
+    end
+    return p
 end
 
 function gap_function(X::AbstractVector{T}) where {T}

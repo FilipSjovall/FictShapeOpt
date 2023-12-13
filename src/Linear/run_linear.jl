@@ -599,8 +599,10 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             #σψx, σψy = StressExtract(dh0, Ψ, mp₀)
             #@save "filter forces fat" FΨ Wψ σψx σψy
         end
-        Ψ_hist[:, loadstep] = Ψ
-        d_hist[:, loadstep] = d
+        if loadstep < 11
+            Ψ_hist[:, loadstep] = Ψ
+            d_hist[:, loadstep] = d
+        end
     end
     return Ψ, dh0, Kψ, FΨ, λ, Ψ_hist, d_hist
 end
@@ -732,7 +734,9 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
             end
         end
         Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
-        a_hist[:,loadstep] = a
+        if loadstep < 11
+            a_hist[:,loadstep] = a
+        end
     end
     τ_c = ExtractContactTraction(a, ε, coord)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c, a_hist

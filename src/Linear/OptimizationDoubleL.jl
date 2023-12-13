@@ -21,9 +21,9 @@ th = 0.30 #+ .1
 xl = 0.0
 yl = 0.0
 xr = -0.75 + 0.25 + 0.1 #+ 0.2 #+ 0.2
-yr = 1.51
+yr = 1.31
 Δx = 1.0
-Δy = 1.0
+Δy = 0.8
 r1 = 0.075
 r2 = 0.075
 # grid size
@@ -183,11 +183,10 @@ global nloadsteps = 10
 global a_hist = zeros(dh.ndofs.x, nloadsteps)
 global Ψ_hist = zeros(dh.ndofs.x, nloadsteps)
 global d_hist = zeros(dh.ndofs.x, nloadsteps)
-global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1].*6
+global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1] .* 3.0
 global F_d    = zeros(10)
 global F₀     = zeros(10)
 global g      = 0.0
-
 # # # # # # # # # # # # # # # #
 # Init optimization variables #
 # # # # # # # # # # # # # # # #
@@ -211,7 +210,7 @@ global asy_counter = zeros(dh.ndofs.x, 600)
 
 global low_hist = zeros(length(d), 600)
 global upp_hist = zeros(length(d), 600)
-global d_hist2 = zeros(length(d), 600)
+global d_hist2  = zeros(length(d), 600)
 # -------------------- #
 # Optimization program #
 # -------------------- #
@@ -294,8 +293,8 @@ function Optimize(dh)
             global low   = xmin
             global upp   = xmax
             OptIter      = 1
-            xmin = max.(xmin * 2, -8)
-            xmax = min.(xmax * 2,  8)
+            xmin = max.(xmin * 2, -4)
+            xmax = min.(xmax * 2,  4)
         end
 
         # # # # # # # # # # # # # #

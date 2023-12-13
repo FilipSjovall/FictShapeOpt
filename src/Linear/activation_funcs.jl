@@ -25,3 +25,15 @@ plot(
     plot(x, gelu.(x), label="GeLU", xlims=(-5, 5), ylims=(-1, 1)),
     layout=(3, 3), size=(800, 400), framestyle=:origin, legend=:bottomright
 )
+
+# - - - - - - #
+# Second test #
+# - - - - - - #
+x = -0.5:0.01:0.1
+f.(x)
+softplus(x) = log(exp(x) + 1)
+gelu(x) = 0.5x * (1 + tanh(√(2 / π) * (x + 0.044715x^3)))
+mish(x) = x * tanh(softplus(x))
+
+plot(x, mish.(100x))
+plot!(x, gelu.(100x))
