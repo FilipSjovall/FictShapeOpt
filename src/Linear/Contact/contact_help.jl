@@ -50,7 +50,7 @@ mish(x) = x * tanh(softplus(x))
 
 function penalty_filter(g, ε)
     if g < 0.0
-        if g < -0.1
+        if g < -0.05
             p = 0.0 #0.1* ε * g
         else
             p =  ε * g

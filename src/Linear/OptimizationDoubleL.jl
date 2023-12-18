@@ -20,10 +20,10 @@ include("..//mma.jl")
 th = 0.30 #+ .1
 xl = 0.0
 yl = 0.0
-xr = -0.75 + 0.25 + 0.1 #+ 0.2 #+ 0.2
-yr = 1.31
-Δx = 1.0
-Δy = 0.8
+xr = -0.75 + 0.25 + 0.1 + 0.5 # ändra här
+yr = 1.61  # ändra här
+Δx = 0.5 # ändra här
+Δy = 1.0 # ändra här
 r1 = 0.075
 r2 = 0.075
 # grid size
@@ -183,7 +183,7 @@ global nloadsteps = 10
 global a_hist = zeros(dh.ndofs.x, nloadsteps)
 global Ψ_hist = zeros(dh.ndofs.x, nloadsteps)
 global d_hist = zeros(dh.ndofs.x, nloadsteps)
-global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1] .* 3.0
+global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.08, -0.08, -0.08, -0.08, -0.08, -0.08] * 3.0 #5.0 #2.5
 global F_d    = zeros(10)
 global F₀     = zeros(10)
 global g      = 0.0
@@ -199,7 +199,7 @@ bcdof_right, _ = setBCXY_X(0.0, dh, n_right)
 bcdof_bot, _   = setBCY(0.0, dh, n_bot)
 bcdof_top, _   = setBCY(0.0, dh, n_top)
 
-#bcdof_bot, _   = Vector{Int64}(), Vector{Float64}()
+bcdof_bot, _   = Vector{Int64}(), Vector{Float64}()
 bcdof_top, _   = Vector{Int64}(), Vector{Float64}()
 
 bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
@@ -283,9 +283,9 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global μ = 1e4 # funkade ok med 1e4
+        global μ = 1e5 # funkade ok med 1e4
 
-        if OptIter % 15 == 0 # OptIter % 5 == 0 #
+        if OptIter % 10 == 0
             dh0          = deepcopy(dh)
             global d     = zeros(dh.ndofs.x)
             global xold1 = d[:]

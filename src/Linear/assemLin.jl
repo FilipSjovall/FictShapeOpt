@@ -159,10 +159,10 @@ function assemGlobal!(Kψ, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_rob
         end
         ##### Test penalty framför Robin-term
         #if OptIter == 1 && true_iteration > 1
-         assemble!(assembler, cell_dofs, kₑ + 0.1ke, fₑ + 0.1fe)
+         #assemble!(assembler, cell_dofs, kₑ + 0.1ke, fₑ + 0.1fe)
         #### Penalty = 1.0
         #else
-        #assemble!(assembler, cell_dofs, kₑ +  ke, fₑ +  fe)
+        assemble!(assembler, cell_dofs, kₑ +  ke, fₑ +  fe)
         #end
     end
     # Contact

@@ -656,7 +656,7 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
     bcdof_bot, bcval_bot       = setBCY(0.0, dh, n_bot)
     bcdof_top, bcval_top       = setBCY(0.0, dh, n_top)
 
-    #bcdof_bot, bcval_bot       = Vector{Int64}(), Vector{Float64}()
+    bcdof_bot, bcval_bot       = Vector{Int64}(), Vector{Float64}()
     bcdof_top, bcval_top       = Vector{Int64}(), Vector{Float64}()
 
     bcdofs                     = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top]

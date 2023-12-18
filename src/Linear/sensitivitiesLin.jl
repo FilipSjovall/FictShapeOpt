@@ -15,9 +15,9 @@ function drψ(dr_dd,dh,Ψ,λ,d,Γ_robin,coord₀)
             end
         end
         # Dampened
-        assemble!(assembler, cell_dofs, -0.1dfe)
+        #assemble!(assembler, cell_dofs, -0.1dfe)
         # Regular
-        #assemble!(assembler, cell_dofs, -dfe)
+        assemble!(assembler, cell_dofs, -dfe)
     end
     return dr_dd
 end
