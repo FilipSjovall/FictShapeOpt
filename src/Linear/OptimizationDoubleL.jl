@@ -20,9 +20,9 @@ include("..//mma.jl")
 th = 0.30 #+ .1
 xl = 0.0
 yl = 0.0
-xr = -0.75 + 0.25 + 0.1 + 0.5 # ändra här
-yr = 1.61  # ändra här
-Δx = 0.5 # ändra här
+xr = -0.75 + 0.25 + 0.1 + 0.25  # ändra här
+yr = 1.41  # ändra här
+Δx = 0.75 # ändra här
 Δy = 1.0 # ändra här
 r1 = 0.075
 r2 = 0.075
@@ -177,13 +177,13 @@ global ∂g₂_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g₂_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ = similar(a)
 global λψ = similar(a)
-global Δ  = 0.1
+global Δ  = 0.25
 global nloadsteps = 10
 
 global a_hist = zeros(dh.ndofs.x, nloadsteps)
 global Ψ_hist = zeros(dh.ndofs.x, nloadsteps)
 global d_hist = zeros(dh.ndofs.x, nloadsteps)
-global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.08, -0.08, -0.08, -0.08, -0.08, -0.08] * 3.0 #5.0 #2.5
+global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.08, -0.08, -0.08, -0.08, -0.08, -0.08] .* 3 #2.5
 global F_d    = zeros(10)
 global F₀     = zeros(10)
 global g      = 0.0
@@ -194,15 +194,17 @@ include("initOptLinHook.jl")
 # ------------------- #
 # Boundary conditions #
 # ------------------- #
-bcdof_left, _  = setBCXY_X(0.0, dh, n_left)
-bcdof_right, _ = setBCXY_X(0.0, dh, n_right)
-bcdof_bot, _   = setBCY(0.0, dh, n_bot)
-bcdof_top, _   = setBCY(0.0, dh, n_top)
+bcdof_left, _    = setBCXY_X(0.0, dh, n_left)
+bcdof_right, _   = setBCXY_X(0.0, dh, n_right)
+bcdof_bot, _     = setBCY(0.0, dh, n_bot)
+bcdof_top, _     = setBCY(0.0, dh, n_top)
+bcdof_contact, _ = setBCXY_both(0.0, dh, union(nₘ,nₛ))
 
 bcdof_bot, _   = Vector{Int64}(), Vector{Float64}()
 bcdof_top, _   = Vector{Int64}(), Vector{Float64}()
 
-bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
+#bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top];
+bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top; bcdof_contact];
 ϵᵢⱼₖ = sortperm(bcdofs_opt)
 global bcdofs_opt = bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt = bcdofs_opt .* 0.0
@@ -220,7 +222,7 @@ function Optimize(dh)
     global λψ = similar(a)
     global λᵤ = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = volume(dh, coord, enod) * 1.1 # 2.0
+    Vₘₐₓ = volume(dh, coord, enod) * 0.9 # 2.0
     tol = 1e-3
     global OptIter = 0
     global true_iteration = 0
@@ -283,7 +285,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global μ = 1e5 # funkade ok med 1e4
+        global μ = 1e3 # funkade ok med 1e4
 
         if OptIter % 10 == 0
             dh0          = deepcopy(dh)
@@ -293,8 +295,8 @@ function Optimize(dh)
             global low   = xmin
             global upp   = xmax
             OptIter      = 1
-            xmin = max.(xmin * 2, -4)
-            xmax = min.(xmax * 2,  4)
+            xmin = max.(xmin * 2, -1.)
+            xmax = min.(xmax * 2,  1.)
         end
 
         # # # # # # # # # # # # # #
@@ -338,9 +340,9 @@ function Optimize(dh)
             # Objective #
             # # # # # # #
             # Max reaction force
-            g     += 0.5*(-T' * Fᵢₙₜ - F_tar[n])^2
-            ∂g_∂x  = -T' * ∂rᵤ_∂x
-            ∂g_∂u  = -T' * K
+            g     += 0.5*(-T'*Fᵢₙₜ-F_tar[n])^2
+            ∂g_∂x  = -T'*∂rᵤ_∂x
+            ∂g_∂u  = -T'*K
             # Compliance
             # g            = -a[pdofs]' * Fᵢₙₜ[pdofs]
             # ∂g_∂x[fdofs] = -a[pdofs]' * ∂rᵤ_∂x[pdofs, fdofs]
@@ -355,9 +357,16 @@ function Optimize(dh)
             # # # # # # # # # # #
             # Full sensitivity  #
             # # # # # # # # # # #
-            ∂g_∂d += (-T' * Fᵢₙₜ - F_tar[n]) * (-transpose(λψ) * dr_dd)'
+            ∂g_∂d += (-T'*Fᵢₙₜ-F_tar[n])*(-transpose(λψ)*dr_dd)'
             F_d[n] = -T' * Fᵢₙₜ
         end
+
+        # # Ad hoc avstängning av kontaktzon
+        # ∂g_∂d[register[collect(nₘ), 1]].= 0.0
+        # ∂g_∂d[register[collect(nₘ), 2]].= 0.0
+        # ∂g_∂d[register[collect(nₛ), 1]].= 0.0
+        # ∂g_∂d[register[collect(nₛ), 2]].= 0.0
+
         if true_iteration == 1
             global F₀ = deepcopy(F_d)
         end
@@ -368,7 +377,6 @@ function Optimize(dh)
         ∂Ω_∂x = volume_sens(dh, coord)
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
         ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd ./ Vₘₐₓ)
-
 
         # # # # # # # # # # # #
         # Pressure constraint #
@@ -394,7 +402,7 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        α      = 1.0
+        α      = 0.5 # 1.0
         d_new  = d_old   + α .* (d_new - d_old)
         low    = low_old + α .* (low   - low_old)
         upp    = upp_old + α .* (upp   - upp_old)
@@ -432,10 +440,10 @@ function Optimize(dh)
         @save "asymptoter.jld2" low_hist upp_hist d_hist
     end
     #jld2save("färdig.jld2",a,dh,dh0,Opiter,v_hist,g_hist,d)
-    return g_hist, v_hist, OptIter, traction, historia
+    return g_hist, v_hist, OptIter, traction
 end
 
-g_hist, v_hist, OptIter, traction, historia = Optimize(dh)
+g_hist, v_hist, OptIter, traction = Optimize(dh)
 
 
 # # # # # #
@@ -461,7 +469,7 @@ plot(xgrid, ygrid, low_hist[design_indices,opt_iters]', st=:surface, xlabel="Des
 plot!(xgrid, ygrid, upp_hist[design_indices, opt_iters]', st=:surface)
 #plot(xgrid, ygrid, upp_hist[design_indices, opt_iters]'-low_hist[design_indices, opt_iters]', st=:surface, xlabel="Design iterations", ylabel="Degree of freedom", zlabel="Asymptote value", title="Evolution of asymptotes")
 
-p = plot(xgrid, ygrid, d_hist[design_indices, opt_iters]', st=:surface, xlabel="Design iterations", ylabel="Degree of freedom", zlabel="Design variable d", title="Evolution of design variable")
+#p = plot(xgrid, ygrid, d_hist[design_indices, opt_iters]', st=:surface, xlabel="Design iterations", ylabel="Degree of freedom", zlabel="Design variable d", title="Evolution of design variable")
 #=
 function main()
     # ----- #

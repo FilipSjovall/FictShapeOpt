@@ -44,9 +44,9 @@ function penalty(g, ε)
     return p
 end
 
-softplus(x) = log(exp(x) + 1)
-gelu(x) = 0.5x * (1 + tanh(√(2 / π) * (x + 0.044715x^3)))
-mish(x) = x * tanh(softplus(x))
+# softplus(x) = log(exp(x) + 1)
+# gelu(x) = 0.5x * (1 + tanh(√(2 / π) * (x + 0.044715x^3)))
+# mish(x) = x * tanh(softplus(x))
 
 function penalty_filter(g, ε)
     if g < 0.0
