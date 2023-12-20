@@ -3,7 +3,7 @@ kktnorm = 1.0
 dr_dd = similar(K) # ?
 # Material parameters
 mp  = [175 80.769230769230759]
-mp₀ = [1. 5.] # .*500
+mp₀ = [1. 5.] * 3 # .*500
 #mp₀ = mp / 20
 #
 #mp₀ = mp ./ mp[1]

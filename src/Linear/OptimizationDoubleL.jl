@@ -222,7 +222,7 @@ function Optimize(dh)
     global λψ = similar(a)
     global λᵤ = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = volume(dh, coord, enod) * 0.9 # 2.0
+    Vₘₐₓ = volume(dh, coord, enod) * 0.8 # 2.0
     tol = 1e-3
     global OptIter = 0
     global true_iteration = 0
