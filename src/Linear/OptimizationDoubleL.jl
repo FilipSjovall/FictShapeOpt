@@ -3,7 +3,6 @@ using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
 using SparseDiffTools, Plots, Printf, JLD2, Statistics, AlgebraicMultigrid
 #
 #pyplot()
-plotlyjs()
 #
 include("..//mesh_reader.jl")
 include("Contact//contact_help.jl")
@@ -123,7 +122,7 @@ n_top = getnodeset(dh.grid, "n_top")
 # ----------------- #
 #Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γm, Γs))
 #Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γ_bot, Γ_top))
-Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right))
+Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right)) # ! # ! # ! # ! # ! # ! # ! # ! # ! #
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
 n_robin = getBoundarySet(dh.grid, Γ_robin)
@@ -222,7 +221,7 @@ function Optimize(dh)
     global λψ = similar(a)
     global λᵤ = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = volume(dh, coord, enod) * 0.8 # 2.0
+    Vₘₐₓ = volume(dh, coord, enod) * 0.9 # 2.0
     tol = 1e-3
     global OptIter = 0
     global true_iteration = 0
@@ -287,7 +286,7 @@ function Optimize(dh)
         global nloadsteps = 10
         global μ = 1e3 # funkade ok med 1e4
 
-        if OptIter % 10 == 0
+        if OptIter % 200 == 0
             dh0          = deepcopy(dh)
             global d     = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -402,7 +401,7 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        α      = 0.5 # 1.0
+        α      = 0.1 # 1.0
         d_new  = d_old   + α .* (d_new - d_old)
         low    = low_old + α .* (low   - low_old)
         upp    = upp_old + α .* (upp   - upp_old)

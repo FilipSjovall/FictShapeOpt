@@ -3,7 +3,7 @@ kktnorm = 1.0
 dr_dd = similar(K) # ?
 # Material parameters
 mp  = [175 80.769230769230759]
-mp₀ = [1. 5.] * 3 # .*500
+mp₀ = [1. 5.] #* 3 # .*500
 #mp₀ = mp / 20
 #
 #mp₀ = mp ./ mp[1]
@@ -25,8 +25,8 @@ global kkttol    = 0.001;
 global changetol = 0.001;
 global outit     = 0;
 global change    = 1;
-global xmax      =  .05 * ones(n_mma);
-global xmin      = -.05 * ones(n_mma);
+global xmax      =  .5 * ones(n_mma);
+global xmin      = -.5 * ones(n_mma);
 
 global low = xmin;
 global upp = xmax;
