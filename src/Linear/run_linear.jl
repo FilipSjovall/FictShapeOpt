@@ -171,7 +171,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
     loadstep = 0
     while loadstep < nloadsteps
         loadstep += 1
-        global ε = ε * 1.1
+        #global ε = ε * 1.1
         res = res .* 0
         bcvals = bcval₀
         residual = 0 * residual
@@ -211,7 +211,6 @@ function solver_C(dh, coord, Δ, nloadsteps)
             end
             if loadstep == 10
                 # Plot traction , can be moved to function...
-                τ_c = ExtractContactTraction(a, ε, coord)
                 traction = ExtractContactTraction(a, ε, coord)
                 X_c = []
                 tract = []

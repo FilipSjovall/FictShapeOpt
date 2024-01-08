@@ -39,7 +39,7 @@ xₗ = 0.0
 yₗ = 0.5
 Δx = 1.0
 Δy = 0.5
-h  = 0.04
+h  = 0.025
 case = "box"
 rounded = false
 # najs för ~0.05
@@ -239,7 +239,7 @@ global λᵤ         = similar(a) # Intermediate, kanske bara behöver en adjoin
 global λψ         = similar(a)
 global λᵥₒₗ       = similar(a)
 # "fem"
-global Δ          = -0.05
+global Δ          = -0.01
 global nloadsteps = 10
 # mma
 include("initOptLin.jl")
@@ -315,7 +315,7 @@ function Optimize(dh)
         OptIter += 1
         true_iteration +=1
         # detta ska 100% vara en rutin
-        if true_iteration % 10 == 0 || OptIter == 1
+        if true_iteration % 10 == 0 #|| OptIter == 1
             @save "innan_remeshh.jld2" h dh coord enod register Γs nₛ Γm nₘ contact_dofs contact_nods order freec_dofs free_d locked_d bcdof_o bcval_o d dh0 coord₀
             #@load "innan_remeshh.jld2"
             #break
@@ -432,7 +432,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 1e5 # eller?
+        global ε = 1e4 # eller?
         #
         # # # # # # # # #
         # Equillibrium  #

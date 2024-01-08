@@ -4,9 +4,7 @@ dr_dd = similar(K) # ?
 # Material parameters
 mp  = [175 80.769230769230759]
 mp₀ = [1. 5.] #* 3 # .*500
-#mp₀ = mp / 20
-#
-#mp₀ = mp ./ mp[1]
+#mp₀ = [1. 1.]
 #
 t = 1.0
 # Optimization parameters

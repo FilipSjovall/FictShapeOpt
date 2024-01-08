@@ -120,9 +120,9 @@ n_top = getnodeset(dh.grid, "n_top")
 # ----------------- #
 # Design boundaries #
 # ----------------- #
-#Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γm, Γs))
+Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γm, Γs))
 #Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γ_bot, Γ_top))
-Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right)) # ! # ! # ! # ! # ! # ! # ! # ! # ! #
+#Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right)) # ! # ! # ! # ! # ! # ! # ! # ! # ! #
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
 n_robin = getBoundarySet(dh.grid, Γ_robin)
@@ -176,7 +176,7 @@ global ∂g₂_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g₂_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ = similar(a)
 global λψ = similar(a)
-global Δ  = 0.25
+global Δ  = 0.10
 global nloadsteps = 10
 
 global a_hist = zeros(dh.ndofs.x, nloadsteps)
@@ -207,11 +207,11 @@ bcdofs_opt = [bcdof_left; bcdof_right; bcdof_bot; bcdof_top; bcdof_contact];
 ϵᵢⱼₖ = sortperm(bcdofs_opt)
 global bcdofs_opt = bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt = bcdofs_opt .* 0.0
-global asy_counter = zeros(dh.ndofs.x, 600)
+global asy_counter = zeros(dh.ndofs.x, 300)
 
-global low_hist = zeros(length(d), 600)
-global upp_hist = zeros(length(d), 600)
-global d_hist2  = zeros(length(d), 600)
+global low_hist = zeros(length(d), 300)
+global upp_hist = zeros(length(d), 300)
+global d_hist2  = zeros(length(d), 300)
 # -------------------- #
 # Optimization program #
 # -------------------- #
@@ -286,7 +286,7 @@ function Optimize(dh)
         global nloadsteps = 10
         global μ = 1e3 # funkade ok med 1e4
 
-        if OptIter % 200 == 0
+        if OptIter % 50 == 0
             dh0          = deepcopy(dh)
             global d     = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -294,8 +294,8 @@ function Optimize(dh)
             global low   = xmin
             global upp   = xmax
             OptIter      = 1
-            xmin = max.(xmin * 2, -1.)
-            xmax = min.(xmax * 2,  1.)
+            #xmin = max.(xmin * 2, -1.)
+            #xmax = min.(xmax * 2,  1.)
         end
 
         # # # # # # # # # # # # # #
@@ -315,7 +315,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε          = 1e4 # funkade ok med 1e4
+        global ε          = 1e3 # funkade ok med 1e4
 
         # # # # # # # # #
         # Equillibrium  #
@@ -401,7 +401,7 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        α      = 0.1 # 1.0
+        α      = 1.0 # 0.1 #
         d_new  = d_old   + α .* (d_new - d_old)
         low    = low_old + α .* (low   - low_old)
         upp    = upp_old + α .* (upp   - upp_old)
@@ -423,7 +423,7 @@ function Optimize(dh)
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
         postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
         postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
-        postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
+        #postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
         # append?
         p2 = plot(1:true_iteration, [v_hist[1:true_iteration], g_hist[1:true_iteration]] .* 100, label=["Volume Constraint" "Objective"], legend=:left)
@@ -515,3 +515,9 @@ for n = 1:nloadsteps
     F[n] = -T' * Fᵢₙₜ
 end
 plot(0.01:0.01:0.1,abs.(F))
+
+
+
+
+
+# For abstract

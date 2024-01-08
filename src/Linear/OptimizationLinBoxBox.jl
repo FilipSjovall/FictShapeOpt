@@ -28,8 +28,8 @@ r₀ = 0.5
 # Create two grids
 y₁ = 0.98
 case = "box"
-grid1 = createBoxMeshRev("box_1",  0.0, y₁, 1.0, 0.5, 0.2)
-grid2 = createBoxMeshRev("box_2",  0.0, 0.0, 1.0, 1.0, 0.2)
+#grid1 = createBoxMeshRev("box_1",  0.0, y₁, 1.0, 0.5, 0.2)
+#grid2 = createBoxMeshRev("box_2",  0.0, 0.0, 1.0, 1.0, 0.2)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 # # # # # # # # # #
@@ -41,9 +41,9 @@ qr_face = QuadratureRule{1,RefTetrahedron}(2)
 cv      = CellVectorValues(qr, ip)
 fv      = FaceVectorValues(qr_face, ip)
 
-#case  = "circle"
-#grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.02)
-#grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.02) # inte rätt
+case  = "circle"
+grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.01)
+grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.01) # inte rätt
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-8)
@@ -60,43 +60,66 @@ close!(dh)
 global coord, enod = getTopology(dh)
 global register = index_nod_to_grid(dh, coord)
 
+    if case == "box"
+        # ------------------ #
+        # Create master sets #
+        # ------------------ #
+        addfaceset!(dh.grid, "Γ_master", x -> x[2] ≈ 1.0)
+        global Γs = getfaceset(dh.grid, "Γ_master")
 
-    # ------------------ #
-    # Create master sets #
-    # ------------------ #
-    addfaceset!(dh.grid, "Γ_master", x -> x[2] ≈ 1.0)
-    global Γs = getfaceset(dh.grid, "Γ_master")
+        addnodeset!(dh.grid, "nₘ", x -> x[2] ≈ 1.0)
+        global nₛ = getnodeset(dh.grid, "nₘ")
 
-    addnodeset!(dh.grid, "nₘ", x -> x[2] ≈ 1.0)
-    global nₛ = getnodeset(dh.grid, "nₘ")
+        # ----------------- #
+        # Create slave sets #
+        # ----------------- #
+        addfaceset!(dh.grid, "Γ_slave", x -> ( x[2] ≈ y₁ || x[2] > 1.0 && ( x[1] ≈ 0.25 || x[1] ≈ 0.75 ) ) )
+        global Γm = getfaceset(dh.grid, "Γ_slave")
 
-    # ------------------ #
-    # Create left | sets #
-    # ------------------ #
-    addfaceset!(dh.grid, "Γ_left", x -> x[2] < 0.99 && x[1] ≈ 0.0)
-    global Γ_left = getfaceset(dh.grid, "Γ_left")
+        addnodeset!(dh.grid, "nₛ", x -> ( x[2] ≈ y₁ || x[2] > 1.0 && ( x[1] ≈ 0.25 || x[1] ≈ 0.75 ) ) )
+        global nₘ = getnodeset(dh.grid, "nₛ")
+    else
+                # ------------------ #
+        # Create master sets #
+        # ------------------ #
+        addfaceset!(dh.grid, "Γ_master",  x -> ((x[1]  - 0.5)^2 + (x[2] - 1.5  )^2) ≈ r₀^2)
+        global Γs = getfaceset(dh.grid, "Γ_master")
 
-    addnodeset!(dh.grid, "nₗ", x -> x[2] < 0.99 && x[1] ≈ 0.0)
-    global n_left = getnodeset(dh.grid, "nₗ")
+        addnodeset!(dh.grid, "nₘ",  x -> ((x[1]  - 0.5)^2 + (x[2] - 1.5  )^2) ≈ r₀^2)
+        global nₛ = getnodeset(dh.grid, "nₘ")
 
-    # ------------------ #
-    # Create right  sets #
-    # ------------------ #
-    addfaceset!(dh.grid, "Γ_right", x -> x[2] < 0.99 && x[1] ≈ 1.0)
-    global Γ_right = getfaceset(dh.grid, "Γ_right")
+        # ----------------- #
+        # Create slave sets #
+        # ----------------- #
+        #0.5, 0.5001
+        addfaceset!(dh.grid, "Γ_slave", x -> ((x[1]  - 0.5)^2 + (x[2] - 0.5001  )^2) ≈ r₀^2)
+        global Γm = getfaceset(dh.grid, "Γ_slave")
 
-    addnodeset!(dh.grid, "nᵣ", x -> x[2] < 0.99 && x[1] ≈ 1.0)
-    global n_right = getnodeset(dh.grid, "nᵣ")
+        addnodeset!(dh.grid, "nₛ", x -> ((x[1]  - 0.5)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2)
+        global nₘ = getnodeset(dh.grid, "nₛ")
+    end
+    #
+    if case == "box"
+        # ------------------ #
+        # Create left | sets #
+        # ------------------ #
+        addfaceset!(dh.grid, "Γ_left", x -> x[2] < 0.99 && x[1] ≈ 0.0)
+        global Γ_left = getfaceset(dh.grid, "Γ_left")
+
+        addnodeset!(dh.grid, "nₗ", x -> x[2] < 0.99 && x[1] ≈ 0.0)
+        global n_left = getnodeset(dh.grid, "nₗ")
+
+        # ------------------ #
+        # Create right  sets #
+        # ------------------ #
+        addfaceset!(dh.grid, "Γ_right", x -> x[2] < 0.99 && x[1] ≈ 1.0)
+        global Γ_right = getfaceset(dh.grid, "Γ_right")
+
+        addnodeset!(dh.grid, "nᵣ", x -> x[2] < 0.99 && x[1] ≈ 1.0)
+        global n_right = getnodeset(dh.grid, "nᵣ")
+    end
 
 
-# ----------------- #
-# Create slave sets #
-# ----------------- #
-addfaceset!(dh.grid, "Γ_slave", x -> ( x[2] ≈ y₁ || x[2] > 1.0 && ( x[1] ≈ 0.25 || x[1] ≈ 0.75 ) ) )
-global Γm = getfaceset(dh.grid, "Γ_slave")
-
-addnodeset!(dh.grid, "nₛ", x -> ( x[2] ≈ y₁ || x[2] > 1.0 && ( x[1] ≈ 0.25 || x[1] ≈ 0.75 ) ) )
-global nₘ = getnodeset(dh.grid, "nₛ")
 
 # Extract all nbr nodes and dofs
 global contact_dofs = getContactDofs(nₛ, nₘ)
@@ -108,19 +131,60 @@ end
 global freec_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
 
 # Define top nodeset for displacement controlled loading
-addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ y₁ + 0.5)
-global Γ_top = getnodeset(dh.grid, "Γ_top")
+if case == "box"
+    addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ y₁ + 0.5)
+    global Γ_top = getnodeset(dh.grid, "Γ_top")
 
-addnodeset!(dh.grid, "n_top", x -> x[2] ≈ y₁ + 0.5)
-global n_top = getnodeset(dh.grid, "n_top")
+    addnodeset!(dh.grid, "n_top", x -> x[2] ≈ y₁ + 0.5)
+    global n_top = getnodeset(dh.grid, "n_top")
 
-# Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
-addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
-global Γ_bot = getnodeset(dh.grid, "Γ_bot")
+    # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
+    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.0)
+    global Γ_bot = getnodeset(dh.grid, "Γ_bot")
 
-addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.0)
-global n_bot = getnodeset(dh.grid, "n_bot")
+    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.0)
+    global n_bot = getnodeset(dh.grid, "n_bot")
+    #
+    global Γ_robin = union(
+        getfaceset(dh.grid, "Γ_slave"),
+        getfaceset(dh.grid, "Γ_left"),
+        getfaceset(dh.grid, "Γ_right"),
+        getfaceset(dh.grid, "Γ_master")
+    )
+    global n_robin = union(
+        getnodeset(dh.grid, "nₛ"),
+        getnodeset(dh.grid, "nₗ"),
+        getnodeset(dh.grid, "nᵣ"),
+        getnodeset(dh.grid, "nₘ")
+    )
+else
+    addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.5)
+    global Γ_top = getnodeset(dh.grid, "Γ_top")
 
+    addnodeset!(dh.grid, "n_top", x -> x[2] ≈ 1.5)
+    global n_top = getnodeset(dh.grid, "n_top")
+
+    # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
+    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.5001)
+    global Γ_bot = getnodeset(dh.grid, "Γ_bot")
+
+    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.5001)
+    global n_bot = getnodeset(dh.grid, "n_bot")
+    #
+    #
+    global Γ_robin = union(
+        getfaceset(dh.grid, "Γ_slave"),
+        #getfaceset(dh.grid, "Γ_left"),
+        #getfaceset(dh.grid, "Γ_right"),
+        getfaceset(dh.grid, "Γ_master")
+    )
+    global n_robin = union(
+        getnodeset(dh.grid, "nₛ"),
+        #getnodeset(dh.grid, "nₗ"),
+        #getnodeset(dh.grid, "nᵣ"),
+        getnodeset(dh.grid, "nₘ")
+    )
+end
 # Final preparations for contact
 global register = getNodeDofs(dh)
 global X = getX(dh)
@@ -130,18 +194,7 @@ global coord = getCoordfromX(X)
 # Init fictious #
 # # # # # # # # #
 global coord₀ = deepcopy(coord)
-global Γ_robin = union(
-    getfaceset(dh.grid, "Γ_slave"),
-    #getfaceset(dh.grid, "Γ_left"),
-    #getfaceset(dh.grid, "Γ_right"),
-    getfaceset(dh.grid, "Γ_master")
-)
-global n_robin = union(
-    getnodeset(dh.grid, "nₛ"),
-    #getnodeset(dh.grid, "nₗ"),
-    #getnodeset(dh.grid, "nᵣ"),
-    getnodeset(dh.grid, "nₘ")
-)
+
 
 
 global free_d = []

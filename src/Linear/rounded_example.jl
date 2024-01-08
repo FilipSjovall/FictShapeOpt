@@ -16,12 +16,12 @@ include("run_linear.jl")
 include("sensitivitiesLin.jl")
 include("..//mma.jl")
 
-r  = 0.45
+r  = 0.49
 y₀ = 0.999
 h  = 0.1
 
 grid1   = createBoxMeshRounded("rounded", r, h)
-grid2   = createBoxMeshRounded_Flipped("rounded_and_flipped", r, y₀, h)
+grid2   = createBoxMeshRounded_Flipped("rounded_and_flipped", r, 1.0, 1.49, h)
 
 dh2 = DofHandler(grid2)
 add!(dh2, :u, 2)

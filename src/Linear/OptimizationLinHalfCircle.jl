@@ -22,7 +22,7 @@ fv      = FaceVectorValues(qr_face, ip)
 # Create two grids
 case    = "box"
 r₀      = 0.5
-h       = 0.1
+h       = 0.025
 Δx      = 0.5
 y₀      = 0.5
 Δy      = 0.501 #1.001
@@ -296,7 +296,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 1e5 # 2?
+        global ε = 1e4 # 2?
 
         # # # # # # # # #
         # Equillibrium  #
@@ -396,3 +396,31 @@ g_hist, v_hist, OptIter, historia = Optimize(dh)
 # Profile.Allocs.clear()
 # @time Profile.Allocs.@profile sample_rate=0.01 Optimize(dh)
 # PProf.Allocs.pprof(from_c = false)
+
+
+#@load "results/lunarc/OptimizationVariablesy.jld2"
+#true_iteration = 299
+#p2 = plot(1:true_iteration,  abs.(g_hist[1:true_iteration]), ylabel="Total contact force ", xlabel="Iteration")
+
+
+if loadstep == 10
+    # Plot traction , can be moved to function...
+    traction = ExtractContactTraction(a, 1e5, coord)
+    #traction = τ_c
+    X_c = []
+    tract = []
+    for (key, val) ∈ traction
+        append!(X_c, coord[key, 1])
+        append!(tract, val)
+    end
+    ϵᵢⱼₖ = sortperm(X_c)
+    tract = tract[ϵᵢⱼₖ]
+    X_c = X_c[ϵᵢⱼₖ]
+    p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
+    display(p)
+end
+
+
+vtk_grid("gap📄" , dh) do vtkfile
+    vtk_point_data(vtkfile, dh, a) # displacement field
+end

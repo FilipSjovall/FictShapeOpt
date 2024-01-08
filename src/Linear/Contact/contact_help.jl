@@ -50,11 +50,12 @@ end
 
 function penalty_filter(g, ε)
     if g < 0.0
-        if g < -0.05
-            p = 0.0 #0.1* ε * g
-        else
-            p =  ε * g
-        end
+        p = 0.
+        #if g < -0.05
+        #    p = 0.0 #0.1* ε * g
+        #else
+        #    p =  ε * g
+        #end
     else
         p = ε * g #
     end
@@ -82,11 +83,12 @@ function gap_function(X::AbstractVector{T}) where {T}
     # Loops are fast with the LLVM compiler
     #for (j, A) in (enumerate(slave_dofs))
     for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
-        slave = [0; 0]
+    #for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2)))))
+        slave = [0.; 0.]
         for B in slave_dofs
             slave += D[A, B] * coords[B]
         end
-        master = [0; 0]
+        master = [0.; 0.]
         #for C in master_dofs
         for C in intersect(master_dofs, 1:size(M, 2))
             master += M[A, C] * coords[C]
@@ -115,7 +117,7 @@ function gap_scaling(X::AbstractVector{T}) where {T}
     slave_nods, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
 
     #  # Define scaling
-    κ = ones(eltype(X_float), length(slave_nods))
+    κ = zeros(eltype(X_float), length(slave_nods))
 
     for (i, a) in enumerate(slave_nods)
         for (j, d) in enumerate(slave_nods)
@@ -178,13 +180,17 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε::Numb
     #for (i, A) in enumerate(slave_dofs)
     for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-        for B in intersect(slave_dofs, 1:size(D, 2))
-            B_dofs = register[B, :]  # Extract nodal degrees of freedom
-            r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i])
-        end
-        for C in intersect(master_dofs, 1:size(M, 2))
-            C_dofs = register[C, :] # Extract nodal degrees of freedom
-            r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i])
+        if λ_A > 0
+            for B in intersect(slave_dofs, 1:size(D, 2))
+                B_dofs = register[B, :]  # Extract nodal degrees of freedom
+
+                    r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i])
+
+            end
+            for C in intersect(master_dofs, 1:size(M, 2))
+                C_dofs = register[C, :] # Extract nodal degrees of freedom
+                    r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i])
+            end
         end
     end
 
@@ -246,23 +252,23 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
     end
 
     # Initialize r_c
-    #τ_c = zeros(eltype(X_float), size(X)) # sparse...?
-    #τ_c = zeros(eltype(X_float), length(contact_dofs))
     τ_c = Dict{Int64,Real}()
 
     # ---------- #
-    # ∫ᵧ 𝛅g λ dγ  #
+    # ∫ᵧ 𝛅g λ dγ #
     # ---------- #
 
     # Loop over master side dofs
     #for C in master_dofs
     for (i, A) in enumerate(slave_dofs)
-        λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-        #τ_c[i] = λ_A  * (1 / κ[i])
-        push!(τ_c, A => λ_A * (1 / κ[i]))
-        #println("Traction | ", A, " ", λ_A, " normals | ", normals[slave_dofs[i]], " gap | ", gₙ[i])
+        λ_A = penalty(g[i, :] ⋅ normals[A] / κ[i], ε)
+        if λ_A > 0
+            #push!(τ_c, A => λ_A * (1 / κ[i]) )
+            push!(τ_c, A => λ_A)
+        end
+        #
+        #push!(τ_c, A => g[i,:] ⋅ [0.0 1.0] / κ[i])
     end
-
     # ---------------------------------- #
     # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #
     # ---------------------------------- #
@@ -332,20 +338,21 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
     #for (i, A) in enumerate(slave_dofs)
     for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-        for (j, B) in (enumerate(intersect(slave_dofs, 1:size(D, 2))))
-            # Extract nodal degrees of freedom
-            nod = order[B]
-            B_dofs = [2nod - 1, 2nod]
-            r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i])
-        end
-        for (j, C) in enumerate(intersect(master_dofs, 1:size(M, 2)))
-            # Extract nodal degrees of freedom
-            nod = order[C]
-            C_dofs = [2nod - 1, 2nod]
-            r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i])
+        if λ_A > 0.0
+            for (j, B) in (enumerate(intersect(slave_dofs, 1:size(D, 2))))
+                # Extract nodal degrees of freedom
+                nod = order[B]
+                B_dofs = [2nod - 1, 2nod]
+                r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i])
+            end
+            for (j, C) in enumerate(intersect(master_dofs, 1:size(M, 2)))
+                # Extract nodal degrees of freedom
+                nod = order[C]
+                C_dofs = [2nod - 1, 2nod]
+                r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i])
+            end
         end
     end
-
     # ---------------------------------- #
     # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #
     # ---------------------------------- #
@@ -415,20 +422,21 @@ function contact_residual_reduced_filter(X::AbstractVector{T1}, a_c::AbstractVec
     #for (i, A) in enumerate(slave_dofs)
     for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
         λ_A = penalty_filter(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-        for (j, B) in (enumerate(intersect(slave_dofs, 1:size(D, 2))))
-            # Extract nodal degrees of freedom
-            nod = order[B]
-            B_dofs = [2nod - 1, 2nod]
-            r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i])
-        end
-        for (j, C) in enumerate(intersect(master_dofs, 1:size(M, 2)))
-            # Extract nodal degrees of freedom
-            nod = order[C]
-            C_dofs = [2nod - 1, 2nod]
-            r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i])
+        if λ_A > 0
+            for (j, B) in (enumerate(intersect(slave_dofs, 1:size(D, 2))))
+                # Extract nodal degrees of freedom
+                nod = order[B]
+                B_dofs = [2nod - 1, 2nod]
+                r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i])
+            end
+            for (j, C) in enumerate(intersect(master_dofs, 1:size(M, 2)))
+                # Extract nodal degrees of freedom
+                nod = order[C]
+                C_dofs = [2nod - 1, 2nod]
+                r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i])
+            end
         end
     end
-
     # ---------------------------------- #
     # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #
     # ---------------------------------- #
