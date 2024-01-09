@@ -542,7 +542,7 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
 
     bcval₀_o2 = bcval_opt
     Δλ = (1.0 / nloadsteps)
-    loadstep = 0
+    loadstep  = 0
 
     while loadstep < nloadsteps
         loadstep += 1
@@ -567,9 +567,7 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
                     Δλ = Δλ / 2
                     global λ += Δλ  #* loadstep
                     remaining_steps = nloadsteps - loadstep
-                    nloadsteps = loadstep + round((1 - λ) / Δλ)
-                #else
-                #    global μ = μ * 0.9
+                    nloadsteps      = loadstep + round((1 - λ) / Δλ)
                 end
                 fill!(ΔΨ, 0.0)
                 println("Step length updated: $Δλ, penalty parameter: $μ")
@@ -578,9 +576,7 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
             Ψ += ΔΨ
             assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
             solveq!(ΔΨ, Kψ, -FΨ, bcdofs_opt, bcval_opt)
-
-            # assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
-
+            #
             bcval_opt       = bcval_opt .* 0
             res             = FΨ #- Fₑₓₜ
             res[bcdofs_opt] = res[bcdofs_opt] .* 0
@@ -690,7 +686,6 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
         # Newton solve.   #
         # # # # # # # # # #
 
-        #@show β
         while residual > TOL || iter < 2
             iter += 1
             if iter % 20 == 0 || norm(res) > 1e3 && β > 1 / 8
@@ -706,7 +701,6 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
                 println("Penalty paremeter and updated: $ε, and step length $β ")
             end
 
-            #a += β * Δa
             a += Δa
             assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε)
             solveq!(Δa, K, -Fᵢₙₜ, bcdofs, bcvals)
@@ -715,14 +709,6 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
             res[bcdofs] = 0 * res[bcdofs]
             residual = norm(res, 2)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_right[1]]
-            # if loadstep < 40
-            #     σx, σy = StressExtract(dh, a, mp)
-            #     vtk_grid("results/contact" * string(iter), dh) do vtkfile
-            #         vtk_point_data(vtkfile, dh, a) # displacement field
-            #         vtk_point_data(vtkfile, σx, "σx")
-            #         vtk_point_data(vtkfile, σy, "σy")
-            #     end
-            # end
         end
         if loadstep < 40 && iter < 20
             σx, σy = StressExtract(dh, a, mp)
@@ -1056,9 +1042,6 @@ function solver_C_hook_half(dh, coord, Δ, nloadsteps)
     # ---------- # // definiera mp här? och kanske ε ? iofs snyggare utanför!
     t = 1.0
 
-    # Define material parameters
-    #mp = [175 80.769230769230759]
-
     # ------------- #
     # Init-stuff    #
     # ------------- #
@@ -1130,7 +1113,7 @@ function solver_C_hook_half(dh, coord, Δ, nloadsteps)
                 a = a_old
                 bcvals = bcval₀
                 global β = β * 0.5
-                Δ_remaining = (Δ * nloadsteps - β * Δ - loadstep * Δ) / nloadsteps
+                #Δ_remaining = (Δ * nloadsteps - β * Δ - loadstep * Δ) / nloadsteps
                 remaining_steps = nloadsteps - loadstep
                 nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
                 bcvals = bcvals ./ 2 #
@@ -1148,14 +1131,6 @@ function solver_C_hook_half(dh, coord, Δ, nloadsteps)
             res[bcdofs] = 0 * res[bcdofs]
             residual = norm(res, 2)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_cyl[1]]
-            # if loadstep < 40
-            #     σx, σy = StressExtract(dh, a, mp)
-            #     vtk_grid("results/contact" * string(iter), dh) do vtkfile
-            #         vtk_point_data(vtkfile, dh, a) # displacement field
-            #         vtk_point_data(vtkfile, σx, "σx")
-            #         vtk_point_data(vtkfile, σy, "σy")
-            #     end
-            # end
         end
         if loadstep < 40 && iter < 20
             σx, σy = StressExtract(dh, a, mp)

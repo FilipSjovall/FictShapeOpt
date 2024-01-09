@@ -20,9 +20,9 @@ th = 0.30 #+ .1
 xl = 0.0
 yl = 0.0
 xr = -0.75 + 0.25 + 0.1 + 0.25  # ändra här
-yr = 1.41  # ändra här
+yr = 1.1  # ändra här
 Δx = 0.75 # ändra här
-Δy = 1.0 # ändra här
+Δy = 0.75 # ändra här
 r1 = 0.075
 r2 = 0.075
 # grid size
@@ -120,9 +120,9 @@ n_top = getnodeset(dh.grid, "n_top")
 # ----------------- #
 # Design boundaries #
 # ----------------- #
-Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γm, Γs))
+# Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γm, Γs))
 #Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right, Γ_bot, Γ_top))
-#Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right)) # ! # ! # ! # ! # ! # ! # ! # ! # ! #
+Γ_robin = setdiff(Γ_all, union(Γ_left, Γ_right)) # ! # ! # ! # ! # ! # ! # ! # ! # ! #
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
 n_robin = getBoundarySet(dh.grid, Γ_robin)
@@ -182,7 +182,7 @@ global nloadsteps = 10
 global a_hist = zeros(dh.ndofs.x, nloadsteps)
 global Ψ_hist = zeros(dh.ndofs.x, nloadsteps)
 global d_hist = zeros(dh.ndofs.x, nloadsteps)
-global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.08, -0.08, -0.08, -0.08, -0.08, -0.08] .* 3 #2.5
+global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.08, -0.08, -0.08, -0.08, -0.08, -0.08] .* 2  #2.5
 global F_d    = zeros(10)
 global F₀     = zeros(10)
 global g      = 0.0
@@ -197,7 +197,9 @@ bcdof_left, _    = setBCXY_X(0.0, dh, n_left)
 bcdof_right, _   = setBCXY_X(0.0, dh, n_right)
 bcdof_bot, _     = setBCY(0.0, dh, n_bot)
 bcdof_top, _     = setBCY(0.0, dh, n_top)
-bcdof_contact, _ = setBCXY_both(0.0, dh, union(nₘ,nₛ))
+
+#bcdof_contact, _ = setBCXY_both(0.0, dh, union(nₘ,nₛ))
+bcdof_contact, _ = Vector{Int64}(), Vector{Float64}()
 
 bcdof_bot, _   = Vector{Int64}(), Vector{Float64}()
 bcdof_top, _   = Vector{Int64}(), Vector{Float64}()
@@ -221,7 +223,7 @@ function Optimize(dh)
     global λψ = similar(a)
     global λᵤ = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = volume(dh, coord, enod) * 0.9 # 2.0
+    Vₘₐₓ = volume(dh, coord, enod) * 2.0 # 0.9 # 2.0
     tol = 1e-3
     global OptIter = 0
     global true_iteration = 0
@@ -481,6 +483,8 @@ function main()
     Optimize(dh);
 end
 =#
+
+#=
 p_normal = plot([0.5], [0.5])
 for face in Γm
     faces = Ferrite.faces(dh.grid.cells[face[1]])[face[2]]
@@ -504,7 +508,7 @@ for face in Γs
     xlims!(-0.75 , 1.25)
     ylims!(0.0, 1.5)
 end
-
+=#
 
 F = zeros(10)
 
