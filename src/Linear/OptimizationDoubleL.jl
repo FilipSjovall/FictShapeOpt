@@ -2,7 +2,7 @@ using Mortar2D, ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
 using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
 using SparseDiffTools, Plots, Printf, JLD2, Statistics, AlgebraicMultigrid
 #
-#pyplot()
+plotlyjs()
 #
 include("..//mesh_reader.jl")
 include("Contact//contact_help.jl")
@@ -16,17 +16,17 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
-th = 0.30 #+ .1
+th = 0.20 #+ .1
 xl = 0.0
 yl = 0.0
-xr = -0.75 + 0.25 + 0.1 + 0.25  # ändra här
-yr = 1.1  # ändra här
+xr = -0.75 + 0.25 + 0.15 # ändra här
+yr = 1.051   # ändra här
 Δx = 0.75 # ändra här
 Δy = 0.75 # ändra här
 r1 = 0.075
 r2 = 0.075
 # grid size
-h = 0.05
+h = 0.03
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -176,13 +176,14 @@ global ∂g₂_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g₂_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ = similar(a)
 global λψ = similar(a)
-global Δ  = 0.10
+global Δ  = 0.2
 global nloadsteps = 10
 
 global a_hist = zeros(dh.ndofs.x, nloadsteps)
 global Ψ_hist = zeros(dh.ndofs.x, nloadsteps)
 global d_hist = zeros(dh.ndofs.x, nloadsteps)
-global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.08, -0.08, -0.08, -0.08, -0.08, -0.08] .* 2  #2.5
+global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.12, -0.14, -0.16, -0.18, -0.20] .* 2. #2.5
+global F_tar[5:end] .= F_tar[5]
 global F_d    = zeros(10)
 global F₀     = zeros(10)
 global g      = 0.0
@@ -283,12 +284,9 @@ function Optimize(dh)
         global true_iteration += 1
 
         # # # # #
-        # test  #
+        # Reset #
         # # # # #
-        global nloadsteps = 10
-        global μ = 1e3 # funkade ok med 1e4
-
-        if OptIter % 50 == 0
+        if OptIter % 10 == 0
             dh0          = deepcopy(dh)
             global d     = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -303,39 +301,39 @@ function Optimize(dh)
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
+        global nloadsteps = 10#10
+        global μ = 1e2 # funkade ok med 1e4
         global coord₀  = getCoord(getX(dh0), dh0) # x₀
         Ψ, _, Kψ, _, λ, Ψ_hist, d_hist = fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
 
-        # # # # # #
-        # Filter  #
-        # # # # # #
+        # # # # # # # # # # # # # # #
+        # Apply filter: x₀ + Ψ = x  #
+        # # # # # # # # # # # # # # #
         global dh = deepcopy(dh0)
-        updateCoords!(dh, Ψ) # x₀ + Ψ = x
+        updateCoords!(dh, Ψ) #
         global coord = getCoord(getX(dh), dh)
-
-        # # # # #
-        # test  #
-        # # # # #
-        global nloadsteps = 10
-        global ε          = 1e3 # funkade ok med 1e4
 
         # # # # # # # # #
         # Equillibrium  #
         # # # # # # # # #
+        global nloadsteps = 10
+        global ε = 5e2 # funkade ok med 1e4
         a, _, Fₑₓₜ, Fᵢₙₜ, K, traction, a_hist = solver_C_hook(dh, coord, Δ, nloadsteps)
+
+
         global g = 0.0
+        assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
+        dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
         for n = 1:nloadsteps
             a = a_hist[:,n]
-            Ψ = Ψ_hist[:,n]
-            λ = (1/n)*n
+            #Ψ = Ψ_hist[:,n]
+            λ = 1.0 #(1/nloadsteps)*n
             assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε)
-            assemGlobal!(Kψ, FΨ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_robin, μ)
             # # # # # # # # #
             # Sensitivities #
             # # # # # # # # #
             ∂rᵤ_∂x = similar(K)
             ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
-            dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 
             # # # # # # #
             # Objective #
@@ -362,12 +360,6 @@ function Optimize(dh)
             F_d[n] = -T' * Fᵢₙₜ
         end
 
-        # # Ad hoc avstängning av kontaktzon
-        # ∂g_∂d[register[collect(nₘ), 1]].= 0.0
-        # ∂g_∂d[register[collect(nₘ), 2]].= 0.0
-        # ∂g_∂d[register[collect(nₛ), 1]].= 0.0
-        # ∂g_∂d[register[collect(nₛ), 2]].= 0.0
-
         if true_iteration == 1
             global F₀ = deepcopy(F_d)
         end
@@ -379,39 +371,42 @@ function Optimize(dh)
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
         ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd ./ Vₘₐₓ)
 
-        # # # # # # # # # # # #
-        # Pressure constraint #
-        # # # # # # # # # # # #
-        # p = 2
-        # X_ordered = getXfromCoord(coord)
-        # g₂         = contact_pnorm_s(X_ordered, a, ε, p) / 0.5 - 1.0
-        # ∂g₂_∂x     = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
-        # ∂g₂_∂u     = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
-
-        # solveq!(λᵤ, K',  ∂g₂_∂u, bcdof_o, bcval_o)
-        # solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
-        # ∂g₂_∂d            = Real.( (-transpose(λψ) * dr_dd)' ./ 0.5 )'
-
         # # # # #
         # M M A #
         # # # # #
-        d_old   = d
+        # d_old   = d
+        # low_old = low
+        # upp_old = upp
+        # d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g .* 1000, ∂g_∂d .* 1000, g₁ .* 100, ∂Ω∂d .* 100, low, upp, a0, am, C, d2)
+        # #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .* 100, ∂g_∂d .* 100, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
+        # # ----------------- #
+        # # Test - new update #
+        # # ----------------- #
+        # α      = 1.0 # 0.4 # 0.1 #
+        # d_new  = d_old   + α .* (d_new - d_old)
+        # low    = low_old + α .* (low   - low_old)
+        # upp    = upp_old + α .* (upp   - upp_old)
+        # # ----------------- #
+        # xold2  = xold1
+        # xold1  = d
+        # d      = d_new
+        # change = norm(d .- xold1)
+        d_old = d[free_d]
         low_old = low
         upp_old = upp
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g .* 100, ∂g_∂d .* 100, g₁ .* 100, ∂Ω∂d .* 100, low, upp, a0, am, C, d2)
-        #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d, xmin, xmax, xold1, xold2, g .* 100, ∂g_∂d .* 100, hcat([g₁; g₂]), vcat([∂Ω∂d; ∂g₂_∂d]), low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:], xold1[:], xold2[:], g .* 1000, ∂g_∂d[free_d] .* 1000, g₁ .* 100, ∂Ω∂d[free_d]' .* 100, low, upp, a0, am, C, d2)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        α      = 1.0 # 0.1 #
-        d_new  = d_old   + α .* (d_new - d_old)
-        low    = low_old + α .* (low   - low_old)
-        upp    = upp_old + α .* (upp   - upp_old)
+        α = 1.0 # 0.4 # 0.1 #
+        d_new = d_old   + α .* (d_new - d_old)
+        low   = low_old + α .* (low - low_old)
+        upp   = upp_old + α .* (upp - upp_old)
         # ----------------- #
-        xold2  = xold1
-        xold1  = d
-        d      = d_new
-        change = norm(d .- xold1)
+        xold2 = xold1
+        xold1 = d[free_d]
+        d[free_d] = d_new
+        change = norm(d[free_d] .- xold1)
 
         # # # # # # # # # #
         # Postprocessing  #
@@ -428,16 +423,19 @@ function Optimize(dh)
         #postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
         # append?
-        p2 = plot(1:true_iteration, [v_hist[1:true_iteration], g_hist[1:true_iteration]] .* 100, label=["Volume Constraint" "Objective"], legend=:left)
-        display(p2)
-        p3 = plot(0.0:0.01:0.1, vcat(0.0, abs.(F_d)), label="Design", legend=:left)
+        p2 = plot(1:true_iteration, v_hist[1:true_iteration],  label="Volume", background_color=RGB(0.2, 0.2, 0.2), legend = :outerleft, grid=false, lc=:orange)
+        p3 = plot(1:true_iteration, g_hist[1:true_iteration] .* 1000, label="Objective", background_color=RGB(0.2, 0.2, 0.2), legend = :outerleft, grid=false, lc=:purple)
+        #display(p2)
+        p4 = plot(0.0:0.01:0.1, vcat(0.0, abs.(F_d)), label="Design", background_color=RGB(0.2, 0.2, 0.2), legend = :outerleft, grid=false) # ,
         scatter!(0.0:0.01:0.1, vcat(0.0, abs.(F_tar)), label = "Target")
         plot!(0.0:0.01:0.1, vcat(0.0, abs.(F₀)), label = "Initial")
-        display(p3)
+        #display(p3)
+        p = plot(p2, p3, p4,  layout=(3, 1))
+        display(p)
         # For investigative purpose
-        low_hist[:,true_iteration] = low
-        upp_hist[:,true_iteration] = upp
-        d_hist2[:, true_iteration]  = d
+        low_hist[free_d,true_iteration] = low
+        upp_hist[free_d,true_iteration] = upp
+        d_hist2[free_d, true_iteration] = d[free_d]
         @save "asymptoter.jld2" low_hist upp_hist d_hist
     end
     #jld2save("färdig.jld2",a,dh,dh0,Opiter,v_hist,g_hist,d)

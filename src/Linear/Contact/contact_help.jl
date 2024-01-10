@@ -50,13 +50,13 @@ end
 
 function penalty_filter(g, ε)
     if g < 0.0
-        #p = 0.
-        if g < -0.05
-            p = 0.1* ε * g
-        else
+        p = 0.
+        #if g < -0.05
+            #p = 0.1* ε * g
+        #else
             #p =  ε * g
             p = 0.0
-        end
+        #end
     else
         p = ε * g #
     end

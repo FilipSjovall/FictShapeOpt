@@ -180,7 +180,7 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
     #append!(asy_counter, length(findall(zzz .< 0)))
     temp = zeros(size(xval))
     temp[findall(zzz .< 0)] .= 1
-    asy_counter[:,true_iteration] = temp
+    asy_counter[free_d,true_iteration] = temp
     #append!(asy_counter, findall(zzz .< 0))
   #
   return xmma,ymma,zmma,lam,xsi,eta,mu,zet,s,low,upp
