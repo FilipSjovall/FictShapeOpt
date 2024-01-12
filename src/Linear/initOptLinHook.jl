@@ -3,7 +3,7 @@ kktnorm = 1.0
 dr_dd = similar(K) # ?
 # Material parameters
 mp  = [175 80.769230769230759]
-mp₀ = [1. 1.].*100 #* 3 # .*500
+mp₀ = [1. 5.].*100 #* 3 # .*500
 #mp₀ = [1. 1.]
 #mp₀ = mp
 #
@@ -26,17 +26,17 @@ global kkttol    = 0.001;
 global changetol = 0.001;
 global outit     = 0;
 global change    = 1;
-global xmax      =  50.0*ones(n_mma);
-global xmin      = -50.0*ones(n_mma);
+global xmax      =  1.0*ones(n_mma);
+global xmin      = -1.0*ones(n_mma);
 
 m_indices = findall(x -> x in collect(nₘ), free_d)
 s_indices = findall(x -> x in collect(nₛ), free_d)
 
 
-global xmax[m_indices].=   .1
-global xmin[m_indices].=  -.1
-global xmax[s_indices] .=  .1
-global xmin[s_indices] .= -.1
+global xmax[m_indices].=   .5
+global xmin[m_indices].=  -.5
+global xmax[s_indices].=   .5
+global xmin[s_indices].=  -.5
 
 global low = xmin;
 global upp = xmax;

@@ -16,17 +16,17 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
-th = 0.20 #+ .1
+th = 0.30 #+ .1
 xl = 0.0
 yl = 0.0
-xr = -0.75 + 0.25 + 0.15 # ändra här
-yr = 1.051   # ändra här
+xr = -0.75 + 0.25 + 0.25 + 0.1# ändra här
+yr = 1.51   # ändra här
 Δx = 0.75 # ändra här
-Δy = 0.75 # ändra här
+Δy = 1.0 # ändra här
 r1 = 0.075
 r2 = 0.075
 # grid size
-h = 0.03
+h = 0.05
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -182,7 +182,7 @@ global nloadsteps = 10
 global a_hist = zeros(dh.ndofs.x, nloadsteps)
 global Ψ_hist = zeros(dh.ndofs.x, nloadsteps)
 global d_hist = zeros(dh.ndofs.x, nloadsteps)
-global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.12, -0.14, -0.16, -0.18, -0.20] .* 2. #2.5
+global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.12, -0.14, -0.16, -0.18, -0.20] .* 2 #2.5
 global F_tar[5:end] .= F_tar[5]
 global F_d    = zeros(10)
 global F₀     = zeros(10)
@@ -224,7 +224,7 @@ function Optimize(dh)
     global λψ = similar(a)
     global λᵤ = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = volume(dh, coord, enod) * 2.0 # 0.9 # 2.0
+    Vₘₐₓ = volume(dh, coord, enod) * 0.9 # 0.9 # 2.0
     tol = 1e-3
     global OptIter = 0
     global true_iteration = 0
@@ -286,7 +286,7 @@ function Optimize(dh)
         # # # # #
         # Reset #
         # # # # #
-        if OptIter % 10 == 0
+        if OptIter % 30 == 0
             dh0          = deepcopy(dh)
             global d     = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -302,7 +302,7 @@ function Optimize(dh)
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
         global nloadsteps = 10#10
-        global μ = 1e2 # funkade ok med 1e4
+        global μ = 2e3 # funkade ok med 1e4
         global coord₀  = getCoord(getX(dh0), dh0) # x₀
         Ψ, _, Kψ, _, λ, Ψ_hist, d_hist = fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
 
@@ -398,7 +398,7 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        α = 1.0 # 0.4 # 0.1 #
+        α     = 0.25 # 0.4 # 0.1 #
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)

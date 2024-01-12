@@ -50,7 +50,7 @@ end
 
 function penalty_filter(g, ε)
     if g < 0.0
-        p = 0.
+        # p = 0.
         #if g < -0.05
             #p = 0.1* ε * g
         #else
@@ -181,7 +181,7 @@ function contact_residual(X::AbstractVector{T1}, a::AbstractVector{T2}, ε::Numb
     #for (i, A) in enumerate(slave_dofs)
     for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-        if λ_A > 0
+        if λ_A != 0
             for B in intersect(slave_dofs, 1:size(D, 2))
                 B_dofs = register[B, :]  # Extract nodal degrees of freedom
 
@@ -263,7 +263,7 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
     #for C in master_dofs
     for (i, A) in enumerate(slave_dofs)
         λ_A = penalty(g[i, :] ⋅ normals[A] / κ[i], ε)
-        if λ_A > 0
+        if λ_A != 0
             #push!(τ_c, A => λ_A * (1 / κ[i]) )
             push!(τ_c, A => λ_A)
         end
@@ -339,7 +339,7 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
     #for (i, A) in enumerate(slave_dofs)
     for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-        if λ_A > 0.0
+        if λ_A != 0.0
             for (j, B) in (enumerate(intersect(slave_dofs, 1:size(D, 2))))
                 # Extract nodal degrees of freedom
                 nod = order[B]
@@ -423,7 +423,7 @@ function contact_residual_reduced_filter(X::AbstractVector{T1}, a_c::AbstractVec
     #for (i, A) in enumerate(slave_dofs)
     for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
         λ_A = penalty_filter(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-        if λ_A > 0
+        if λ_A != 0
             for (j, B) in (enumerate(intersect(slave_dofs, 1:size(D, 2))))
                 # Extract nodal degrees of freedom
                 nod = order[B]

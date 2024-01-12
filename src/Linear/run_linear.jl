@@ -712,7 +712,7 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
         end
         if loadstep < 40 && iter < 20
             σx, σy = StressExtract(dh, a, mp)
-            vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
+            vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
                 vtk_point_data(vtkfile, dh, a) # displacement field
                 vtk_point_data(vtkfile, σx, "σx")
                 vtk_point_data(vtkfile, σy, "σy")
