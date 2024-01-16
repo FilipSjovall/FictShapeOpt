@@ -16,13 +16,13 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
-th = 0.30 #+ .1
+th = 0.3 #+ .1
 xl = 0.0
 yl = 0.0
-xr = -0.75 + 0.25 + 0.25 + 0.1# ändra här
-yr = 1.51   # ändra här
-Δx = 0.75 # ändra här
-Δy = 1.0 # ändra här
+xr = -0.75 + 0.25 + 0.1  #
+yr = 1.51 # ändra här
+Δx = 1.0  # ändra här
+Δy = 1.0  # ändra här
 r1 = 0.075
 r2 = 0.075
 # grid size
@@ -178,12 +178,11 @@ global λᵤ = similar(a)
 global λψ = similar(a)
 global Δ  = 0.2
 global nloadsteps = 10
-
 global a_hist = zeros(dh.ndofs.x, nloadsteps)
 global Ψ_hist = zeros(dh.ndofs.x, nloadsteps)
 global d_hist = zeros(dh.ndofs.x, nloadsteps)
-global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.12, -0.14, -0.16, -0.18, -0.20] .* 2 #2.5
-global F_tar[5:end] .= F_tar[5]
+global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.12, -0.14, -0.16, -0.18, -0.20] .* 1.75
+global F_tar[7:end] .= F_tar[7]
 global F_d    = zeros(10)
 global F₀     = zeros(10)
 global g      = 0.0
@@ -224,7 +223,7 @@ function Optimize(dh)
     global λψ = similar(a)
     global λᵤ = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = volume(dh, coord, enod) * 0.9 # 0.9 # 2.0
+    Vₘₐₓ = volume(dh, coord, enod) * 1.0 # 0.9 # 2.0
     tol = 1e-3
     global OptIter = 0
     global true_iteration = 0
@@ -294,15 +293,13 @@ function Optimize(dh)
             global low   = xmin
             global upp   = xmax
             OptIter      = 1
-            #xmin = max.(xmin * 2, -1.)
-            #xmax = min.(xmax * 2,  1.)
         end
 
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
-        global nloadsteps = 10#10
-        global μ = 2e3 # funkade ok med 1e4
+        global nloadsteps = 10 #10
+        global μ = 2e3 #1e3
         global coord₀  = getCoord(getX(dh0), dh0) # x₀
         Ψ, _, Kψ, _, λ, Ψ_hist, d_hist = fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
 
@@ -430,7 +427,7 @@ function Optimize(dh)
         scatter!(0.0:0.01:0.1, vcat(0.0, abs.(F_tar)), label = "Target")
         plot!(0.0:0.01:0.1, vcat(0.0, abs.(F₀)), label = "Initial")
         #display(p3)
-        p = plot(p2, p3, p4,  layout=(3, 1))
+        p = plot(p2, p3, p4,  layout=(3, 1), size=(800,600))
         display(p)
         # For investigative purpose
         low_hist[free_d,true_iteration] = low

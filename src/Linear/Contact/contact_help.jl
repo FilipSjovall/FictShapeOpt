@@ -51,17 +51,19 @@ end
 function penalty_filter(g, ε)
     if g < 0.0
         # p = 0.
-        #if g < -0.05
-            #p = 0.1* ε * g
-        #else
-            #p =  ε * g
-            p = 0.0
-        #end
+        if g ≥ -0.01
+           #p = 0.01 * ε * g
+           p = 0.0
+        else
+           p = 0.0
+        end
     else
         p = ε * g #
     end
     return p
 end
+
+#📂
 
 function gap_function(X::AbstractVector{T}) where {T}
     # convert X to Real for compatibility with ForwardDiff

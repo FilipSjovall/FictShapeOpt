@@ -339,9 +339,8 @@ end
 function defgradGP(coord,ed,gp,mp,t)
     Jᵀ[:, 2:3] = transpose(dNᵣ[:, index[gp, :]]) * coord # ??
     J⁻ = inv(Jᵀ)
-    detJ = det(Jᵀ)
+    #detJ = det(Jᵀ)
     dNₓ = P₀ * J⁻ * transpose(dNᵣ[:, index[gp, :]])
-
     # Gradient matrices " ∇N "
     H₀[1, 1:2:5] = dNₓ[1, :]
     H₀[2, 1:2:5] = dNₓ[2, :]
@@ -352,16 +351,13 @@ function defgradGP(coord,ed,gp,mp,t)
     Bₗ₀[2, 2:2:6] = dNₓ[2, :]
     Bₗ₀[3, 1:2:5] = dNₓ[2, :]
     Bₗ₀[3, 2:2:6] = dNₓ[1, :]
-
     # ∇u = ∇ₓN u
     A_temp = H₀ * ed
     A[1, :] = [A_temp[1] 0.0 A_temp[3] 0.0]
     A[2, :] = [0.0 A_temp[2] 0.0 A_temp[4]]
     A[3, :] = [A_temp[2] A_temp[1] A_temp[4] A_temp[3]]
-
     # ∇N + ∂N∂x ⋅ ∇u
-    B₀ = Bₗ₀ + A * H₀
-
+    #B₀ = Bₗ₀ + A * H₀
     # Deformation gradient F = I + ∇u
     eff[1, 1] = A_temp[1] + 1.0
     eff[1, 2] = A_temp[2]
@@ -369,9 +365,6 @@ function defgradGP(coord,ed,gp,mp,t)
     eff[2, 2] = A_temp[4] + 1.0
     # Vec(F)
     ef = [eff[1, 1] eff[1, 2] eff[2, 1] eff[2, 2]]
-
-    # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²
-
 end
 
 function extrapolate_stress(s)

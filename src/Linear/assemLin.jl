@@ -233,6 +233,7 @@ end
 
 function energy(dh,a,mp)
     W = zeros(length(dh.grid.cells),1)
+    # coord = getCoordfromX(X_float)
     ie= 0
     for el ∈ CellIterator(dh)
         cell_dofs = celldofs(el)
@@ -244,4 +245,9 @@ function energy(dh,a,mp)
         end
     end
     return W
+end
+
+function totalEnergy(dh,a,mp)
+    E = sum(energy(dh,a,mp))
+    return E
 end
