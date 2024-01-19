@@ -16,13 +16,13 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
-th = 0.3 #+ .1
+th = 0.4 #+ .1
 xl = 0.0
 yl = 0.0
-xr = -0.75 + 0.25 + 0.1  #
-yr = 1.51 # ändra här
-Δx = 1.0  # ändra här
-Δy = 1.0  # ändra här
+xr = -0.75 + 0.25 + 0.1 #
+yr = 1.81 # ändra här
+Δx = 1.2  # ändra här
+Δy = 1.2  # ändra här
 r1 = 0.075
 r2 = 0.075
 # grid size
@@ -181,7 +181,7 @@ global nloadsteps = 10
 global a_hist = zeros(dh.ndofs.x, nloadsteps)
 global Ψ_hist = zeros(dh.ndofs.x, nloadsteps)
 global d_hist = zeros(dh.ndofs.x, nloadsteps)
-global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.12, -0.14, -0.16, -0.18, -0.20] .* 1.75
+global F_tar  = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.12, -0.14, -0.16, -0.18, -0.20] .* 2.5
 global F_tar[7:end] .= F_tar[7]
 global F_d    = zeros(10)
 global F₀     = zeros(10)

@@ -1,6 +1,6 @@
-using LinearSolve, LinearSolvePardiso, SparseArrays, 
-      StaticArrays,FerriteMeshParser, Ferrite, 
-      IterativeSolvers, AlgebraicMultigrid, IncompleteLU    
+using LinearSolve, SparseArrays,
+      StaticArrays,FerriteMeshParser, Ferrite,
+      IterativeSolvers, AlgebraicMultigrid, IncompleteLU
 
 
 
@@ -85,17 +85,17 @@ function Optimize(dh)
             global locked_d = setdiff(1:898,free_d)
         # # # # # # # # # # # # # #
         OptIter += 1
-        
+
         # # # # # # # # # # # # # #
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
-        coord₀ = getCoord(getX(dh0), dh0) # x₀ 
+        coord₀ = getCoord(getX(dh0), dh0) # x₀
         Ψ, _, Kψ, _, λ = fictitious_solver(d, dh0, coord₀) # Döp om till "~coord0"
 
-        # # # # # # 
+        # # # # # #
         # Filter  #
-        # # # # # # 
-        dh    = deepcopy(dh0) 
+        # # # # # #
+        dh    = deepcopy(dh0)
         updateCoords!(dh, Ψ) # x₀ + Ψ = x
         coord = getCoord(getX(dh), dh)
 
@@ -107,14 +107,14 @@ function Optimize(dh)
         # # # # # # # # #
         a, _, _, Fᵢₙₜ, K = solver(dh,coord)
 
-        # # # # # # # 
+        # # # # # # #
         # Objective #
         # # # # # # #
         g = -a[pdofs]' * Fᵢₙₜ[pdofs]
 
-        # # # # # # # # # 
+        # # # # # # # # #
         # Sensitivities #
-        # # # # # # # # # 
+        # # # # # # # # #
         ∂g_∂x = zeros(size(a)) # Flytta
         ∂g_∂u = zeros(size(d)) # Flytta
 
@@ -141,12 +141,12 @@ function Optimize(dh)
         g₁    = volume(dh,coord) / Vₘₐₓ - 1
         ∂Ω_∂x = volume_sens(dh,coord)
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdof, bcval.*0);
-        ∂Ω∂d  = -transpose(λᵥₒₗ)*dr_dd ./ Vₘₐₓ; 
+        ∂Ω∂d  = -transpose(λᵥₒₗ)*dr_dd ./ Vₘₐₓ;
         ∂Ω∂d[locked_d] .= 0.0
 
         # # # # #
-        # M M A # 
-        # # # # # 
+        # M M A #
+        # # # # #
         X, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n, OptIter, d, xmin, xmax, xold1, xold2, 10 * g, 10 * ∂g_∂d, g₁, ∂Ω∂d', low, upp, a0, am, C, d2)
         xold2 = xold1
         xold1 = d
@@ -173,7 +173,7 @@ function Optimize(dh)
             postprocess_opt(Ψ, dh0, "results/Shape" * string(OptIter))
             coord = getCoord(getX(dh), dh)
             postprocess_opt(a, dh, "results/Deformation" * string(OptIter))
-        end 
+        end
         println("Objective: ", g_hist, " Constraint: ", g₁)
         if OptIter == 50
             break
@@ -181,5 +181,3 @@ function Optimize(dh)
     end
     return g_hist, v_hist, OptIter
 end
-
-

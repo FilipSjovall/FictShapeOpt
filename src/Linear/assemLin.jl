@@ -1,7 +1,6 @@
 # ------------------------ #
 # Assemble global matrices #
 # ------------------------ #
-
 function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod)
     assembler = start_assemble(K,Fᵢₙₜ)
     ie = 0
@@ -63,9 +62,7 @@ function assemGlobal!(K,Fᵢₙₜ,dh0, mp₀,t,Ψ,coord,enod,λ,d,Γ_robin)
     end
 end
 
-function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
-    #assembler = start_assemble(Fₑₓₜ)
-    #Fₑₓₜ      = zeros(size(coord,1)*2)
+function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ,ip)
     ie        = 0
     kₑ        = zeros(6,6)
     fₑ        = zeros(6)
@@ -78,10 +75,9 @@ function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ)
                 face_nods      = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
                 face_dofs      = [face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2]
                 X              = coord[enod[ie][face_nods.+1] ,:]
-                fₑ[face_dofs]  = tractionLoad(X,τ)
+                fₑ[face_dofs]  = tractionLoad(X,τ) # här borde t och a kanske också användas?
             end
         end
-        #assemble!(assembler, cell_dofs, fₑ)
         Fₑₓₜ[cell_dofs] -= fₑ
     end
 end

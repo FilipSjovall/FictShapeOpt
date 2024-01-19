@@ -3,7 +3,7 @@ kktnorm = 1.0
 dr_dd = similar(K) # ?
 # Material parameters
 mp  = [175 80.769230769230759]
-mp₀ = [1. 5.] .* 100
+mp₀ = [5. 2.] .* 100
 #
 t = 1.0
 # Optimization parameters

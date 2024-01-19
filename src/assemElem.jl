@@ -9,10 +9,10 @@ ngp = 3
 #ξ      = [2.0/3.0 1.0/3.0 1.0/3.0; 1.0/3.0 2.0/3.0 1.0/3.0; 1.0/3.0 1.0/3.0 2.0/3.0 ]
 ξ      = [2.0/3.0 1.0/6.0 1.0/6.0; 1.0/6.0 2.0/3.0 1.0/6.0; 1.0/6.0 1.0/6.0 2.0/3.0 ]
 w      = [1.0/3.0 1.0/3.0 1.0/3.0]
-index  = [1 2 3; 4 5 6; 7 8 9] 
+index  = [1 2 3; 4 5 6; 7 8 9]
 #w      = [-9/32 25/96 25/96 25/96]
 #ξ      = [1/3 1/3 1-2/3; 3/5 1/5 1-4/5; 1/5 3/5 1-4/5; 1/5 1/5 1-2/5]
-#index  = [1 2 3; 4 5 6; 7 8 9; 10 11 12] 
+#index  = [1 2 3; 4 5 6; 7 8 9; 10 11 12]
 
 P₀     = [0.0 1.0 0.0; 0.0 0.0 1.0]
 #P₀     = [0.0 0.0; 1.0 0.0; 0.0 1.0]
@@ -75,21 +75,21 @@ S       = zeros(3)
 dre      = zeros(12,12)
 
 function assemGP(coord,ed,gp,mp,t)
-    
+
     Jᵀ[:,2:3]               = transpose(dNᵣ[:,index[gp,:]]) * coord
 
     J⁻                      = inv(Jᵀ)
     detJ                    = det(Jᵀ)
     dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
 
-    # Gradient matrices  
+    # Gradient matrices
     H₀[1,1:2:11]  = dNₓ[1,:]
     H₀[2,1:2:11]  = dNₓ[2,:]
     H₀[3,2:2:12]  = dNₓ[1,:]
     H₀[4,2:2:12]  = dNₓ[2,:]
 
     Bₗ₀[1,1:2:11] = dNₓ[1,:]
-    Bₗ₀[2,2:2:12] = dNₓ[2,:]  
+    Bₗ₀[2,2:2:12] = dNₓ[2,:]
     Bₗ₀[3,1:2:11] = dNₓ[2,:]
     Bₗ₀[3,2:2:12] = dNₓ[1,:]
 
@@ -116,14 +116,14 @@ function assemGP(coord,ed,gp,mp,t)
     S                       = [es[1]; es[2]; es[4]]
     @inbounds Stress[1,:]   = [S[1] S[3]]
     @inbounds Stress[2,:]   = [S[3] S[2]]
-    
+
     @inbounds R[1:2,1:2]    = Stress
     @inbounds R[3:4,3:4]    = Stress
-    
+
     fₑ            = transpose(B₀)*S*detJ*t*w[gp]/2
 
-    # ∫ δEᵀ D ΔE + ∇δuᵀ S ∇Δu dΩ 
-    kₑ            = ( transpose(B₀)*D*B₀ + transpose(H₀)*R*H₀ )*detJ*t*w[gp]/2 
+    # ∫ δEᵀ D ΔE + ∇δuᵀ S ∇Δu dΩ
+    kₑ            = ( transpose(B₀)*D*B₀ + transpose(H₀)*R*H₀ )*detJ*t*w[gp]/2
     return kₑ, fₑ
 end
 
@@ -140,26 +140,26 @@ function RobinIntegral(ke,ge,cell,ΓN,fv,uₑ,λ,dₑ,coorde)
                 if (cellid(cell), face) in Γ1
                     for i in 1:2:11
                         Ni  = shape_value(fv, q_point, i)
-                        #ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ 
-                        ge[i]   += Ni ⋅ [1;1] 
+                        #ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ
+                        ge[i]   += Ni ⋅ [1;1]
                         for j in 1:2:11
                             Nj = shape_value(fv, q_point, j)
-                            ke[i,j] += Ni ⋅ Nj * dΓ 
+                            ke[i,j] += Ni ⋅ Nj * dΓ
                         end
                     end
                 elseif (cellid(cell), face) in Γ2
                     for i in 2:2:12
                         Ni  = shape_value(fv, q_point, i)
-                        #ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ 
-                        ge[i]   += Ni ⋅ [1;1]  
+                        #ge[i]   += Ni ⋅ (u_n - λ * d_n) * dΓ
+                        ge[i]   += Ni ⋅ [1;1]
                         for j in 2:2:12
                             Nj = shape_value(fv, q_point, j)
-                            ke[i,j] += Ni ⋅ Nj * dΓ 
+                            ke[i,j] += Ni ⋅ Nj * dΓ
                         end
                     end
-                end 
+                end
             end
-            #if (cellid(cell), face) in Γ1 
+            #if (cellid(cell), face) in Γ1
             #    for gp in 1:2
             #        @inbounds Jᵀ[:,2:3]     = transpose(dNf[:,index[gp,:]]) * coorde
             #        J⁻                      = inv(Jᵀ)
@@ -175,7 +175,7 @@ function RobinIntegral(ke,ge,cell,ΓN,fv,uₑ,λ,dₑ,coorde)
             #        detJ                    = det(Jᵀ)
             #        dΓ                      = w[gp] * detJ /2
             #        #@inbounds ge[2:2:end]            += Nf[:,2:2:end,gp]' * (Nf[:,2:2:end,gp]*uₑ[2:2:12] - λ * Nf[:,2:2:end,gp] * dₑ[2:2:12]) * dΓ
-            #        @inbounds ge            += Nf[:,:,gp]' * [1;1] 
+            #        @inbounds ge            += Nf[:,:,gp]' * [1;1]
             #        println(ge)
             #        @inbounds ke[2:2:end,2:2:end]    += Nf[:,2:2:end,gp]' * Nf[:,2:2:end,gp] * dΓ
             #    end
@@ -225,17 +225,17 @@ function dr_GP(coord,ed,gp,mp,t)
     detJ                    = det(Jᵀ)
     dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
 
-    # Gradient matrices  
+    # Gradient matrices
     @inbounds H₀[1,1:2:11]  = dNₓ[1,:]
     @inbounds H₀[2,1:2:11]  = dNₓ[2,:]
     @inbounds H₀[3,2:2:12]  = dNₓ[1,:]
     @inbounds H₀[4,2:2:12]  = dNₓ[2,:]
 
     @inbounds Bₗ₀[1,1:2:11] = dNₓ[1,:]
-    @inbounds Bₗ₀[2,2:2:12] = dNₓ[2,:]  
+    @inbounds Bₗ₀[2,2:2:12] = dNₓ[2,:]
     @inbounds Bₗ₀[3,1:2:11] = dNₓ[2,:]
     @inbounds Bₗ₀[3,2:2:12] = dNₓ[1,:]
-    
+
 
     A_temp = H₀*ed
     @inbounds A[1,:]        = [A_temp[1] 0.0 A_temp[3] 0.0]
@@ -247,15 +247,15 @@ function dr_GP(coord,ed,gp,mp,t)
     for dof in 1:12
         ## Sensitivities
         ∂G_∂x                   = - dNₓ * dX[dof,:,:] * dNₓ
-        ∂J_∂x                   =   detJ  * tr(dNₓ*dX[dof,:,:]) 
+        ∂J_∂x                   =   detJ  * tr(dNₓ*dX[dof,:,:])
 
         dH₀[1,1:2:11]  = ∂G_∂x[1,:]
         dH₀[2,1:2:11]  = ∂G_∂x[2,:]
         dH₀[3,2:2:12]  = ∂G_∂x[1,:]
         dH₀[4,2:2:12]  = ∂G_∂x[2,:]
-        
+
         dBₗ₀[1,1:2:11] = ∂G_∂x[1,:]
-        dBₗ₀[2,2:2:12] = ∂G_∂x[2,:]  
+        dBₗ₀[2,2:2:12] = ∂G_∂x[2,:]
         dBₗ₀[3,1:2:11] = ∂G_∂x[2,:]
         dBₗ₀[3,2:2:12] = ∂G_∂x[1,:]
 
@@ -265,8 +265,8 @@ function dr_GP(coord,ed,gp,mp,t)
         dA[1,:]        = [dA_temp[1] 0.0 dA_temp[3] 0.0]
         dA[2,:]        = [0.0 dA_temp[2] 0.0 dA_temp[4]]
         dA[3,:]        = [dA_temp[2] dA_temp[1] dA_temp[4] dA_temp[3]]
-        
-        dB₀            = dBₗ₀ + dA * H₀ + A * dH₀ 
+
+        dB₀            = dBₗ₀ + dA * H₀ + A * dH₀
 
         ## Material response
         #
@@ -286,7 +286,7 @@ function dr_GP(coord,ed,gp,mp,t)
 
         @inbounds Stress[1,:]   = [S[1] S[3]]
         @inbounds Stress[2,:]   = [S[3] S[2]]
-        
+
         @inbounds R[1:2,1:2]    = Stress
         @inbounds R[3:4,3:4]    = Stress
 
@@ -329,10 +329,10 @@ function Robin(coorde,ue,de,λ)
     Kc[6,2:2:6] = [N1N3 N2N3 N3N3]
 
 
-    println("Stämmer detta om randen är krokig????")
+    #println("Stämmer detta om randen är krokig????")
     #∫N1         = L2/2 - L2^2/(6*L1)
     #∫N2         = -L2^3/(6*L1*(L1 - L2))
-    #∫N3         = L2/2 + L2^2/(6*(L1 - L2)) 
+    #∫N3         = L2/2 + L2^2/(6*(L1 - L2))
     #println(∫N1,∫N2,∫N3)
 
 return  Kc, Kc*(ue-λ*de) # [0;∫N1;0;∫N2;0;∫N3]*0.5

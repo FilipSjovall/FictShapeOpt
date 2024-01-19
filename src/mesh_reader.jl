@@ -703,6 +703,24 @@ function setBCXY_X(bc_load, dh, nodes)
     return bc_dof, bc_val
 end
 
+function setBCXY_Y(bc_load, dh, nodes)
+    ## Find bc cell_dofs
+    bc_dof = Vector{Int64}()
+    bc_val = Vector{Float64}()
+    nodeDofs = getNodeDofs(dh)
+    for node in nodes
+        xdof = nodeDofs[node, 1]
+        ydof = nodeDofs[node, 2]
+
+        append!(bc_dof, ydof)
+        append!(bc_val, bc_load)
+
+        append!(bc_dof, xdof)
+        append!(bc_val, 0.0)
+    end
+    return bc_dof, bc_val
+end
+
 function getNodeDofs(dh)
     node_dofs = Matrix{Int64}(undef,length(dh.grid.nodes),2)
     for cell in CellIterator(dh)
@@ -1544,6 +1562,44 @@ function createUmesh(filename,x₀,y₀,Δx,Δy,tx,ty,h)
     gmsh.model.mesh.generate(2)
     #gmsh.model.mesh.reverse(2)
     # Finalize
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
+    return grid
+end
+
+function createArcMesh(filename, x₀, y₀, Δx, Δy, t, h)
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+    # Points
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀ + Δy , 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy + t, 0.0, h)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀ + Δy + t , 0.0, h)
+    p6 = gmsh.model.geo.add_point(x₀ , y₀ + t, 0.0, h)
+    # Lines
+    l1 = gmsh.model.geo.addBSpline([p1,p2,p3])
+    l2 = gmsh.model.geo.add_line(p3,p4)
+    l3 = gmsh.model.geo.addBSpline([p4,p5,p6])
+    l4 = gmsh.model.geo.add_line(p6,p1)
+
+    # Loop
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4])
+    # Surface
+    surf = gmsh.model.geo.add_plane_surface([loop])
+    gmsh.model.geo.synchronize()
+    # Physical surface
+    gmsh.model.add_physical_group(1, [l1, l2, l3, l4], -1, "")
+    gmsh.model.add_physical_group(2, [surf], -1, "")
+    # Generate mesh
+    gmsh.model.mesh.generate(2)
+    #gmsh.model.mesh.reverse(2)
+    # Write to file
     grid = mktempdir() do dir
         path = joinpath(filename * ".msh")
         gmsh.write(path)
