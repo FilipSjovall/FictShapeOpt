@@ -175,6 +175,33 @@ function assemGlobal!(Kψ, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_rob
     Fψ[contact_dofs]               -= rc
 end
 
+function assemGlobal!(K, Fᵢₙₜ, dh, t, a, coord, enod, ε, mp₁, mp₂)
+    assembler = start_assemble(K, Fᵢₙₜ)
+    ie = 0
+    kₑ = zeros(6, 6)
+    fₑ = zeros(6)
+    for cell in CellIterator(dh)
+        fill!(kₑ, 0.0)
+        fill!(fₑ, 0.0)
+        ie += 1
+        cell_dofs = celldofs(cell)
+        if ie ∈ dh.grid.cellsets["top mesh"]
+            mp = mp₁
+        else
+            mp = mp₂
+        end
+        kₑ, fₑ = assemElem(coord[enod[ie][2:end], :], a[cell_dofs], mp, t)
+        # assemble into global
+        assemble!(assembler, cell_dofs, kₑ, fₑ)
+    end
+    # Contact
+    X_ordered = getXfromCoord(coord)
+    rc = contact_residual_reduced(X_ordered, a[contact_dofs], a[freec_dofs], ε)
+    Kc = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, a[freec_dofs], ε), a[contact_dofs])
+    K[contact_dofs, contact_dofs] -= Kc
+    Fᵢₙₜ[contact_dofs] -= rc
+end
+
 function volume(dh,coord,enod)
     Ω   = 0.0
     ie  = 0
@@ -221,10 +248,6 @@ function ExtractContactTraction(a,ε,coord)
     X_ordered = getXfromCoord(coord)
     τ_c       = contact_traction(X_ordered, a, ε)
     return τ_c
-end
-
-function strainExtract(dh,a,mp,strain_type)
-
 end
 
 function energy(dh,a,mp)

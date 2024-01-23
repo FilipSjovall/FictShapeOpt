@@ -60,6 +60,26 @@ function drᵤ_dx(dr, dh, mp, t, a, coord, enod)
     return dr
 end
 
+
+function drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
+    assembler = start_assemble(∂rᵤ_∂x)
+    ie = 0
+    drₑ = zeros(6, 6)
+    for cell in CellIterator(dh)
+        ie += 1
+        cell_dofs = celldofs(cell)
+        drₑ = assem_dr(coord[enod[ie][2:end], :], a[cell_dofs], mp, t)
+        dre = zeros(6, 6)
+        assemble!(assembler, cell_dofs, drₑ + dre)
+    end
+
+    X_ordered = getXinDofOrder(dh, X, coord)
+    drc       = ForwardDiff.jacobian(x -> contact_residual_ordered(x, a, ε), X_ordered)
+    # dr[contact_dofs,contact_dofs] += drc[contact_dofs,contact_dofs]
+    ∂rᵤ_∂x   -= drc
+
+    return ∂rᵤ_∂x
+end
 # Shape sensitivity of external forces
 function dFext_dx(dF,dh,mp,t,a,coord,enod,τ, Γt)
     assembler = start_assemble(dF)
@@ -98,6 +118,32 @@ function drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
     drc       = ForwardDiff.jacobian(x -> contact_residual_ordered(x, a, ε), X_ordered)
     # dr[contact_dofs,contact_dofs] += drc[contact_dofs,contact_dofs]
     ∂rᵤ_∂x   -= drc
+
+    return ∂rᵤ_∂x
+end
+
+# Shape sensitivity of equillibrium residual including contact for two materials
+function drᵤ_dx_c(∂rᵤ_∂x, dh, t, a, coord, enod, ε, mp₁, mp₂)
+    assembler = start_assemble(∂rᵤ_∂x)
+    ie = 0
+    drₑ = zeros(6, 6)
+    for cell in CellIterator(dh)
+        ie += 1
+        cell_dofs = celldofs(cell)
+        if ie ∈ dh.grid.cellsets["top mesh"]
+            mp = mp₁
+        else
+            mp = mp₂
+        end
+        drₑ = assem_dr(coord[enod[ie][2:end], :], a[cell_dofs], mp, t)
+        dre = zeros(6, 6)
+        assemble!(assembler, cell_dofs, drₑ + dre)
+    end
+
+    X_ordered = getXinDofOrder(dh, X, coord)
+    drc = ForwardDiff.jacobian(x -> contact_residual_ordered(x, a, ε), X_ordered)
+    # dr[contact_dofs,contact_dofs] += drc[contact_dofs,contact_dofs]
+    ∂rᵤ_∂x -= drc
 
     return ∂rᵤ_∂x
 end
@@ -235,7 +281,7 @@ function contact_pnorm_s(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) wh
     p_mean = []
     for (i, A) in enumerate(slave_dofs)
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-        g₀ += (λ_A * (1 / κ[i]))^2m
+        g₀ += (λ_A * (1 / κ[i]))
         if λ_A != 0
             append!(p_mean, λ_A * (1 / κ[i]))
         end

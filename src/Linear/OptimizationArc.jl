@@ -19,10 +19,10 @@ include("..//mma.jl")
 th = 0.2
 x₀ = 0.0
 y₀ = 0.0
-Δx = 1.0
+Δx = 1.25
 Δy = 0.25
 # grid size
-h = 0.025
+h = 0.0125
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -131,21 +131,21 @@ global Fₑₓₜ = zeros(dh.ndofs.x)
 global a = zeros(dh.ndofs.x)
 global Δa = zeros(dh.ndofs.x)
 global res = zeros(dh.ndofs.x)
-global dr_dd = similar(K)
+global dr_dd  = similar(K)
 global ∂rψ_∂d = similar(K)
-global ∂g_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
-global ∂g_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
+global ∂g_∂x  = zeros(size(a)) # behövs inte om vi har lokal funktion?
+global ∂g_∂u  = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global ∂g₂_∂x = zeros(size(a)) # behövs inte om vi har lokal funktion?
 global ∂g₂_∂u = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ = similar(a)
 global λψ = similar(a)
-global Δ = -0.25
+global Δ = -0.2
 global nloadsteps = 10
 global a_hist = zeros(dh.ndofs.x, nloadsteps)
 global Ψ_hist = zeros(dh.ndofs.x, nloadsteps)
 global d_hist = zeros(dh.ndofs.x, nloadsteps)
-global F_tar = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.12, -0.14, -0.16, -0.18, -0.20] * 8
-global F_tar[5:end] .= F_tar[5]
+global F_tar = [-0.02, -0.04, -0.06, -0.08, -0.1, -0.12, -0.14, -0.16, -0.18, -0.20] * 12
+global F_tar[3:end] .= F_tar[3]
 #global F_tar[10] = F_tar[10] .* 1.5
 global F_d = zeros(10)
 global F₀ = zeros(10)
@@ -183,12 +183,12 @@ global d_hist2 = zeros(length(d), 300)
 # Optimization program #
 # -------------------- #
 function Optimize(dh)
-    # Flytta allt nedan till init_opt?
+    #
     global dh0 = deepcopy(dh)
     global λψ = similar(a)
     global λᵤ = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = volume(dh, coord, enod) * 1.0  # 2.0
+    Vₘₐₓ = volume(dh, coord, enod) * 0.75  # 2.0
     tol = 1e-3
     global OptIter = 0
     global true_iteration = 0
@@ -224,7 +224,7 @@ function Optimize(dh)
         global xold2
         global xmin
         global xmax
-        global low #A() = A(Float64[],[]).
+        global low
         global C
         global d2
         global a0
@@ -363,7 +363,7 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        α = 0.5 # 0.4 # 0.1 #
+        α = 1.0 # 0.4 # 0.1 #
         d_new = d_old + α .* (d_new - d_old)
         low = low_old + α .* (low - low_old)
         upp = upp_old + α .* (upp - upp_old)
