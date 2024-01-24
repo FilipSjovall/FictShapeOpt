@@ -1344,12 +1344,15 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
     # ------------------- #
     bcdof_bot, bcval_bot = setBCY(0.0, dh, n_bot)
     bcdof_top, bcval_top = setBCY(Δ / nloadsteps, dh, n_top)
-    bcdof_bmx, bcval_bmx = setBC_dof(0.0, dh, n_bm, 1)
-    bcdof_tmx, bcval_tmx = setBC_dof(0.0, dh, n_tm, 1)
-    bcdof_bmy, bcval_bmy = setBC_dof(0.0, dh, n_bm, 2)
-    bcdof_tmy, bcval_tmy = setBC_dof(Δ / nloadsteps, dh, n_tm, 2)
-    bcdofs = [bcdof_bot; bcdof_top; bcdof_bmx; bcdof_bmy; bcdof_tmx; bcdof_tmy]
-    bcvals = [bcval_bot; bcval_top; bcval_bmx; bcval_bmy; bcval_tmx; bcval_tmy]
+    bcdof_right, bcval_right = setBCX(0.0, dh, n_sym)
+    #bcdof_bmx, bcval_bmx = setBC_dof(0.0, dh, n_bm, 1)
+    #bcdof_tmx, bcval_tmx = setBC_dof(0.0, dh, n_tm, 1)
+    #bcdof_bmy, bcval_bmy = setBC_dof(0.0, dh, n_bm, 2)
+    #bcdof_tmy, bcval_tmy = setBC_dof(Δ / nloadsteps, dh, n_tm, 2)
+    #bcdofs = [bcdof_bot; bcdof_top; bcdof_bmx; bcdof_bmy; bcdof_tmx; bcdof_tmy]
+    #bcvals = [bcval_bot; bcval_top; bcval_bmx; bcval_bmy; bcval_tmx; bcval_tmy]
+    bcdofs = [bcdof_bot; bcdof_top; bcdof_right]
+    bcvals = [bcval_bot; bcval_top; bcval_right]
     ϵᵢⱼₖ  = sortperm(bcdofs)
     global bcdofs = bcdofs[ϵᵢⱼₖ]
     global bcvals = bcvals[ϵᵢⱼₖ]
@@ -1362,6 +1365,7 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
     loadstep = 0
     while loadstep < nloadsteps
         loadstep += 1
+        #global ε = ε * 1.1
         res = res .* 0
         bcvals = bcval₀
         residual = 0 * residual

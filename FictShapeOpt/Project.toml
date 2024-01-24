@@ -1,0 +1,7 @@
+name = "FictShapeOpt"
+uuid = "87eecd62-117d-4da5-8ba9-8a6f7a17128f"
+authors = ["Filip Sjövall <filip.sjovall@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+Gmsh = "705231aa-382f-11e9-3f0c-b7cb4346fdeb"

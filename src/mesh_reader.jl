@@ -1643,28 +1643,92 @@ function createLabyrinthMesh(filename,x₀,y₀,t,B,b,Δx,H,h)
     # Lines
     l1 = gmsh.model.geo.add_line(p1, p2)
     l2 = gmsh.model.geo.add_line(p2, p3)
+    #
     l3 = gmsh.model.geo.add_line(p3, p4)
     l4 = gmsh.model.geo.add_line(p4, p5)
     l5 = gmsh.model.geo.add_line(p5, p6)
+    #l3 = gmsh.model.geo.addPolyline([p3,p4,p5,p6])
+    #
     l6 = gmsh.model.geo.add_line(p6, p7)
+    #
     l7 = gmsh.model.geo.add_line(p7, p8)
     l8 = gmsh.model.geo.add_line(p8, p9)
     l9 = gmsh.model.geo.add_line(p9, p10)
+    #l7 = gmsh.model.geo.addPolyline([p7,p8,p9,p10])
+    #
     l10 = gmsh.model.geo.add_line(p10, p11)
     l11 = gmsh.model.geo.add_line(p11, p12)
     l12 = gmsh.model.geo.add_line(p12,p_mitt)
     l13 = gmsh.model.geo.add_line(p_mitt, p1)
     # Loop
     loop = gmsh.model.geo.add_curve_loop([l1,l2,l3,l4,l5,l6,l7,l8,l9,l10,l11,l12,l13])
+    #loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l6, l7, l10, l11, l12, l13])
     # Surface
     surf = gmsh.model.geo.add_plane_surface([loop])
     gmsh.model.geo.synchronize()
     # Physical surface
     gmsh.model.add_physical_group(1, [l2, l3, l4, l5, l6, l7, l8, l9, l10], -1, "")
+    #gmsh.model.add_physical_group(1, [l2, l3, l6, l7, l10], -1, "")
     gmsh.model.add_physical_group(2, [surf], -1, "")
     # Generate mesh
     gmsh.model.mesh.embed(0, [p_mitt], 2, 1)
     gmsh.model.mesh.generate(2)
+    gmsh.model.mesh.optimize()
+    #gmsh.model.mesh.
+    #gmsh.model.mesh.reverse(2)
+    # Write to file
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
+    return grid
+end
+
+function createHalfLabyrinthMesh(filename, x₀, y₀, t, B, b, Δx, H, h)
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+    # Points
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀, y₀ + t, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + t, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H, 0.0, h/4)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 + b / 2, y₀ + t + H, 0.0, h/4)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx + B, y₀ + t, 0.0, h)
+
+    p7 = gmsh.model.geo.add_point(x₀ + 2Δx + B, y₀ + t, 0.0, h)
+    p8 = gmsh.model.geo.add_point(x₀ + 2Δx + B, y₀, 0.0, h)
+    p_mitt = gmsh.model.geo.add_point((2x₀ + 2Δx + B) / 2, y₀, 0.0, h)
+    # Lines
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    #
+    l3 = gmsh.model.geo.add_line(p3, p4)
+    l4 = gmsh.model.geo.add_line(p4, p5)
+    l5 = gmsh.model.geo.add_line(p5, p6)
+    #l3 = gmsh.model.geo.addPolyline([p3,p4,p5,p6])
+    #
+    l6 = gmsh.model.geo.add_line(p6, p7)
+    l7 = gmsh.model.geo.add_line(p7,p8)
+    l8 = gmsh.model.geo.add_line(p8, p_mitt)
+    l9 = gmsh.model.geo.add_line(p_mitt, p1)
+    # Loop
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7, l8, l9])
+    #loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l6, l7, l10, l11, l12, l13])
+    # Surface
+    surf = gmsh.model.geo.add_plane_surface([loop])
+    gmsh.model.geo.synchronize()
+    # Physical surface
+    gmsh.model.add_physical_group(1, [l2, l3, l4, l5, l6], -1, "")
+    #gmsh.model.add_physical_group(1, [l2, l3, l6, l7, l10], -1, "")
+    gmsh.model.add_physical_group(2, [surf], -1, "")
+    # Generate mesh
+    gmsh.model.mesh.embed(0, [p_mitt], 2, 1)
+    gmsh.model.mesh.generate(2)
+    gmsh.model.mesh.optimize()
+    #gmsh.model.mesh.
     #gmsh.model.mesh.reverse(2)
     # Write to file
     grid = mktempdir() do dir

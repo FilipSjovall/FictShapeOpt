@@ -281,7 +281,7 @@ function contact_pnorm_s(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) wh
     p_mean = []
     for (i, A) in enumerate(slave_dofs)
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-        g₀ += (λ_A * (1 / κ[i]))
+        #g₀ += (λ_A * (1 / κ[i]))
         if λ_A != 0
             append!(p_mean, λ_A * (1 / κ[i]))
         end

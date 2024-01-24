@@ -1,7 +1,11 @@
+using Pkg
+Pkg.activate()
+# ENV["DEPOT_PATH"] = joinpath(@__DIR__, ".julia")
+# kolla Pkg.status() vid problem / jämför med att bara starta julia i en terminal
 using Mortar2D, ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
 using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
 using SparseDiffTools, Plots, Printf, JLD2, Statistics, AlgebraicMultigrid
-#
+# kan behöva köra export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 plotlyjs()
 #
 include("..//mesh_reader.jl")
@@ -16,20 +20,21 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
-th = 0.2
+# - Block - #
+th = 0.1
 x₁ = 0.0
-y₁ = 0.3001
-Δx = 1.0
-Δy = 0.3
-
+y₁ = 0.2001
+Δx = 0.5
+Δy = 0.1
+# - Seal - #
 x₀ = 0.0
 y₀ = 0.0
-B  = 0.15
-b  = 0.075
-Δl = 0.7/3
+B  = 0.2
+b  = 0.1
+Δl = 0.15
 H  = 0.1
 # grid size
-h = 0.04
+h = 0.03
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -41,9 +46,9 @@ fv = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createLabyrinthMesh("mesh_1", x₀, y₀, th, B, b, Δl, H, h);
+grid1 = createHalfLabyrinthMesh("mesh_1", x₀, y₀, th, B, b, Δl, H, h);
 Γ_1 = getBoundarySet(grid1);
-grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h);
+grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h/2);
 Γ_2 = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);
 grid1 = nothing;
@@ -111,23 +116,33 @@ n_top = getnodeset(dh.grid, "n_top")
 # ----------------------------- #
 # left and right sides of block #
 # ----------------------------- #
-addnodeset!(dh.grid, "n_lr", x -> ( x[2]≥ y₁ && (x[1] ≈ x₁ || x[1]≈ x₁ + Δx) ))
+#addnodeset!(dh.grid, "n_lr", x -> ( x[2]≥ y₁ && (x[1] ≈ x₁ || x[1]≈ x₁ + Δx) ))
+addnodeset!(dh.grid, "n_lr", x -> ( x[2]≥ y₁ && x[1] ≈ x₁  ))
 nₗᵣ = getnodeset(dh.grid, "n_lr")
+
+addfaceset!(dh.grid, "Γ_lr", x -> ( x[2]≥ y₁ && x[1] ≈ x₁  ))
+Γ_lr = getfaceset(dh.grid, "Γ_lr")
 
 # ------------------------------ #
 # Middle nodes on top and bottom #
 # ------------------------------ #
-addnodeset!(dh.grid, "n_bot_mid", x -> (x[2] ≈ y₀ && x[1] ≈ (2B + 3Δl)/2 ))
-n_bm = getnodeset(dh.grid, "n_bot_mid")
+addnodeset!(dh.grid,"n_sym", x->x[1] ≈ 0.5)
+n_sym = getnodeset(dh.grid, "n_sym")
 
-addnodeset!(dh.grid, "n_top_mid", x -> (x[2] ≈ y₁ + Δy && x[1] ≈ x₁ + Δx/2))
-n_tm = getnodeset(dh.grid,"n_top_mid")
+addfaceset!(dh.grid, "Γ_sym", x->x[1] ≈ 0.5)
+Γ_sym = getfaceset(dh.grid, "Γ_sym")
+
+#addnodeset!(dh.grid, "n_bot_mid", x -> (x[2] ≈ y₀ && x[1] ≈ (2B + 3Δl)/2 ))
+#n_bm = getnodeset(dh.grid, "n_bot_mid")
+#
+#addnodeset!(dh.grid, "n_top_mid", x -> (x[2] ≈ y₁ + Δy && x[1] ≈ x₁ + Δx/2))
+#n_tm = getnodeset(dh.grid,"n_top_mid")
 
 # ----------------- #
 # Design boundaries #
 # ----------------- #
-# Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm))
-Γ_robin = Γs
+Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm, Γ_sym, Γ_lr))
+#Γ_robin = Γs
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
 n_robin = getBoundarySet(dh.grid, Γ_robin)
@@ -182,7 +197,7 @@ global ∂g₂_∂x = zeros(size(a))
 global ∂g₂_∂u = zeros(size(d))
 global λᵤ = similar(a)
 global λψ = similar(a)
-global Δ = -0.05
+global Δ = -0.025
 global nloadsteps = 10
 global g = 0.0
 
@@ -197,20 +212,21 @@ include("initLab.jl")
 bcdof_bot, _ = setBCY(0.0, dh, n_bot)
 bcdof_top, _ = setBCY(Δ, dh, n_top)
 
-bcdof_bmx, _ = setBC_dof(0.0, dh, n_bm,1)
-bcdof_tmx, _ = setBC_dof(0.0, dh, n_tm,1)
-bcdof_bmy, _ = setBC_dof(0.0, dh, n_bm,2)
-bcdof_tmy, _ = setBC_dof(0.0, dh, n_tm,2)
+bcdof_right, _ = setBCX(0.0, dh, n_sym)
+
+#bcdof_bmx, _ = setBC_dof(0.0, dh, n_bm,1)
+#bcdof_tmx, _ = setBC_dof(0.0, dh, n_tm,1)
+#bcdof_bmy, _ = setBC_dof(0.0, dh, n_bm,2)
+#bcdof_tmy, _ = setBC_dof(0.0, dh, n_tm,2)
 # använd setBC_dof
 
 
 # - - - - - - - - #
 # Lås master dofs #
 # - - - - - - - - #
-bcdof_contact, _ = setBCXY_both(0.0, dh, union(nₘ,nₗᵣ))
-#bcdof_contact, _ = Vector{Int64}(), Vector{Float64}()
-
-bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_contact; bcdof_bmx; bcdof_bmy; bcdof_tmx; bcdof_tmy];
+bcdof_contact, _ = setBCXY_both(0.0, dh, nₘ) # union(n,n,n) om flera set skall slås samman
+bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_contact; bcdof_right];
+#bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_contact; bcdof_bmx; bcdof_bmy; bcdof_tmx; bcdof_tmy];
 ϵᵢⱼₖ      = sortperm(bcdofs_opt)
 global bcdofs_opt  = bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt   = bcdofs_opt .* 0.0
@@ -235,6 +251,7 @@ function Optimize(dh)
     global coord₀
     v_hist = zeros(1000)
     g_hist = zeros(1000)
+    p_hist = zeros(1000)
     global T = zeros(size(a))
     global T[bcdof_bot[iseven.(bcdof_bot)]] .= -1.0
     global T[bcdof_top[iseven.(bcdof_top)]] .=  1.0
@@ -288,7 +305,7 @@ function Optimize(dh)
         # # # # #
         # Reset #
         # # # # #
-        if OptIter % 30 == 0
+        if OptIter % 10 == 0
             dh0 = deepcopy(dh)
             global d = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -317,7 +334,7 @@ function Optimize(dh)
         # Equillibrium  #
         # # # # # # # # #
         global nloadsteps = 10
-        global ε = 1e2
+        global ε = 1e5 / 2
         a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
 
         # - - - - - - - #
@@ -351,22 +368,22 @@ function Optimize(dh)
         # # # # # # # # # # # #
         # Pressure constraint #
         # # # # # # # # # # # #
+        λm = 30.0
         p = 2
         X_ordered = getXfromCoord(coord)
-        g₂ = contact_pnorm_s(X_ordered, a, ε, p) / 10.0 - 1.0
+        g₂ = contact_pnorm_s(X_ordered, a, ε, p) / λm - 1.0
         ∂g₂_∂x = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
         ∂g₂_∂u = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)
         solveq!(λᵤ, K', ∂g₂_∂u, bcdofs, bcvals.*0)
         solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
-        ∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' ./ 10.0)'
-
+        ∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' ./ λm)'
         # # # # #
         # M M A #
         # # # # #
         d_old = d[free_d]
         low_old = low
         upp_old = upp
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:], xold1[:], xold2[:], g .* 1e3, ∂g_∂d[free_d] .* 1e3, vcat(g₁ .* 1e2, g₂), hcat(∂Ω∂d[free_d] .* 1e2, ∂g₂_∂d[free_d])', low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:], xold1[:], xold2[:], g .* 10, ∂g_∂d[free_d] .* 10, vcat(g₁ .* 1e2, g₂*100), hcat(∂Ω∂d[free_d] .* 1e2, ∂g₂_∂d[free_d]*100)', low, upp, a0, am, C, d2)
         # ----------------- #
         # Test - new update #
         # ----------------- #
@@ -383,25 +400,27 @@ function Optimize(dh)
         # # # # # # # # # #
         # Postprocessing  #
         # # # # # # # # # #
-        v_hist[true_iteration] = g₁
         g_hist[true_iteration] = g
-
+        v_hist[true_iteration] = g₁
+        p_hist[true_iteration] = g₂
         kktnorm = change
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
         postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
         postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
         #postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration])
-        p2 = plot(1:true_iteration, v_hist[1:true_iteration], label="Volume", background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, grid=false, lc=:orange)
-        p3 = plot(1:true_iteration, g_hist[1:true_iteration] .* 1000, label="Objective", background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, grid=false, lc=:purple)
-        p = plot(p2, p3, layout=(2, 1), size=(800, 600))
+        p2 = plot(1:true_iteration, [v_hist[1:true_iteration]*10 p_hist[1:true_iteration]], label=["Volume" "var(λ)"] , background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, grid=false)
+        p3 = plot(1:true_iteration, g_hist[1:true_iteration] .* 10, label="Objective", background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, lc=:purple, grid=false)
+        X_c,tract = plotTraction()
+        p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false)
+        p = plot(p2, p3, p4, layout=(3, 1), size=(800, 600))
         display(p)
-        plotTraction()
         # For investigative purpose
         low_hist[free_d, true_iteration] = low
         upp_hist[free_d, true_iteration] = upp
         d_hist2[free_d, true_iteration]  = d[free_d]
         @save "asymptoter.jld2" low_hist upp_hist d_hist2
+        GC.gc() # Collect garbage
     end
     return g_hist, v_hist, OptIter, traction
 end
@@ -417,7 +436,7 @@ function plotTraction()
     ϵᵢⱼₖ = sortperm(X_c)
     tract = tract[ϵᵢⱼₖ]
     X_c = X_c[ϵᵢⱼₖ]
-    Plots.plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
+    return X_c, tract
 end
 
 
