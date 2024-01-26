@@ -1693,10 +1693,10 @@ function createHalfLabyrinthMesh(filename, x₀, y₀, t, B, b, Δx, H, h)
     # Points
     p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
     p2 = gmsh.model.geo.add_point(x₀, y₀ + t, 0.0, h)
-    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + t, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + t, 0.0, h/4)
     p4 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H, 0.0, h/4)
     p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 + b / 2, y₀ + t + H, 0.0, h/4)
-    p6 = gmsh.model.geo.add_point(x₀ + Δx + B, y₀ + t, 0.0, h)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx + B, y₀ + t, 0.0, h/4)
 
     p7 = gmsh.model.geo.add_point(x₀ + 2Δx + B, y₀ + t, 0.0, h)
     p8 = gmsh.model.geo.add_point(x₀ + 2Δx + B, y₀, 0.0, h)

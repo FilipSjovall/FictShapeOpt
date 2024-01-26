@@ -1,3 +1,5 @@
+using Pkg
+Pkg.activate()
 using Mortar2D, ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
 using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
 using SparseDiffTools, Plots, Printf, JLD2, Statistics, AlgebraicMultigrid
@@ -299,7 +301,7 @@ function Optimize(dh)
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
         global nloadsteps = 10 #10
-        global μ = 2e3 #1e3
+        global μ = 1e4 #1e3
         global coord₀  = getCoord(getX(dh0), dh0) # x₀
         Ψ, _, Kψ, _, λ, Ψ_hist, d_hist = fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
 
@@ -325,7 +327,7 @@ function Optimize(dh)
             a = a_hist[:,n]
             #Ψ = Ψ_hist[:,n]
             λ = 1.0 #(1/nloadsteps)*n
-            assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε)
+            assemGlobal!(K, Fᵢₙₜ, dh, mp, t, a, coord, enod, ε)
             # # # # # # # # #
             # Sensitivities #
             # # # # # # # # #

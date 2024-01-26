@@ -63,7 +63,6 @@ function penalty_filter(g, ε)
     return p
 end
 
-#📂
 
 function gap_function(X::AbstractVector{T}) where {T}
     # convert X to Real for compatibility with ForwardDiff
@@ -92,8 +91,8 @@ function gap_function(X::AbstractVector{T}) where {T}
             slave += D[A, B] * coords[B]
         end
         master = [0.; 0.]
-        #for C in master_dofs
-        for C in intersect(master_dofs, 1:size(M, 2))
+        for C in master_dofs
+        #for C in intersect(master_dofs, 1:size(M, 2))
             master += M[A, C] * coords[C]
         end
         # To compute the projected gap vector we multiply g[j,:] with the normal at node j
@@ -122,8 +121,8 @@ function gap_scaling(X::AbstractVector{T}) where {T}
     #  # Define scaling
     κ = zeros(eltype(X_float), length(slave_nods))
 
-    for (i, a) in enumerate(slave_nods)
-        for (j, d) in enumerate(slave_nods)
+    for (i, a) in (enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1)))))#enumerate(slave_nods)
+        for (j, d) in (enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1)))))#enumerate(slave_nods)
             κ[i] += D[a, d]
         end
     end
@@ -264,10 +263,11 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
     # Loop over master side dofs
     #for C in master_dofs
     for (i, A) in enumerate(slave_dofs)
-        λ_A = penalty(g[i, :] ⋅ normals[A] / κ[i], ε)
+        λ_A = penalty(g[i, :] ⋅ normals[A] , ε)
         if λ_A != 0
-            #push!(τ_c, A => λ_A * (1 / κ[i]) )
+            τ = λ_A * normals[A]/ κ[i]
             push!(τ_c, A => λ_A)
+            #push!(τ_c, A => τ[2])
         end
         #
         #push!(τ_c, A => g[i,:] ⋅ [0.0 1.0] / κ[i])
@@ -282,6 +282,7 @@ end
 function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}, a_f::AbstractVector{T3}, ε::Number) where {T1,T2,T3}
 
     a_total = similar(X)
+    a_total.= 0
 
     a_total[contact_dofs] = a_c
 
@@ -328,11 +329,6 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
         # To compute the projected gap vector we multiply g[j,:] with the normal at node j
         g[j, :] = slave - master
     end
-    #@show g
-    #@show normals
-    #@show D
-    #@show M
-    # Initialize r_c
     r_c = zeros(eltype(X_float), length(contact_dofs)) # sparse...?
 
     # ---------- #
@@ -356,9 +352,6 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
             end
         end
     end
-    # ---------------------------------- #
-    # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #
-    # ---------------------------------- #
     return r_c
 end
 

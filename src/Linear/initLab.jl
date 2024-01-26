@@ -25,8 +25,11 @@ global kkttol = 0.001;
 global changetol = 0.001;
 global outit = 0;
 global change = 1;
-global xmax =  1.0 * ones(n_mma);
-global xmin = -1.0 * ones(n_mma);
+global xmax =  0.05 * ones(n_mma);
+global xmin = -0.05 * ones(n_mma);
+
+# global xmax[1:2:end-1] .= 0.0001
+# global xmin[1:2:end-1] .= 0.0001
 
 global low = xmin;
 global upp = xmax;
