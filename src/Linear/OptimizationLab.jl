@@ -23,16 +23,17 @@ include("..//mma.jl")
 # - Block - #
 th = 0.1
 x₁ = 0.0
-y₁ = 0.2001
+y₁ = 0.2501
 Δx = 0.5
 Δy = 0.1
 # - Seal - #
 x₀ = 0.0
 y₀ = 0.0
-B  = 0.4
-b  = 0.4
-Δl = 0.05
-H  = 0.1
+B  = 0.25
+b  = 0.15
+Δl = (Δx - B) / 2 #0.05
+H  = 0.15
+r = 0.006
 # grid size
 h = 0.05
 # # # # # # # # # #
@@ -46,10 +47,9 @@ fv = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-#grid1 = createHalfLabyrinthMesh("mesh_1", x₀, y₀, th, B, b, Δl, H, h);
-grid1 = createBoxMesh("mesh_1",x₀,y₀,0.5,0.2,h)
+grid1 = createHalfLabyrinthMeshRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h);
 Γ_1 = getBoundarySet(grid1);
-grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h/4);
+grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h/2);
 Γ_2 = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);
 grid1 = nothing;
@@ -208,8 +208,8 @@ include("initLab.jl")
 bcdof_bot, _ = setBCY(0.0, dh, n_bot)
 bcdof_top, _ = setBCY(Δ, dh, n_top)
 
-#bcdof_right, _ = setBCX(0.0, dh, n_sym)
-bcdof_right = Vector{Int64}()
+bcdof_right, _ = setBCX(0.0, dh, n_sym)
+#bcdof_right = Vector{Int64}()
 
 
 # - - - - - - - - #
@@ -325,7 +325,7 @@ function Optimize(dh)
         # Equillibrium  #
         # # # # # # # # #
         global nloadsteps = 10
-        global ε = 1e4
+        global ε = 5e4
         a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
 
         # - - - - - - - #

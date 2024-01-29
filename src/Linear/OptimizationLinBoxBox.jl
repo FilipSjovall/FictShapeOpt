@@ -28,8 +28,9 @@ r₀ = 0.5
 # Create two grids
 y₁ = 0.98
 case = "box"
-#grid1 = createBoxMeshRev("box_1",  0.0, y₁, 1.0, 0.5, 0.2)
-#grid2 = createBoxMeshRev("box_2",  0.0, 0.0, 1.0, 1.0, 0.2)
+grid1 = createBoxMeshRev("box_1",  0.0, y₁, 1.0, 0.5, 0.1)
+#grid2 = createBoxMeshRev("box_2",  -0.1, 0.0, 1.2, 1.0, 0.081)
+grid2 = createBoxMeshRev("box_2",  0.0, 0.0, 1.0, 1.0, 0.081)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 # # # # # # # # # #
@@ -41,9 +42,9 @@ qr_face = QuadratureRule{1,RefTetrahedron}(2)
 cv      = CellVectorValues(qr, ip)
 fv      = FaceVectorValues(qr_face, ip)
 
-case  = "circle"
-grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.01)
-grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.01) # inte rätt
+# case  = "circle"
+# grid1 = createCircleMesh("circle", 0.5, 1.5, r₀, 0.01)
+# grid2 = createCircleMeshUp("circle2",0.5, 0.5001, r₀, 0.01) # inte rätt
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-8)
@@ -249,7 +250,7 @@ global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion
 global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ         = similar(a)
 global λψ         = similar(a)
-global Δ          = -0.05
+global Δ          = -0.1
 global nloadsteps = 10
 include("initOptLin.jl")
 global asy_counter = zeros(dh.ndofs.x, 400)
@@ -487,33 +488,19 @@ function Optimize(dh)
     return g_hist, v_hist, OptIter, traction, historia
 end
 
+function plotTraction()
+    traction = ExtractContactTraction(a, ε, coord)
+    X_c = []
+    tract = []
+    for (key, val) ∈ traction
+        append!(X_c, coord[key, 1])
+        append!(tract, val)
+    end
+    ϵᵢⱼₖ = sortperm(X_c)
+    tract = tract[ϵᵢⱼₖ]
+    X_c = X_c[ϵᵢⱼₖ]
+    return X_c, tract
+end
+
 # plot(coord[collect(n_robin),1], ∂g_∂d[free_d], seriestype=:scatter)
 g_hist, v_hist, OptIter, traction, historia = Optimize(dh)
-
-@gif for i=1:20
-    plot(historia[1:i,3], historia[1:i,4], label = "")
-    scatter!((historia[i,3], historia[i,4]), color = 1, label = "")
-end
-
-
-
-plot(1:100,historia[:,2], seriestype=:scatter)
-
-plot(1:100,g_hist[1:100], seriestype=:scatter)
-
-Plots.plot(collect(1:10), g_hist[1:10],lc =:red, label="Objective",linewidth=3)
-Plots.plot!(collect(1:10), v_hist[1:10], lc = :blue, label="Constraint",linewidth=3)
-
-plot(coord[contact_nods,1], ∂g_∂d[free_d], seriestype=:scatter)
-
-X_c = []
-tract = []
-for (key, val) ∈ traction
-    append!(X_c, coord[key, 1])
-    append!(tract, val)
-end
-ϵᵢⱼₖ = sortperm(X_c)
-tract = tract[ϵᵢⱼₖ]
-X_c = X_c[ϵᵢⱼₖ]
-Plots.plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
-OptIter = 2

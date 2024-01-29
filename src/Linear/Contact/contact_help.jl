@@ -91,8 +91,8 @@ function gap_function(X::AbstractVector{T}) where {T}
             slave += D[A, B] * coords[B]
         end
         master = [0.; 0.]
-        for C in master_dofs
-        #for C in intersect(master_dofs, 1:size(M, 2))
+        #for C in master_dofs
+        for C in intersect(master_dofs, 1:size(M, 2))
             master += M[A, C] * coords[C]
         end
         # To compute the projected gap vector we multiply g[j,:] with the normal at node j
@@ -121,8 +121,8 @@ function gap_scaling(X::AbstractVector{T}) where {T}
     #  # Define scaling
     κ = zeros(eltype(X_float), length(slave_nods))
 
-    for (i, a) in (enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1)))))#enumerate(slave_nods)
-        for (j, d) in (enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1)))))#enumerate(slave_nods)
+    for (i, a) in enumerate(slave_nods) # (enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1)))))
+        for (j, d) in enumerate(slave_nods)# (enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1)))))
             κ[i] += D[a, d]
         end
     end
@@ -266,7 +266,7 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
         λ_A = penalty(g[i, :] ⋅ normals[A] , ε)
         if λ_A != 0
             τ = λ_A * normals[A]/ κ[i]
-            push!(τ_c, A => λ_A)
+            push!(τ_c, A => λ_A / κ[i])
             #push!(τ_c, A => τ[2])
         end
         #
@@ -342,13 +342,13 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
                 # Extract nodal degrees of freedom
                 nod = order[B]
                 B_dofs = [2nod - 1, 2nod]
-                r_c[B_dofs] += D[A, B] * λ_A * normals[A] * (1 / κ[i])
+                r_c[B_dofs] += D[A, B] * λ_A * normals[A] * ( 1 / κ[i] )
             end
-            for (j, C) in enumerate(intersect(master_dofs, 1:size(M, 2)))
+            for (jj, C) in enumerate(intersect(master_dofs, 1:size(M, 2)))
                 # Extract nodal degrees of freedom
                 nod = order[C]
                 C_dofs = [2nod - 1, 2nod]
-                r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * (1 / κ[i])
+                r_c[C_dofs] += -M[A, C] * λ_A * normals[A] * ( 1 / κ[i] )
             end
         end
     end

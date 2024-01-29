@@ -5,7 +5,7 @@ dr_dd = similar(K) # ?
 # N/m² = N/(10⁶ mm² )
 mp₁ = [180 80].*1e3
 mp₂ = [2.5 0.1].*1e3
-mp₀ = [1.0 5.0]
+mp₀ = [0.1 4.0]
 #
 t = 1.0
 # Optimization parameters
@@ -25,8 +25,8 @@ global kkttol = 0.001;
 global changetol = 0.001;
 global outit = 0;
 global change = 1;
-global xmax =  0.05 * ones(n_mma);
-global xmin = -0.05 * ones(n_mma);
+global xmax =  0.2 * ones(n_mma);
+global xmin = -0.2 * ones(n_mma);
 
 # global xmax[1:2:end-1] .= 0.0001
 # global xmin[1:2:end-1] .= 0.0001

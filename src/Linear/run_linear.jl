@@ -201,7 +201,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
 
                 #a += β * Δa
                 a += Δa
-                assemGlobal!(K, Fᵢₙₜ,rc, dh, mp, t, a, coord, enod, ε)
+                assemGlobal!(K, Fᵢₙₜ, dh, mp, t, a, coord, enod, ε)
                 solveq!(Δa,  K, -Fᵢₙₜ, bcdofs, bcvals)
                 bcvals = 0 * bcvals
                 res = Fᵢₙₜ - Fₑₓₜ
@@ -209,21 +209,9 @@ function solver_C(dh, coord, Δ, nloadsteps)
                 residual = norm(res, 2)
                 @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdofs[2]]
             end
-            if loadstep == 10
-                # Plot traction , can be moved to function...
-                traction = ExtractContactTraction(a, ε, coord)
-                X_c = []
-                tract = []
-                for (key, val) ∈ traction
-                    append!(X_c, coord[key, 1])
-                    append!(tract, val)
-                end
-                ϵᵢⱼₖ = sortperm(X_c)
-                tract = tract[ϵᵢⱼₖ]
-                X_c = X_c[ϵᵢⱼₖ]
-                p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
-                display(p)
-            end
+            X_c,tract = plotTraction()
+            p5 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft, ylims = (0, 1.2*maximum(tract)))
+            display(p5)
             σx, σy = StressExtract(dh, a, mp)
             vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
                 #vtk_grid("contact" * string(iter), dh) do vtkfile
@@ -1342,10 +1330,8 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
     # ------------------- #
     # Boundary conditions #
     # ------------------- #
-    #bcdof_bot, bcval_bot = setBCY(0.0, dh, n_bot)
-    #bcdof_top, bcval_top = setBCY(Δ / nloadsteps, dh, n_top)
-    bcdof_bot, bcval_bot = setBCXY_Y(0.0, dh, n_bot)
-    bcdof_top, bcval_top = setBCXY_Y(Δ / nloadsteps, dh, n_top)
+    bcdof_bot, bcval_bot = setBCY(0.0, dh, n_bot)
+    bcdof_top, bcval_top = setBCY(Δ / nloadsteps, dh, n_top)
     bcdof_right, bcval_right = setBCX(0.0, dh, n_sym)
     #bcdof_bmx, bcval_bmx = setBC_dof(0.0, dh, n_bm, 1)
     #bcdof_tmx, bcval_tmx = setBC_dof(0.0, dh, n_tm, 1)
@@ -1355,7 +1341,7 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
     #bcvals = [bcval_bot; bcval_top; bcval_bmx; bcval_bmy; bcval_tmx; bcval_tmy]
 
     #bcdof_top, bcval_top       = Vector{Int64}(), Vector{Float64}()
-    bcdof_right, bcval_right       = Vector{Int64}(), Vector{Float64}()
+    #bcdof_top, bcval_top       = Vector{Int64}(), Vector{Float64}()
 
     bcdofs = [bcdof_bot; bcdof_top; bcdof_right]
     bcvals = [bcval_bot; bcval_top; bcval_right]
@@ -1411,9 +1397,6 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_top[1]]
         #
         end
-        X_c,tract = plotTraction()
-        p5 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
-        display(p5)
         if loadstep < 40 && iter < 20
             σx, σy = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
             vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
@@ -1422,6 +1405,9 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
                 vtk_point_data(vtkfile, σy, "σy")
             end
         end
+        X_c,tract = plotTraction()
+        p5 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft, ylims = (0, 1.2*maximum(tract)) )
+        display(p5)
         Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
     end
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K
