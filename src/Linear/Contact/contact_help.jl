@@ -121,8 +121,8 @@ function gap_scaling(X::AbstractVector{T}) where {T}
     #  # Define scaling
     κ = zeros(eltype(X_float), length(slave_nods))
 
-    for (i, a) in enumerate(slave_nods) # (enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1)))))
-        for (j, d) in enumerate(slave_nods)# (enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1)))))
+    for (i, a) in enumerate(slave_nods) #(enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1))))) #
+        for (j, d) in enumerate(slave_nods) #(enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1))))) #
             κ[i] += D[a, d]
         end
     end
@@ -316,9 +316,9 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
 
     # Loops are fast with the LLVM compiler
     #for (j, A) in (enumerate(slave_dofs))
-    for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
+    for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1)))))
         slave = [0; 0]
-        for B in slave_dofs
+        for (jj,B) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1))))) # slave_dofs
             slave += D[A, B] * coords[B]
         end
         master = [0; 0]
@@ -335,9 +335,10 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
     # ∫ᵧ 𝛅g λ dγ  #
     # ---------- #
     #for (i, A) in enumerate(slave_dofs)
-    for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
+    for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1)))))
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
         if λ_A != 0.0
+            # @show A, 1/κ[i], λ_A,  normals[A] g[i,:]
             for (j, B) in (enumerate(intersect(slave_dofs, 1:size(D, 2))))
                 # Extract nodal degrees of freedom
                 nod = order[B]

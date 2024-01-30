@@ -1755,6 +1755,8 @@ function createHalfLabyrinthMeshRounded(filename, x₀, y₀, t, B, b, Δx, H, r
     p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H - r, 0.0, h/4)
     p6 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H, 0.0, h/4)
 
+    p_mitt_top = gmsh.model.geo.add_point(x₀ + Δx + B / 2 , y₀ + t + H, 0.0, h/4)
+
     p7 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 + b / 2, y₀ + t + H, 0.0, h/4)
     p8 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 + b / 2, y₀ + t + H - r, 0.0, h/4)
     p9 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 + b / 2 + r , y₀ + t + H - r, 0.0, h/4)
@@ -1772,22 +1774,23 @@ function createHalfLabyrinthMeshRounded(filename, x₀, y₀, t, B, b, Δx, H, r
     l3 = gmsh.model.geo.add_line(p3, p4)
     l4 = gmsh.model.geo.add_circle_arc(p4, p5, p6)
     #
-    l5 = gmsh.model.geo.add_line(p6, p7)
-    l6 = gmsh.model.geo.add_circle_arc(p7,p8,p9)
-    l7 = gmsh.model.geo.add_line(p9,p10)
-    l8 = gmsh.model.geo.add_line(p10,p11)
-    l9 = gmsh.model.geo.add_line(p11,p12)
-    l10 = gmsh.model.geo.add_line(p12, p_mitt)
-    l11 = gmsh.model.geo.add_line(p_mitt, p1)
+    l5 = gmsh.model.geo.add_line(p6, p_mitt_top)
+    l6 = gmsh.model.geo.add_line(p_mitt_top, p7)
+    l7 = gmsh.model.geo.add_circle_arc(p7,p8,p9)
+    l8 = gmsh.model.geo.add_line(p9,p10)
+    l9 = gmsh.model.geo.add_line(p10,p11)
+    l10 = gmsh.model.geo.add_line(p11,p12)
+    l11 = gmsh.model.geo.add_line(p12, p_mitt)
+    l12 = gmsh.model.geo.add_line(p_mitt, p1)
     # Loop
-    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7, l8, l9, l10, l11])
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7, l8, l9, l10, l11, l12])
     #loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l6, l7, l10, l11, l12, l13])
     # Surface
     surf = gmsh.model.geo.add_plane_surface([loop])
     gmsh.model.geo.synchronize()
     # Physical surface
-    gmsh.model.add_physical_group(1, [l2, l3, l4, l5, l6, l7, l8], -1, "")
-    #gmsh.model.add_physical_group(1, [l2, l3, l6, l7, l10], -1, "")
+    gmsh.model.add_physical_group(1, [l3, l4, l5, l6, l7, l8], -1, "")
+    #gmsh.model.add_physical_group(1, [l2, l3, l4, l5, l6, l7, l8, l9], -1, "")
     gmsh.model.add_physical_group(2, [surf], -1, "")
     # Generate mesh
     gmsh.model.mesh.embed(0, [p_mitt], 2, 1)

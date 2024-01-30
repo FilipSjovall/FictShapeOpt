@@ -289,7 +289,7 @@ function contact_pnorm_s(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) wh
     #g₀ = g₀^(1/p)
     #g₀ = (g₀/length(p_mean) - mean(p_mean)^2)
     #@show p_mean
-    g₀ = var(p_mean)
+    g₀ = var(p_mean) # mean(p_mean) #
 
     # ---------------------------------- #
     # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods #

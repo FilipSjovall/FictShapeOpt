@@ -29,13 +29,13 @@ y₁ = 0.2501
 # - Seal - #
 x₀ = 0.0
 y₀ = 0.0
-B  = 0.25
-b  = 0.15
+B  = 0.15
+b  = 0.1
 Δl = (Δx - B) / 2 #0.05
 H  = 0.15
-r = 0.006
+r = 0.025
 # grid size
-h = 0.05
+h = 0.075
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -49,7 +49,7 @@ fv = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 grid1 = createHalfLabyrinthMeshRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h);
 Γ_1 = getBoundarySet(grid1);
-grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h/2);
+grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h/4);
 Γ_2 = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);
 grid1 = nothing;
@@ -113,6 +113,13 @@ addfaceset!(dh.grid, "Γ_top", x -> x[2] ≈ y₁ + Δy)
 
 addnodeset!(dh.grid, "n_top", x -> x[2] ≈ y₁ + Δy)
 n_top = getnodeset(dh.grid, "n_top")
+
+
+# --- #
+# mid #
+# --- #
+addnodeset!(dh.grid, "n_mid", x -> (x[2] ≈ H + th) && (x[1] ≈ 0.25))
+n_mid = getnodeset(dh.grid, "n_mid")
 
 # ----------------------------- #
 # left and right sides of block #
@@ -209,6 +216,7 @@ bcdof_bot, _ = setBCY(0.0, dh, n_bot)
 bcdof_top, _ = setBCY(Δ, dh, n_top)
 
 bcdof_right, _ = setBCX(0.0, dh, n_sym)
+bcdof_mid, _ = setBCX(0.0, dh, n_mid)
 #bcdof_right = Vector{Int64}()
 
 
@@ -216,7 +224,8 @@ bcdof_right, _ = setBCX(0.0, dh, n_sym)
 # Lås master dofs #
 # - - - - - - - - #
 bcdof_contact, _ = setBCXY_both(0.0, dh, nₘ) # union(n,n,n) om flera set skall slås samman
-bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_contact; bcdof_right];
+bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_contact; bcdof_right; bcdof_mid];
+#bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_contact; bcdof_right];
 #bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_contact; bcdof_bmx; bcdof_bmy; bcdof_tmx; bcdof_tmy];
 ϵᵢⱼₖ      = sortperm(bcdofs_opt)
 global bcdofs_opt  = bcdofs_opt[ϵᵢⱼₖ]
@@ -231,12 +240,12 @@ global d_hist2  = zeros(length(d), 300)
 # Optimization program #
 # -------------------- #
 function Optimize(dh)
-    global dh0 = deepcopy(dh)
-    global λψ = similar(a)
-    global λᵤ = similar(a)
+    global dh0  = deepcopy(dh)
+    global λψ   = similar(a)
+    global λᵤ   = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = volume(dh, coord, enod) * 1.0
-    tol = 1e-3
+    Vₘₐₓ = volume(dh, coord, enod) * 1.0 # "volfrac"
+    tol   = 1e-3
     global OptIter = 0
     global true_iteration = 0
     global coord₀
@@ -296,7 +305,7 @@ function Optimize(dh)
         # # # # #
         # Reset #
         # # # # #
-        if OptIter % 30 == 0
+        if OptIter % 15 == 0
             dh0 = deepcopy(dh)
             global d = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -362,22 +371,23 @@ function Optimize(dh)
         # # # # # # # # # # # #
         # Pressure constraint #
         # # # # # # # # # # # #
-        λm = 50.0
-        p = 2
-        X_ordered = getXfromCoord(coord)
-        g₂ = contact_pnorm_s(X_ordered, a, ε, p) / λm - 1.0
-        ∂g₂_∂x = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))./ λm
-        ∂g₂_∂u = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)./ λm
-        solveq!(λᵤ, K', ∂g₂_∂u, bcdofs, bcvals.*0)
-        solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
-        ∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' )'
+        # λm = 250.0
+        # p = 2
+        # X_ordered = getXfromCoord(coord)
+        # g₂ = contact_pnorm_s(X_ordered, a, ε, p) / λm - 1.0
+        # ∂g₂_∂x = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))./ λm
+        # ∂g₂_∂u = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)./ λm
+        # solveq!(λᵤ, K', ∂g₂_∂u, bcdofs, bcvals.*0)
+        # solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
+        # ∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' )'
         # # # # #
         # M M A #
         # # # # #
         d_old = d[free_d]
         low_old = low
         upp_old = upp
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:], xold1[:], xold2[:], g .* 10, ∂g_∂d[free_d] .* 10, vcat(g₁ .* 1e2, g₂*100), hcat(∂Ω∂d[free_d] .* 1e2, ∂g₂_∂d[free_d]*100)', low, upp, a0, am, C, d2)
+        #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:], xold1[:], xold2[:], g .* 10, ∂g_∂d[free_d] .* 10, vcat(g₁ .* 1e2, g₂*100), hcat(∂Ω∂d[free_d] .* 1e2, ∂g₂_∂d[free_d]*100)', low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:], xold1[:], xold2[:], g .* 10, ∂g_∂d[free_d] .* 10, g₁ .* 1e2, ∂Ω∂d[free_d]' .* 1e2, low, upp, a0, am, C, d2)
         # ----------------- #
         # Test - new update #
         # ----------------- #
@@ -396,18 +406,19 @@ function Optimize(dh)
         # # # # # # # # # #
         g_hist[true_iteration] = g
         v_hist[true_iteration] = g₁
-        p_hist[true_iteration] = g₂
+        #p_hist[true_iteration] = g₂
         kktnorm = change
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
         println("Objective: ", g_hist[1:true_iteration])
         println("Volume constraint: ", v_hist[1:true_iteration])
-        println("Pressure constraint", p_hist[1:true_iteration])
+        #println("Pressure constraint", p_hist[1:true_iteration])
         # write to vtu
         postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
         postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
         postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
         # plot
-        p2 = plot(1:true_iteration, [v_hist[1:true_iteration]*10 p_hist[1:true_iteration]], label=["Volume" "var(λ)"] , background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, grid=false)
+        #p2 = plot(1:true_iteration, [v_hist[1:true_iteration]*10 p_hist[1:true_iteration]], label=["Volume" "var(λ)"] , background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, grid=false)
+        p2 = plot(1:true_iteration, v_hist[1:true_iteration]*10 , label="Volume" , background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, grid=false)
         p3 = plot(1:true_iteration, g_hist[1:true_iteration] .* 10, label="Objective", background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, lc=:purple, grid=false)
         X_c,tract = plotTraction()
         p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
@@ -438,4 +449,4 @@ function plotTraction()
 end
 
 
-g_hist, v_hist, OptIter, traction = Optimize(dh)
+g_hist, v_hist, OptIter = Optimize(dh)

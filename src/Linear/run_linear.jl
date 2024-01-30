@@ -1372,22 +1372,23 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
         # # # # # # # # # #
         while residual > TOL || iter < 2
             iter += 1
-            if iter % 10 == 0 || norm(res) > 1e3
-                    a = a_old
-                    bcvals = bcval₀
-                    if β > 1/8
-                        global β = β * 0.5
-                        Δ_remaining = (Δ*nloadsteps - β * Δ - loadstep * Δ)/nloadsteps
-                        remaining_steps = nloadsteps - loadstep
-                        nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
-                        bcvals = bcvals ./2 #
-                        bcval₀= bcvals
-                    end
-                    fill!(Δa, 0.0)
-                    println("Step length $β ")
-            end
+            # if iter % 10 == 0 || norm(res) > 1e3
+            #         a = a_old
+            #         bcvals = bcval₀
+            #         if β > 1/8
+            #             global β = β * 0.5
+            #             Δ_remaining = (Δ*nloadsteps - β * Δ - loadstep * Δ)/nloadsteps
+            #             remaining_steps = nloadsteps - loadstep
+            #             nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
+            #             bcvals = bcvals ./2 #
+            #             bcval₀= bcvals
+            #         end
+            #         fill!(Δa, 0.0)
+            #         println("Step length $β ")
+            # end
             a += Δa
             assemGlobal!(K, Fᵢₙₜ, dh, t, a, coord, enod, ε, mp₁, mp₂)
+            #@show Fᵢₙₜ[contact_dofs]
             #assemGlobal!(K, Fᵢₙₜ, dh, t, a, coord, enod, ε, mp₁, mp₂, τ)
             solveq!(Δa, K, -Fᵢₙₜ, bcdofs, bcvals)
             bcvals = 0 * bcvals
@@ -1395,12 +1396,20 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
             res[bcdofs] = 0 * res[bcdofs]
             residual = norm(res, 2)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_top[1]]
+            # if loadstep < 40 && iter < 20
+            #     σx, σy = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
+            #     vtk_grid("results/🍌-contact" * string(iter), dh) do vtkfile
+            #         vtk_point_data(vtkfile, dh, a + Δa)
+            #         vtk_point_data(vtkfile, σx, "σx")
+            #         vtk_point_data(vtkfile, σy, "σy")
+            #     end
+            # end
         #
         end
         if loadstep < 40 && iter < 20
             σx, σy = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
             vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
-                vtk_point_data(vtkfile, dh, a)
+                vtk_point_data(vtkfile, dh, a )
                 vtk_point_data(vtkfile, σx, "σx")
                 vtk_point_data(vtkfile, σy, "σy")
             end
