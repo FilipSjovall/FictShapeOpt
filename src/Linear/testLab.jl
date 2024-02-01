@@ -1,6 +1,5 @@
 using Pkg
 Pkg.activate()
-# ENV["DEPOT_PATH"] = joinpath(@__DIR__, ".julia")
 # kolla Pkg.status() vid problem / jämför med att bara starta julia i en terminal
 using Mortar2D, ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
 using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
@@ -23,18 +22,19 @@ include("..//mma.jl")
 # - Block - #
 th = 0.1
 x₁ = 0.0
-y₁ = 0.2001
+y₁ = 0.2501
 Δx = 0.5
 Δy = 0.1
 # - Seal - #
 x₀ = 0.0
 y₀ = 0.0
-B  = 0.2
+B  = 0.25
 b  = 0.1
-Δl = 0.15
-H  = 0.1
+Δl = (Δx - B)  #0.05
+H  = 0.15
+r = 0.025
 # grid size
-h = 0.035
+h = 0.075
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -46,7 +46,7 @@ fv = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createHalfLabyrinthMesh("mesh_1", x₀, y₀, th, B, b, Δl, H, h);
+grid1 = createQuarterLabyrinthMeshRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h);
 Γ_1 = getBoundarySet(grid1);
 grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h/2);
 Γ_2 = getBoundarySet(grid2);
@@ -89,7 +89,7 @@ addnodeset!(dh.grid, "nₘ", nₘ);
 # ----- #
 # Slave #
 # ----- #
-addfaceset!(dh.grid, "Γ_slave", x -> x ∈ Γ_1);
+addfaceset!(dh.grid, "Γ_slave", x ->  x ∈ Γ_1 );
 Γs = getfaceset(dh.grid, "Γ_slave");
 Γs = intersect(Γs, Γ_all);
 #
@@ -132,17 +132,10 @@ n_sym = getnodeset(dh.grid, "n_sym")
 addfaceset!(dh.grid, "Γ_sym", x->x[1] ≈ 0.5)
 Γ_sym = getfaceset(dh.grid, "Γ_sym")
 
-#addnodeset!(dh.grid, "n_bot_mid", x -> (x[2] ≈ y₀ && x[1] ≈ (2B + 3Δl)/2 ))
-#n_bm = getnodeset(dh.grid, "n_bot_mid")
-#
-#addnodeset!(dh.grid, "n_top_mid", x -> (x[2] ≈ y₁ + Δy && x[1] ≈ x₁ + Δx/2))
-#n_tm = getnodeset(dh.grid,"n_top_mid")
-
 # ----------------- #
 # Design boundaries #
 # ----------------- #
 Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm, Γ_sym, Γ_lr))
-#Γ_robin = Γs
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
 n_robin = getBoundarySet(dh.grid, Γ_robin)
@@ -214,19 +207,12 @@ bcdof_top, _ = setBCY(Δ, dh, n_top)
 
 bcdof_right, _ = setBCX(0.0, dh, n_sym)
 
-#bcdof_bmx, _ = setBC_dof(0.0, dh, n_bm,1)
-#bcdof_tmx, _ = setBC_dof(0.0, dh, n_tm,1)
-#bcdof_bmy, _ = setBC_dof(0.0, dh, n_bm,2)
-#bcdof_tmy, _ = setBC_dof(0.0, dh, n_tm,2)
-# använd setBC_dof
-
 
 # - - - - - - - - #
 # Lås master dofs #
 # - - - - - - - - #
 bcdof_contact, _ = setBCXY_both(0.0, dh, nₘ) # union(n,n,n) om flera set skall slås samman
 bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_contact; bcdof_right];
-#bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_contact; bcdof_bmx; bcdof_bmy; bcdof_tmx; bcdof_tmy];
 ϵᵢⱼₖ      = sortperm(bcdofs_opt)
 global bcdofs_opt  = bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt   = bcdofs_opt .* 0.0
@@ -236,11 +222,13 @@ global low_hist = zeros(length(d), 300)
 global upp_hist = zeros(length(d), 300)
 global d_hist2  = zeros(length(d), 300)
 
+global low_hist = zeros(length(d), 300)
+global upp_hist = zeros(length(d), 300)
+global d_hist2  = zeros(length(d), 300)
+
 test         = [0.0, 0.0]
-testvar      = register[13,1] #443 # 286 # 763 # 362
-perturbation = -1e-5
-global T = zeros(size(a))
-    global T[bcdof_bot[iseven.(bcdof_bot)]] .= -1.0
+testvar      = register[21,1] #443 # 286 # 763 # 362
+perturbation = 1e-5
 
 dh0 = deepcopy(dh)
 
@@ -272,10 +260,9 @@ for pert in 1:2
     #test[pert] = a' * Fₑₓₜ
 
     # test[pert] = -T' * Fᵢₙₜ
-    λm = 10.0
     p = 2
     X_ordered = getXfromCoord(coord)
-    test[pert] = contact_pnorm_s(X_ordered, a, ε, p) / λm - 1.0
+    test[pert] = contact_area(X_ordered, a, ε)
 end
 
 ∂rᵤ_∂x = similar(K)
@@ -292,9 +279,8 @@ dr_dd = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 # ∂g_∂u = -T' * K
 X_ordered = getXfromCoord(coord)
 p = 2
-λm = 10.0
-∂g_∂x = ForwardDiff.gradient(x -> contact_pnorm_ordered_s(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))./ λm
-∂g_∂u = ForwardDiff.gradient(u -> contact_pnorm_s(X_ordered, u, ε, p), a)./ λm
+∂g_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, ε, ), getXinDofOrder(dh, X_ordered, coord))
+∂g_∂u = ForwardDiff.gradient(u -> contact_area(X_ordered, u, ε, ), a)
 
 solveq!(λᵤ, K', ∂g_∂u, bcdofs_opt, bcval_opt)
 solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt)

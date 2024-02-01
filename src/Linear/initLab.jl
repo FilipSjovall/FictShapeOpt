@@ -1,15 +1,18 @@
 # Solution vector
 kktnorm = 1.0
-dr_dd = similar(K) # ?
-# Material parameters
-# N/m² = N/(10⁶ mm² )
-mp₁ = [180 80].*1e3
-mp₂ = [2.5 0.1].*1e3
-mp₀ = [0.1 4.0]
+dr_dd = similar(K) #
+# - - - - - - - - - - - #
+# Material parameters   #
+# N/m² = N/(10⁶ mm² )   #
+# - - - - - - - - - - - #
+mp₁ = [180 80].*1e3     # [K G]
+mp₂ = [2.5 0.1].*1e3    #
+mp₀ = [0.01 5.0]        #
+# - - - - - - - - - - - #
 #
 t = 1.0
 # Optimization parameters
-global m = 1#2;
+global m = 3;
 global n_mma = length(free_d);
 global epsimin = 0.0000001;
 #global xvalue    = d[:];
@@ -25,8 +28,8 @@ global kkttol = 0.001;
 global changetol = 0.001;
 global outit = 0;
 global change = 1;
-global xmax =  0.1 * ones(n_mma);
-global xmin = -0.1 * ones(n_mma);
+global xmax =  0.2 * ones(n_mma);
+global xmin = -0.2 * ones(n_mma);
 
 # global xmax[1:2:end-1] .= 0.0001
 # global xmin[1:2:end-1] .= 0.0001

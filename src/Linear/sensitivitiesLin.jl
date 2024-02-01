@@ -276,84 +276,22 @@ function contact_pnorm_s(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) wh
     # ---------------- #
 
     # Loop over master side dofs
+    λ_list = Dict{Int64, Real}()
     g₀ = 0.0
-    Ω  = 0.0
     p_mean = []
     for (i, A) in enumerate(slave_dofs)
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
+        λ_list[A] = λ_A
         if λ_A != 0
-            #g₀ += (λ_A*(1 / κ[i]))^p
             append!(p_mean, λ_A * (1 / κ[i]))
         end
     end
-    #g₀ = g₀^(1/p)
-    #g₀ = (g₀/length(p_mean) - mean(p_mean)^2)
-    #@show p_mean
     g₀ = var(p_mean) # mean(p_mean) #
-
-    # ---------------------------------- #
-    # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods #
-    # ---------------------------------- #
     return g₀
 end
 
 # Objective function for p-norm of contact pressure | Other version |
 function contact_pnorm_ordered_s(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) where {T1,T2}
-
-    # Order  X
-    X_ordered = getX_from_Dof_To_Node_order(dh, X)
-
-    #X_ordered = getXinDofOrder(dh, X, coord)
-
-    r_c = contact_pnorm_s(X_ordered, a, ε, p)
-
-    return r_c
-end
-
-# Compute total contact area
-function contact_area(X::AbstractVector{T1}, a::AbstractVector{T2}) where {T1,T2}
-
-    # Order displacements according to nodes and not dofs
-    a_ordered = getDisplacementsOrdered(dh, a)
-
-    # Scaling
-    κ = gap_scaling(X)
-
-    # convert X to Real for compatibility with ForwardDiff
-    #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
-    X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
-
-    # Extract the coordinate vector (nbr_nodes x 2 )
-    coordu = getCoordfromX(X_float)
-
-    # Create dictionaries that are needed for the Mortar2D package
-    elements, element_types, slave_elements, slave_element_ids, master_element_ids, coords = create_contact_list(dh, Γs, Γm, coordu)
-
-    # Compute nodal normals
-    normals = Mortar2D.calculate_normals(elements, element_types, coords)
-
-    # Compute the projected gap function
-    g = gap_function(X_float)
-
-    #println("norm(scaling): ",norm(κ))
-    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
-    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
-
-    # ---------------- #
-    # (∑ₐ λₐᵖ )^(1/p)  #
-    # ---------------- #
-
-    # Loop over master side dofs
-    Ω = 0.0
-    for (i, A) in enumerate(slave_dofs)
-        Ω += (penalty(g[i, :] ⋅ normals[slave_dofs[i]], 1.0)) / κ[i]
-    end
-
-    return Ω
-end
-
-# Compute total contact area | input-dofs ordered to suit AD
-function contact_area_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}) where {T1,T2}
 
     # Order  X
     X_ordered = getX_from_Dof_To_Node_order(dh, X)
@@ -421,4 +359,103 @@ function contact_sum_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) w
     r_c = contact_sum(X_ordered, a, ε)
 
     return r_c
+end
+
+# Active contact area using regularly ordered coordinates
+function contact_area(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) where {T1,T2}
+
+    # Order displacements according to nodes and not dofs
+    a_ordered = getDisplacementsOrdered(dh, a)
+
+    # Scaling
+    κ = gap_scaling(X)
+
+    # convert X to Real for compatibility with ForwardDiff
+    #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+    X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+
+    # Extract the coordinate vector (nbr_nodes x 2 )
+    coordu = getCoordfromX(X_float)
+
+    # Create dictionaries that are needed for the Mortar2D package
+    elements, element_types, slave_elements, slave_element_ids, master_element_ids, coords = create_contact_list(dh, Γs, Γm, coordu)
+
+    # Compute nodal normals
+    normals = Mortar2D.calculate_normals(elements, element_types, coords)
+
+    # Compute the projected gap function
+    g = gap_function(X_float)
+
+    #println("norm(scaling): ",norm(κ))
+    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
+    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
+
+    # Loop over master side dofs
+    λ_list = Dict{Int64, Real}()
+    for (i, A) in enumerate(slave_dofs)
+        λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
+        λ_list[A] = λ_A
+    end
+    γᶜ = Mortar2D.calculate_assembly_area(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list)
+    return γᶜ
+end
+
+# Active contact area using ordered coordinates
+function contact_area_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) where {T1,T2}
+
+    # Order  X
+    X_ordered = getX_from_Dof_To_Node_order(dh, X)
+
+    A = contact_area(X_ordered, a, ε)
+
+    return A
+end
+
+function contact_pressure(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) where {T1,T2}
+
+    # Order displacements according to nodes and not dofs
+    a_ordered = getDisplacementsOrdered(dh, a)
+
+    # Scaling
+    κ = gap_scaling(X)
+
+    # convert X to Real for compatibility with ForwardDiff
+    #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+    X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+
+    # Extract the coordinate vector (nbr_nodes x 2 )
+    coordu = getCoordfromX(X_float)
+
+    # Create dictionaries that are needed for the Mortar2D package
+    elements, element_types, slave_elements, slave_element_ids, master_element_ids, coords = create_contact_list(dh, Γs, Γm, coordu)
+
+    # Compute nodal normals
+    normals = Mortar2D.calculate_normals(elements, element_types, coords)
+
+    # Compute the projected gap function
+    g = gap_function(X_float)
+
+    #println("norm(scaling): ",norm(κ))
+    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
+    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
+
+    # Loop over master side dofs
+    λ_list = Dict{Int64, Real}()
+    for (i, A) in enumerate(slave_dofs)
+        λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
+        λ_list[A] = λ_A / κ[i]
+    end
+    #γᶜ = Mortar2D.calculate_assembly_area(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list)
+    fc = Mortar2D.calculate_assembly_force(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list,p)
+    return fc#/γᶜ
+end
+
+function contact_pressure_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) where {T1,T2}
+
+    # Order  X
+    X_ordered = getX_from_Dof_To_Node_order(dh, X)
+
+    pressure = contact_pressure(X_ordered, a, ε,p)
+
+    return pressure
 end

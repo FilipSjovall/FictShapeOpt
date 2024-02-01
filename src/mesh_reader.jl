@@ -1807,3 +1807,58 @@ function createHalfLabyrinthMeshRounded(filename, x₀, y₀, t, B, b, Δx, H, r
     Gmsh.finalize()
     return grid
 end
+
+
+function createQuarterLabyrinthMeshRounded(filename, x₀, y₀, t, B, b, Δx, H, r, h)
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+    # Points
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀, y₀ + t, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + t, 0.0, h/4)
+
+    p4 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2 - r , y₀ + t + H - r, 0.0, h/4)
+    #p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2 , y₀ + t + H , 0.0, h/4)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H - r, 0.0, h/4)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H, 0.0, h/4)
+
+    p_mitt_top = gmsh.model.geo.add_point(x₀ + Δx + B , y₀ + t + H, 0.0, h/4)
+
+    p_mitt = gmsh.model.geo.add_point(x₀ + Δx + B, y₀, 0.0, h)
+    # Lines
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    #
+    l3 = gmsh.model.geo.add_line(p3, p4)
+    l4 = gmsh.model.geo.add_circle_arc(p4, p5, p6)
+    #
+    l5 = gmsh.model.geo.add_line(p6, p_mitt_top)
+    l6 = gmsh.model.geo.add_line(p_mitt_top, p_mitt)
+    l7 = gmsh.model.geo.add_line(p_mitt, p1)
+    # Loop
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7])
+    #loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l6, l7, l10, l11, l12, l13])
+    # Surface
+    surf = gmsh.model.geo.add_plane_surface([loop])
+    gmsh.model.geo.synchronize()
+    # Physical surface
+    gmsh.model.add_physical_group(1, [l2, l3, l4, l5], -1, "")
+    #gmsh.model.add_physical_group(1, [l2, l3, l4, l5, l6, l7, l8, l9], -1, "")
+    gmsh.model.add_physical_group(2, [surf], -1, "")
+    # Generate mesh
+    gmsh.model.mesh.embed(0, [p_mitt], 2, 1)
+    gmsh.model.mesh.generate(2)
+    gmsh.model.mesh.optimize()
+    #gmsh.model.mesh.
+    #gmsh.model.mesh.reverse(2)
+    # Write to file
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
+    return grid
+end

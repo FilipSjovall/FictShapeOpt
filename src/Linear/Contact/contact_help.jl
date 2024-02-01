@@ -24,7 +24,6 @@ function create_contact_list(dh, Γs, Γm, coord_dual)
         face_el = face[1]
         face_nods = Ferrite.faces(dh.grid.cells[face_el])[face[2]]
         push!(elements, face_el => [face_nods[1], face_nods[2]])
-
         #push!(elements, face_el => sort([face_nods[1], face_nods[2]], rev=true)) # test
         #push!(elements, face_el => sort([face_nods[1], face_nods[2]], by=abs)) # test
         push!(coords, face_nods[1] => coord_dual[face_nods[1], :])
