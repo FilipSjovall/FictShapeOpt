@@ -1844,8 +1844,8 @@ function createQuarterLabyrinthMeshRounded(filename, x₀, y₀, t, B, b, Δx, H
     surf = gmsh.model.geo.add_plane_surface([loop])
     gmsh.model.geo.synchronize()
     # Physical surface
-    gmsh.model.add_physical_group(1, [l2, l3, l4, l5], -1, "")
-    #gmsh.model.add_physical_group(1, [l2, l3, l4, l5, l6, l7, l8, l9], -1, "")
+    gmsh.model.add_physical_group(1, [l3, l4, l5], -1, "")
+    #gmsh.model.add_physical_group(1, [l2, l3, l4, l5], -1, "")
     gmsh.model.add_physical_group(2, [surf], -1, "")
     # Generate mesh
     gmsh.model.mesh.embed(0, [p_mitt], 2, 1)

@@ -307,7 +307,7 @@ function Optimize(dh)
         # # # # #
         # Reset #
         # # # # #
-        if OptIter % 15 == 0
+        if OptIter % 15 == 0 && true_iteration < 31
             dh0 = deepcopy(dh)
             global d = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -375,10 +375,10 @@ function Optimize(dh)
         # # # # # # # # # # # #
         # Area constraint #
         # # # # # # # # # # # #
-        γ_max = 0.12
-        γ_min = 0.08
+        γ_max = 0.10
+        γ_min = 0.06
 
-        γc= contact_area(X_ordered, a, ε)
+        γc = contact_area(X_ordered, a, ε)
         g₂ = γc / γ_max - 1.0
         ∂g₂_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, ε), getXinDofOrder(dh, X_ordered, coord))
         ∂g₂_∂u = ForwardDiff.gradient(u -> contact_area(X_ordered, u, ε), a)
@@ -448,6 +448,8 @@ function Optimize(dh)
                   linecolor=hcat(red_condition_v, red_condition_au, red_condition_al),
                   background_color=RGB(0.2, 0.2, 0.2),
                   legend=:outerleft, grid=false)
+        hspan!(p2,[-2,0], color = :green, alpha = 0.2, labels = "Ok");
+        hspan!(p2,[2,0], color = :red, alpha = 0.2, labels = "Not allowed");
         #p2 = plot(1:true_iteration, v_hist[1:true_iteration]*10 ,
         #           label="Volume" ,
         #           background_color=RGB(0.2, 0.2, 0.2),
@@ -456,7 +458,7 @@ function Optimize(dh)
                   background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, lc=:purple, grid=false)
         X_c,tract = plotTraction()
         p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
-        p = plot(p2, p3, p4, layout=(3, 1), size=(800, 600))
+        p = plot(p2, p3, p4, layout=(3, 1), size=(600, 400))
         display(p)
         # For investigative purpose
         #low_hist[free_d, true_iteration] = low
