@@ -33,6 +33,7 @@ b  = 0.1
 Δl = (Δx - B)  #0.05
 H  = 0.15
 r = 0.025
+r2 = 0.05
 # grid size
 h = 0.05
 # # # # # # # # # #
@@ -46,7 +47,8 @@ fv = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createQuarterLabyrinthMeshRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h);
+#grid1 = createQuarterLabyrinthMeshRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h);
+grid1 = createQuarterLabyrinthMeshRoundedCavity("mesh_1", x₀, y₀, th, B, b, Δl, H, r, r2, h);
 Γ_1 = getBoundarySet(grid1);
 grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h/3);
 Γ_2 = getBoundarySet(grid2);
@@ -142,9 +144,8 @@ addfaceset!(dh.grid, "Γ_sym", x->x[1] ≈ 0.5)
 # ----------------- #
 # Design boundaries #
 # ----------------- #
-Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm, Γ_sym, Γ_lr))
-#Γ_robin = Γs
-# Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γs, Γ_sym, Γ_lr))
+#Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm, Γ_sym, Γ_lr))
+Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm, Γ_sym))
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
 n_robin = getBoundarySet(dh.grid, Γ_robin)
@@ -351,7 +352,7 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-        p = 2
+        p = 1
         X_ordered = getXfromCoord(coord)
         g     = -contact_pressure(X_ordered, a, ε, p)
         ∂g_∂x = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
@@ -376,19 +377,27 @@ function Optimize(dh)
         # Area constraint #
         # # # # # # # # # # # #
         γ_max = 0.10
-        γ_min = 0.06
-
+        γ_min = 0.04
         γc = contact_area(X_ordered, a, ε)
-        g₂ = γc / γ_max - 1.0
-        ∂g₂_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, ε), getXinDofOrder(dh, X_ordered, coord))
-        ∂g₂_∂u = ForwardDiff.gradient(u -> contact_area(X_ordered, u, ε), a)
-        solveq!(λᵤ, K', ∂g₂_∂u./γ_max, bcdofs, bcvals.*0)
-        solveq!(λψ, Kψ', ∂g₂_∂x./γ_max - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
+
+        # g     = -T' * Fᵢₙₜ
+        # ∂g_∂x = -T' * ∂rᵤ_∂x
+        # ∂g_∂u = -T' * K
+
+        #g₂ = γc / γ_max - 1.0
+        Fₘₐₓ  = 100.0
+        g₂     = -T' * Fᵢₙₜ ./ Fₘₐₓ - 1.0
+        ∂g₂_∂x = -T' * ∂rᵤ_∂x ./ Fₘₐₓ
+        ∂g₂_∂u = -T' * K ./ Fₘₐₓ
+        solveq!(λᵤ, K', ∂g₂_∂u, bcdofs, bcvals.*0)
+        solveq!(λψ, Kψ', ∂g₂_∂x' - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
         ∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' )'
 
+        ∂g₃_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, ε), getXinDofOrder(dh, X_ordered, coord))
+        ∂g₃_∂u = ForwardDiff.gradient(u -> contact_area(X_ordered, u, ε), a)
         g₃ = 1.0 - γc / γ_min
-        solveq!(λᵤ, K',  -∂g₂_∂u./γ_min, bcdofs, bcvals.*0)
-        solveq!(λψ, Kψ', -∂g₂_∂x./γ_min - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
+        solveq!(λᵤ, K',  -∂g₃_∂u./γ_min, bcdofs, bcvals.*0)
+        solveq!(λψ, Kψ', -∂g₃_∂x./γ_min - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
         ∂g₃_∂d = Real.((-transpose(λψ) * dr_dd)' )'
         # # # # #
         # M M A #
@@ -439,7 +448,7 @@ function Optimize(dh)
         # ---- #
         # plot #
         # ---- #
-        red_condition_v = [y > 0 ? :red : :green for y in v_hist[1:true_iteration]]
+        red_condition_v  = [y > 0 ? :red : :green for y in v_hist[1:true_iteration]]
         red_condition_au = [y > 0 ? :red : :orange for y in au_hist[1:true_iteration]]
         red_condition_al = [y > 0 ? :red : :yellow for y in al_hist[1:true_iteration]]
 
@@ -448,8 +457,8 @@ function Optimize(dh)
                   linecolor=hcat(red_condition_v, red_condition_au, red_condition_al),
                   background_color=RGB(0.2, 0.2, 0.2),
                   legend=:outerleft, grid=false)
-        hspan!(p2,[-2,0], color = :green, alpha = 0.2, labels = "Ok");
-        hspan!(p2,[2,0], color = :red, alpha = 0.2, labels = "Not allowed");
+        hspan!(p2,[-2,0], color = :green, alpha = 0.2, labels = "👌");
+        hspan!(p2,[2,0], color = :red, alpha = 0.2, labels = "🤚");
         #p2 = plot(1:true_iteration, v_hist[1:true_iteration]*10 ,
         #           label="Volume" ,
         #           background_color=RGB(0.2, 0.2, 0.2),
@@ -458,7 +467,7 @@ function Optimize(dh)
                   background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, lc=:purple, grid=false)
         X_c,tract = plotTraction()
         p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
-        p = plot(p2, p3, p4, layout=(3, 1), size=(600, 400))
+        p = plot(p2, p3, p4, layout=(3, 1), size=(600, 600))
         display(p)
         # For investigative purpose
         #low_hist[free_d, true_iteration] = low

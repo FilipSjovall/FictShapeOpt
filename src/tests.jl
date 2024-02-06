@@ -106,7 +106,7 @@ fv = FaceVectorValues(qr_face, ip)
     elnum = 35
 
     ke = zeros(12,12)
-    fe = zeros(12,2)
+    fe = zeros(11,2)
     dfe= zeros(12,12)
     de = 0.5*ones(12)
 

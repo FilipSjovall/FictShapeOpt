@@ -445,9 +445,9 @@ function contact_pressure(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) w
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
         λ_list[A] = λ_A / κ[i]
     end
-    #γᶜ = Mortar2D.calculate_assembly_area(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list)
+    γᶜ = Mortar2D.calculate_assembly_area(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list)
     fc = Mortar2D.calculate_assembly_force(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list,p)
-    return fc#/γᶜ
+    return fc/γᶜ
 end
 
 function contact_pressure_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) where {T1,T2}
