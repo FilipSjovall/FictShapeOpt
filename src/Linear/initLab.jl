@@ -7,7 +7,8 @@ dr_dd = similar(K) #
 # - - - - - - - - - - - #
 mp₁ = [180 80].*1e3     # [K G]
 mp₂ = [2.5 0.1].*1e3    #
-mp₀ = [0.01 5.0]        #
+#mp₀ = [0.01 5.0]        #
+mp₀ = [1.0 5.0]        #
 # - - - - - - - - - - - #
 #
 t = 1.0
@@ -28,8 +29,8 @@ global kkttol    = 0.001;
 global changetol = 0.001;
 global outit  = 0;
 global change = 1;
-global xmax =  0.2 * ones(n_mma);
-global xmin = -0.2 * ones(n_mma);
+global xmax =  0.15 * ones(n_mma) ;
+global xmin = -0.15 * ones(n_mma) ;
 
 # global xmax[1:2:end-1] .= 0.0001
 # global xmin[1:2:end-1] .= 0.0001

@@ -370,7 +370,7 @@ end
 function extrapolate_stress(s)
     stress = zeros(3)
     for nod in  1 : 3
-        stress[nod] = (N[:,nod]./N[:,nod]) ⋅ s
+        stress[nod] = (N[:,nod]./N[:,nod]) ⋅ s # ??
     end
     return stress
 end
@@ -378,7 +378,7 @@ end
 function extrapolate_strain(ε)
     strain = zeros(3)
     for nod in 1 : 3
-        strain[nod] = (N[:, nod] ./ N[:, nod]) ⋅ ε
+        strain[nod] = (N[:, nod] ./ N[:, nod]) ⋅ ε # ??
     end
 end
 

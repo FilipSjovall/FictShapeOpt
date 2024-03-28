@@ -270,6 +270,7 @@ function StressExtract(dh,a,mp)
         end
         σxe                     = [cauchy[1, 1, 1] cauchy[2, 1, 1] cauchy[3, 1, 1]]
         σye                     = [cauchy[1, 2, 2] cauchy[2, 2, 2] cauchy[3, 2, 2]]
+        # τ_xy  = ....
         s_nodex                 = extrapolate_stress(σxe)
         s_nodey                 = extrapolate_stress(σye)
         σx[cell.nodes]         += s_nodex

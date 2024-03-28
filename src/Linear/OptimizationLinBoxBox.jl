@@ -6,7 +6,7 @@ using SparseDiffTools
 using Plots
 using Printf
 using JLD2
-using Statistics # för var(λ)
+using Statistics # för var(λ)<
 
 
 include("..//mesh_reader.jl")
@@ -26,11 +26,13 @@ include("..//mma.jl")
 
 r₀ = 0.5
 # Create two grids
-y₁ = 0.98
+y₁ = 0.999# 0.98
+Δy = 1.0
+Δx = 1.0
 case = "box"
-grid1 = createBoxMeshRev("box_1",  0.0, y₁, 1.0, 0.5, 0.1)
+grid1 = createBoxMeshRev("box_1",  0.0, y₁, Δx, Δy, 1/10)
 #grid2 = createBoxMeshRev("box_2",  -0.1, 0.0, 1.2, 1.0, 0.081)
-grid2 = createBoxMeshRev("box_2",  0.0, 0.0, 1.0, 1.0, 0.081)
+grid2 = createBoxMeshRev("box_2",  0.0, 0.0, Δx, Δy, 1/11)
 #_bothgrid1 = createBoxMeshRev("box_2", 0.0, 1.0, 1.0, 0.5, 0.08)
 
 # # # # # # # # # #
@@ -101,6 +103,7 @@ global register = index_nod_to_grid(dh, coord)
     end
     #
     if case == "box"
+        #=
         # ------------------ #
         # Create left | sets #
         # ------------------ #
@@ -118,6 +121,25 @@ global register = index_nod_to_grid(dh, coord)
 
         addnodeset!(dh.grid, "nᵣ", x -> x[2] < 0.99 && x[1] ≈ 1.0)
         global n_right = getnodeset(dh.grid, "nᵣ")
+        =#
+        # % % % % % % % % % % % %
+        # ------------------ #
+        # Create left | sets #
+        # ------------------ #
+        addfaceset!(dh.grid, "Γ_left", x ->  x[1] ≈ 0.0)
+        global Γ_left = getfaceset(dh.grid, "Γ_left")
+
+        addnodeset!(dh.grid, "nₗ", x ->  x[1] ≈ 0.0)
+        global n_left = getnodeset(dh.grid, "nₗ")
+
+        # ------------------ #
+        # Create right  sets #
+        # ------------------ #
+        addfaceset!(dh.grid, "Γ_right", x ->  x[1] ≈ 1.0)
+        global Γ_right = getfaceset(dh.grid, "Γ_right")
+
+        addnodeset!(dh.grid, "nᵣ", x ->  x[1] ≈ 1.0)
+        global n_right = getnodeset(dh.grid, "nᵣ")
     end
 
 
@@ -133,10 +155,10 @@ global freec_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
 
 # Define top nodeset for displacement controlled loading
 if case == "box"
-    addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ y₁ + 0.5)
+    addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ y₁ + Δy)
     global Γ_top = getnodeset(dh.grid, "Γ_top")
 
-    addnodeset!(dh.grid, "n_top", x -> x[2] ≈ y₁ + 0.5)
+    addnodeset!(dh.grid, "n_top", x -> x[2] ≈ y₁ + Δy)
     global n_top = getnodeset(dh.grid, "n_top")
 
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
@@ -250,7 +272,7 @@ global ∂g₂_∂x     = zeros(size(a)) # behövs inte om vi har lokal funktion
 global ∂g₂_∂u     = zeros(size(d)) # behövs inte om vi har lokal funktion?
 global λᵤ         = similar(a)
 global λψ         = similar(a)
-global Δ          = -0.1
+global Δ          = -0.05
 global nloadsteps = 10
 include("initOptLin.jl")
 global asy_counter = zeros(dh.ndofs.x, 400)
@@ -344,7 +366,7 @@ function Optimize(dh)
             # test  #
             # # # # #
             global nloadsteps = 10
-            global μ = 1e3 # var μ = 1e4
+            global μ = 0.0 # = 0.0 för bild # 1e3 # var μ = 1e4
 
             # # # # # # # # # # # # # #
             # Fictitious equillibrium #
@@ -435,7 +457,7 @@ function Optimize(dh)
         # solveq!(λᵤ, K',  ∂g₂_∂u, bcdof_o, bcval_o)
         # solveq!(λψ, Kψ', ∂g₂_∂x - ∂rᵤ_∂x' * λᵤ, bcdof_o2, bcval_o2)
         # ∂g₂_∂d            = Real.( (-transpose(λψ) * dr_dd)' ./ 0.5 )'
-
+        postprocess_opt(∂g_∂d, dh, "results/🛸-bild" * string(true_iteration))
         # # # # #
         # M M A #
         # # # # #

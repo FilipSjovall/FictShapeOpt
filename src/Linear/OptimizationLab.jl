@@ -33,7 +33,7 @@ b  = 0.1
 Δl = (Δx - B)  #0.05
 H  = 0.15
 r = 0.025
-r2 = 0.05
+r2 = 0.025
 # grid size
 h = 0.05
 # # # # # # # # # #
@@ -141,11 +141,21 @@ n_sym = getnodeset(dh.grid, "n_sym")
 addfaceset!(dh.grid, "Γ_sym", x->x[1] ≈ 0.5)
 Γ_sym = getfaceset(dh.grid, "Γ_sym")
 
+# -------------- #
+# Left side both #
+# -------------- #
+addnodeset!(dh.grid,"n_left", x->x[1] ≈ x₀)
+n_left = getnodeset(dh.grid, "n_left")
+
+addfaceset!(dh.grid, "Γ_left", x->x[1] ≈ x₀)
+Γ_left = getfaceset(dh.grid, "Γ_left")
+
 # ----------------- #
 # Design boundaries #
 # ----------------- #
 #Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm, Γ_sym, Γ_lr))
-Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm, Γ_sym))
+#Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm, Γ_sym, Γ_lr))
+Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γ_sym, Γ_lr))
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
 n_robin = getBoundarySet(dh.grid, Γ_robin)
@@ -220,19 +230,18 @@ bcdof_top, _ = setBCY(Δ, dh, n_top)
 bcdof_right, _ = setBCX(0.0, dh, n_sym)
 #bcdof_mid, _ = setBCX(0.0, dh, n_mid)
 #bcdof_right = Vector{Int64}()
-
+bcdof_left, _ = setBCX(0.0, dh, n_left)
 
 # - - - - - - - - #
 # Lås master dofs #
 # - - - - - - - - #
 bcdof_contact, _ = setBCXY_both(0.0, dh, nₘ) # union(n,n,n) om flera set skall slås samman
-#bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_contact; bcdof_right; bcdof_mid];
-bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_contact; bcdof_right];
-#bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_contact; bcdof_bmx; bcdof_bmy; bcdof_tmx; bcdof_tmy];
+bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_right; bcdof_left];
+
 ϵᵢⱼₖ      = sortperm(bcdofs_opt)
 global bcdofs_opt  = bcdofs_opt[ϵᵢⱼₖ]
 global bcval_opt   = bcdofs_opt .* 0.0
-global asy_counter = zeros(dh.ndofs.x, 300)
+global asy_counter = zeros(dh.ndofs.x, 500)
 
 # global low_hist = zeros(length(d), 300)
 # global upp_hist = zeros(length(d), 300)
@@ -300,7 +309,6 @@ function Optimize(dh)
         global low
         global upp
         global traction
-
         # # # # # # # # # # # # # #
         global OptIter += 1
         global true_iteration += 1
@@ -322,7 +330,7 @@ function Optimize(dh)
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
         global nloadsteps = 10 #10
-        global μ = 2e3 #1e3
+        global μ = 5e3 #1e3
         global coord₀ = getCoord(getX(dh0), dh0) # x₀
         Ψ, _, Kψ, _, λ = fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
 
@@ -352,7 +360,7 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-        p = 1
+        p = 2
         X_ordered = getXfromCoord(coord)
         g     = -contact_pressure(X_ordered, a, ε, p)
         ∂g_∂x = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
@@ -406,9 +414,9 @@ function Optimize(dh)
         low_old = low
         upp_old = upp
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
-                                                                        xold1[:], xold2[:], g ./ 1e3, ∂g_∂d[free_d] ./ 1e3,
-                                                                        vcat(g₁ .* 1e2, g₂*1e3, g₃*1e3),
-                                                                        hcat(∂Ω∂d[free_d] .* 1e2,
+                                                                        xold1[:], xold2[:], g ./ 1e1, ∂g_∂d[free_d] ./ 1e1,
+                                                                        vcat(g₁ .* 1e3, g₂*1e3, g₃*1e3),
+                                                                        hcat(∂Ω∂d[free_d] .* 1e3,
                                                                         ∂g₂_∂d[free_d]*1e3,
                                                                         ∂g₃_∂d[free_d]*1e3)',
                                                                         low, upp, a0, am, C, d2)
@@ -430,8 +438,8 @@ function Optimize(dh)
         # # # # # # # # # #
         # Postprocessing  #
         # # # # # # # # # #
-        g_hist[true_iteration] = g
-        v_hist[true_iteration] = g₁
+        g_hist[true_iteration]  = g
+        v_hist[true_iteration]  = g₁
         au_hist[true_iteration] = g₂
         al_hist[true_iteration] = g₃
         kktnorm = change

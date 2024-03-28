@@ -1906,6 +1906,7 @@ function createQuarterLabyrinthMeshRoundedCavity(filename, x₀, y₀, t, B, b, 
     gmsh.model.add_physical_group(2, [surf], -1, "")
     # Generate mesh
     gmsh.model.mesh.embed(0, [p_mitt], 2, 1)
+    gmsh.model.mesh.set_algorithm(2,1,6) # Frontal-Delaunay algorithm ?
     gmsh.model.mesh.generate(2)
     gmsh.model.mesh.optimize()
     #gmsh.model.mesh.

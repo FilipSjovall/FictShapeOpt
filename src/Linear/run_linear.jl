@@ -1417,11 +1417,11 @@ function fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
     #  ----- #
     # Init   #
     #  ----- #
-    global Kψ = create_sparsity_pattern(dh0)
-    global Ψ = zeros(dh0.ndofs.x)
-    global FΨ = zeros(dh0.ndofs.x)
-    global Ψ = zeros(dh0.ndofs.x)
-    global ΔΨ = zeros(dh0.ndofs.x)
+    global Kψ  = create_sparsity_pattern(dh0)
+    global Ψ   = zeros(dh0.ndofs.x)
+    global FΨ  = zeros(dh0.ndofs.x)
+    global Ψ   = zeros(dh0.ndofs.x)
+    global ΔΨ  = zeros(dh0.ndofs.x)
     global res = zeros(dh0.ndofs.x)
     global bcdof_o2 = bcdofs_opt
     global bcval_o2 = bcdofs_opt .* 0.0
@@ -1430,7 +1430,6 @@ function fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
     bcval₀_o2 = bcval_opt
     Δλ = (1.0 / nloadsteps)
     loadstep = 0
-
     while loadstep < nloadsteps
         loadstep += 1
         res = res .* 0
@@ -1441,7 +1440,6 @@ function fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
         fill!(ΔΨ, 0.0)
         print("\n", "Starting equilibrium iteration at loadstep: ", loadstep, "\n")
         Ψ_old = Ψ
-
         # # # # # # # # # #
         # Newton solve.  #
         # # # # # # # # # #
@@ -1464,10 +1462,10 @@ function fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
             solveq!(ΔΨ, Kψ, -FΨ, bcdofs_opt, bcval_opt)
             #
             bcval_opt = bcval_opt .* 0
-            res = FΨ #- Fₑₓₜ
+            res       = FΨ #- Fₑₓₜ
             res[bcdofs_opt] = res[bcdofs_opt] .* 0
-            residual = norm(res, 2)
-            Ψ[bcdofs_opt] .= 0.0
+            residual        = norm(res, 2)
+            Ψ[bcdofs_opt]  .= 0.0
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
             if loadstep < 40 && iter < 20
                 postprocess_opt(Ψ, dh0, "results/fictitious_t2" * string(loadstep))

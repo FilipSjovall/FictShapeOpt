@@ -122,7 +122,6 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   end
 
   # Calculation of the bounds alfa and beta :
-
   zzz1 = low + albefa.*(xval-low);
   zzz2 = xval - move.*(xmax-xmin);
   zzz  = max.(zzz1,zzz2);
