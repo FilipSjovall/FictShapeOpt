@@ -491,10 +491,10 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
 
 
             end
-            if iter < 20
-                postprocess_opt(res, dh0, "results/fictres_flat" * string(iter))
-                postprocess_opt(Ψ + ΔΨ, dh0, "results/fictitious_flat" * string(iter))
-            end
+            # if iter < 20
+            #     postprocess_opt(res, dh0, "results/fictres_flat" * string(iter))
+            #     postprocess_opt(Ψ + ΔΨ, dh0, "results/fictitious_flat" * string(iter))
+            # end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
         end
     end
@@ -892,7 +892,8 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
 
             #a += β * Δa
             a += Δa
-            assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε)
+            #assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε)
+            assemGlobal!(K, Fᵢₙₜ, dh, mp, t, a, coord, enod, ε)
             solveq!(Δa, K, -Fᵢₙₜ, bcdofs, bcvals)
             bcvals = 0 * bcvals
             res = Fᵢₙₜ - Fₑₓₜ
@@ -1364,7 +1365,7 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
         # # # # # # # # # #
         while residual > TOL || iter < 2
             iter += 1
-            if iter % 10 == 0 || norm(res) > 1e3
+            if iter % 20 == 0 || norm(res) > 1e3
                     a = a_old
                     bcvals = bcval₀
                     if β > 1/8
@@ -1384,20 +1385,43 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
             #assemGlobal!(K, Fᵢₙₜ, dh, t, a, coord, enod, ε, mp₁, mp₂, τ)
             solveq!(Δa, K, -Fᵢₙₜ, bcdofs, bcvals)
             bcvals = 0 * bcvals
+            res_old = res
             res = Fᵢₙₜ - Fₑₓₜ
             res[bcdofs] = 0 * res[bcdofs]
             residual = norm(res, 2)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_top[1]]
-        #
-        end
-        if loadstep < 40 && iter < 20
-            σx, σy = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
-            vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
-                vtk_point_data(vtkfile, dh, a )
-                vtk_point_data(vtkfile, σx, "σx")
-                vtk_point_data(vtkfile, σy, "σy")
+
+            # Debugging shit
+            maximum(abs.(res[contact_dofs]-res_old[contact_dofs]))
+            maximum(abs.(res-res_old))
+            max_id = findall(x-> x == maximum(abs.(res-res_old)),abs.(res-res_old))
+            indeces = findall(x -> x > 1e-2, abs.(res))
+            @show maximum(Fᵢₙₜ)
+            @show a[indeces]
+            @show res[indeces]
+            #@show [res[contact_dofs] res_old[contact_dofs]]
+            open("file.txt","a") do io
+                println(io,"res: ",res[contact_dofs]-res_old[contact_dofs],"\n")
             end
+        #
+         if loadstep < 40 && iter < 20
+             σx, σy = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
+             #vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
+             vtk_grid("results/🍌-contact" * string(iter), dh) do vtkfile
+                 vtk_point_data(vtkfile, dh, a + Δa )
+                 vtk_point_data(vtkfile, σx, "σx")
+                 vtk_point_data(vtkfile, σy, "σy")
+             end
+         end
         end
+        #if loadstep < 40 && iter < 20
+        #    σx, σy = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
+        #    vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
+        #        vtk_point_data(vtkfile, dh, a )
+        #        vtk_point_data(vtkfile, σx, "σx")
+        #        vtk_point_data(vtkfile, σy, "σy")
+        #    end
+        #end
         Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
     end
     # X_c,tract = plotTraction()
@@ -1469,6 +1493,7 @@ function fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
             if loadstep < 40 && iter < 20
                 postprocess_opt(Ψ, dh0, "results/fictitious_t2" * string(loadstep))
+                postprocess_opt(Ψ, dh0, "results/fictitious_iter_t2" * string(iter))
             end
         end
     end

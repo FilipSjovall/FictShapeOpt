@@ -170,14 +170,14 @@ if case == "box"
     #
     global Γ_robin = union(
         getfaceset(dh.grid, "Γ_slave"),
-        getfaceset(dh.grid, "Γ_left"),
-        getfaceset(dh.grid, "Γ_right"),
+        # getfaceset(dh.grid, "Γ_left"),
+        # getfaceset(dh.grid, "Γ_right"),
         getfaceset(dh.grid, "Γ_master")
     )
     global n_robin = union(
         getnodeset(dh.grid, "nₛ"),
-        getnodeset(dh.grid, "nₗ"),
-        getnodeset(dh.grid, "nᵣ"),
+        # getnodeset(dh.grid, "nₗ"),
+        # getnodeset(dh.grid, "nᵣ"),
         getnodeset(dh.grid, "nₘ")
     )
 else
@@ -283,7 +283,7 @@ function Optimize(dh)
         global λψ    = similar(a)
         global λᵤ    = similar(a)
         global λᵥₒₗ  = similar(a)
-        Vₘₐₓ         = 1.78 #1.1 * volume(dh, coord, enod)
+        Vₘₐₓ         = 2.0 #1.1 * volume(dh, coord, enod)
        # global ε     = 1e6
        # global μ     = 1e3
         #l    = similar(a)
@@ -297,7 +297,8 @@ function Optimize(dh)
         g_hist         = zeros(200)
         historia = zeros(200,4)
         global T = zeros(size(a))
-        global T[bcdof_bot_o[bcdof_bot_o .% 2 .==0]] .= 1.0
+        global T[bcdof_bot_o[iseven.(bcdof_bot_o)]] .= -1.0
+        global T[bcdof_top_o[iseven.(bcdof_top_o)]] .=  1.0
         g₁ = 0.0
         g₂ = 0.0
     #
@@ -388,7 +389,7 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 1e5 # eller?
+        global ε = 1e4 # eller?
 
         # # # # # # # # #
         # Equillibrium  #
@@ -467,7 +468,6 @@ function Optimize(dh)
         xold1  = d
         d      = d_new
         change = norm(d .- xold1)
-
         # # # # # # # # # #
         # Postprocessing  #
         # # # # # # # # # #

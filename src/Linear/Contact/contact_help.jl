@@ -293,7 +293,6 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
 
     # Scaling
     κ = gap_scaling(X)
-
     # convert X to Real for compatibility with ForwardDiff
     #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
     X_float = real.(X + a_ordered)

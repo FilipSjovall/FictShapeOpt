@@ -29,13 +29,14 @@ y₁ = 0.2501
 x₀ = 0.0
 y₀ = 0.0
 B  = 0.15
-b  = 0.1
+b  = 0.1 #+ 0.0125*2
 Δl = (Δx - B)  #0.05
 H  = 0.15
-r = 0.025
+r  = 0.025 #0.0125
 r2 = 0.025
+# för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
 # grid size
-h = 0.05
+h = 0.05 # 0.05
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -47,10 +48,10 @@ fv = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-#grid1 = createQuarterLabyrinthMeshRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h);
-grid1 = createQuarterLabyrinthMeshRoundedCavity("mesh_1", x₀, y₀, th, B, b, Δl, H, r, r2, h);
+grid1 = createQuarterLabyrinthMeshRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h*1.2);
+#grid1 = createQuarterLabyrinthMeshRoundedCavity("mesh_1", x₀, y₀, th, B, b, Δl, H, r, r2, h);
 Γ_1 = getBoundarySet(grid1);
-grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h/3);
+grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h/4);
 Γ_2 = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);
 grid1 = nothing;
@@ -191,31 +192,31 @@ for jnod in n_robin
 end
 
 # Initialize tangents
-global K = create_sparsity_pattern(dh)
+global K  = create_sparsity_pattern(dh)
 global Kψ = create_sparsity_pattern(dh)
-global a = zeros(dh.ndofs.x)
-global d = zeros(dh.ndofs.x)
-global Ψ = zeros(dh.ndofs.x)
-global Fᵢₙₜ = zeros(dh.ndofs.x)
-global rc = zeros(dh.ndofs.x)
-global Fₑₓₜ = zeros(dh.ndofs.x)
-global a = zeros(dh.ndofs.x)
-global Δa = zeros(dh.ndofs.x)
-global res = zeros(dh.ndofs.x)
-global dr_dd = similar(K)
+global a  = zeros(dh.ndofs.x)
+global d  = zeros(dh.ndofs.x)
+global Ψ  = zeros(dh.ndofs.x)
+global Fᵢₙₜ  = zeros(dh.ndofs.x)
+global rc     = zeros(dh.ndofs.x)
+global Fₑₓₜ  = zeros(dh.ndofs.x)
+global a      = zeros(dh.ndofs.x)
+global Δa     = zeros(dh.ndofs.x)
+global res    = zeros(dh.ndofs.x)
+global dr_dd  = similar(K)
 global ∂rψ_∂d = similar(K)
-global ∂g_∂x = zeros(size(a))
-global ∂g_∂u = zeros(size(d))
+global ∂g_∂x  = zeros(size(a))
+global ∂g_∂u  = zeros(size(d))
 global ∂g₂_∂x = zeros(size(a))
 global ∂g₂_∂u = zeros(size(d))
 global ∂g₃_∂d = zeros(size(d))
 global λᵤ = similar(a)
 global λψ = similar(a)
-global Δ = -0.025
+global Δ  = -0.025
 global nloadsteps = 10
-global g = 0.0
-global g₂= 0.0
-global g₃= 0.0
+global g  = 0.0
+global g₂ = 0.0
+global g₃ = 0.0
 # # # # # # # # # # # # # # # #
 # Init optimization variables #
 # # # # # # # # # # # # # # # #
@@ -236,6 +237,7 @@ bcdof_left, _ = setBCX(0.0, dh, n_left)
 # Lås master dofs #
 # - - - - - - - - #
 bcdof_contact, _ = setBCXY_both(0.0, dh, nₘ) # union(n,n,n) om flera set skall slås samman
+# bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_right; bcdof_left];
 bcdofs_opt = [bcdof_bot; bcdof_top; bcdof_right; bcdof_left];
 
 ϵᵢⱼₖ      = sortperm(bcdofs_opt)
@@ -330,7 +332,7 @@ function Optimize(dh)
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
         global nloadsteps = 10 #10
-        global μ = 5e3 #1e3
+        global μ = 1e4 #1e3
         global coord₀ = getCoord(getX(dh0), dh0) # x₀
         Ψ, _, Kψ, _, λ = fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
 
@@ -360,7 +362,7 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-        p = 2
+        p = 3
         X_ordered = getXfromCoord(coord)
         g     = -contact_pressure(X_ordered, a, ε, p)
         ∂g_∂x = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
@@ -414,7 +416,7 @@ function Optimize(dh)
         low_old = low
         upp_old = upp
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
-                                                                        xold1[:], xold2[:], g ./ 1e1, ∂g_∂d[free_d] ./ 1e1,
+                                                                        xold1[:], xold2[:], g ./ 1e4, ∂g_∂d[free_d] ./ 1e4,
                                                                         vcat(g₁ .* 1e3, g₂*1e3, g₃*1e3),
                                                                         hcat(∂Ω∂d[free_d] .* 1e3,
                                                                         ∂g₂_∂d[free_d]*1e3,
@@ -426,6 +428,9 @@ function Optimize(dh)
         # Test - new update #
         # ----------------- #
         α     = 1.0
+        #if true_iteration == 40
+        #    α = 0.25
+        #end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
@@ -471,7 +476,7 @@ function Optimize(dh)
         #           label="Volume" ,
         #           background_color=RGB(0.2, 0.2, 0.2),
         #           legend=:outerleft, grid=false)
-        p3 = plot(1:true_iteration, g_hist[1:true_iteration]/1e3, label="Objective",
+        p3 = plot(1:true_iteration, g_hist[1:true_iteration]/1e4, label="Objective",
                   background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, lc=:purple, grid=false)
         X_c,tract = plotTraction()
         p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)

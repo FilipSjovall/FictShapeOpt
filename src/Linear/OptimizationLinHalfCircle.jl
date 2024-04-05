@@ -3,7 +3,7 @@ using Ferrite, FerriteGmsh#, FerriteMeshParser
 using LinearSolve, SparseArrays # LinearSolvePardiso
 using IterativeSolvers, IncompleteLU    # AlgebraicMultigrid
 using Plots, Printf, JLD2, Statistics
-using LazySets: convex_hull
+#using LazySets: convex_hull
 include("..//mesh_reader.jl")
 include("Contact//contact_help.jl")
 include("assemLin.jl")
@@ -22,7 +22,7 @@ fv      = FaceVectorValues(qr_face, ip)
 # Create two grids
 case    = "box"
 r₀      = 0.5
-h       = 0.025
+h       = 0.05
 Δx      = 0.5
 y₀      = 0.5
 Δy      = 0.501 #1.001
@@ -277,7 +277,7 @@ function Optimize(dh)
             # 1e5 för h=0.015
             # 5e3 för h=0.03
             # 1e4 standard
-            global μ = 1e4
+            global μ = 0 #1e4
 
             # # # # # # # # # # # # # #
             # Fictitious equillibrium #
@@ -296,8 +296,11 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε = 1e4 # 2?
+        global ε =  1e2 # 2?
 
+        if OptIter == 2
+            break
+        end
         # # # # # # # # #
         # Equillibrium  #
         # # # # # # # # #
