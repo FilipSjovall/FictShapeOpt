@@ -417,3 +417,31 @@ xe = x_glob[dofs]
     asens   = ∂Ω∂d[indexet]
 
     numsens/asens
+
+## Nytt test
+    nods = dh.grid.cells[1].nodes
+    cell_dofs = [1, 2, 3, 4, 5, 6]
+    γ = 1e-8
+    indexet = 4
+    ke = zeros(6,6)
+    fe = zeros(6,2)
+    for pert in 1:2
+        println(" vad är fel ? ")
+        if pert == 1
+            a[cell_dofs[indexet]] = a[cell_dofs[indexet]] + γ
+        else
+            a[cell_dofs[indexet]] = a[cell_dofs[indexet]] - γ
+        end
+        ke, fe[:,pert] = assemElem(coord[Vec(nods),:],a[cell_dofs],mp,t)
+    end
+    numsens = (fe[:,2] - fe[:,1])/γ
+    asens   = ke[:,indexet]
+    numsens./asens
+
+    ie = 0
+    for cell in CellIterator(dh)
+        ie += 1
+        if ie == 1
+            @show cell_dofs = celldofs(cell)
+        end
+    end

@@ -43,14 +43,3 @@ function externalForce!(F_ext,r,F_int,F)
     F_ext[freeDofs] = r[freeDofs] - F_int(freeDofs)
     F_ext[dirDofs]  = F[dirDofs]
 end
-
-
-struct AdditiveSchwarzPreconditioner{T}
-    A::T
-end
-
-function LinearAlgebra.ldiv!(P::AdditiveSchwarzPreconditioner, x)
-    # Implement the application of the Additive Schwarz preconditioner
-    # This is a placeholder and should be replaced with the actual implementation
-    return x
-end

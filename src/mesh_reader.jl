@@ -323,7 +323,7 @@ function createBoxMesh(filename,x₀,y₀,Δx,Δy,h)
     gmsh.model.add_physical_group(2, [surf])
 
     gmsh.model.mesh.generate(2)
-
+    #gmsh.model.mesh.reverse(2)
     # Save the mesh, and read back in as a Ferrite Grid
     grid = mktempdir() do dir
         path = joinpath(dir, filename*".msh")
@@ -362,14 +362,16 @@ function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
     l6 = gmsh.model.geo.add_line(p5, p1)
 
     # Create the closed curve loop and the surface
-    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6])
+    #loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6])
+    loop = gmsh.model.geo.add_curve_loop([-l6,-l5,-l4,-l3,-l2,-l1])
     surf = gmsh.model.geo.add_plane_surface([loop])
 
     # Synchronize the model
     gmsh.model.geo.synchronize()
 
     # Create the physical domains
-    gmsh.model.add_physical_group(1, [l2, l3], -1, "Γ")
+    #gmsh.model.add_physical_group(1, [l2, l3], -1, "Γ")
+    gmsh.model.add_physical_group(1, [-l3,-l2], -1, "Γ")
     gmsh.model.add_physical_group(2, [surf])
 
     gmsh.model.mesh.embed(0, [p5], 2 ,1)
@@ -377,7 +379,7 @@ function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
 
 
     gmsh.model.mesh.generate(2)
-
+    #gmsh.model.mesh.reverse(2)
     # Save the mesh, and read back in as a Ferrite Grid
     grid = mktempdir() do dir
         path = joinpath(filename * ".msh")
@@ -1221,6 +1223,7 @@ function createBoxMeshRounded(filename, r, h)
 
     # Create the closed curve loop and the surface
     loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7])
+    #loop = gmsh.model.geo.add_curve_loop([-l7,-l6,-l5,-l4,-l3,-l2,-l1])
 
     gmsh.model.geo.remove_all_duplicates()
 
@@ -1230,7 +1233,8 @@ function createBoxMeshRounded(filename, r, h)
     gmsh.model.geo.synchronize()
 
     # Create the physical domains
-    gmsh.model.add_physical_group(1, [l4,l5,l6], -1, "Γ_slave")
+     gmsh.model.add_physical_group(1, [l4,l5,l6], -1, "Γ_slave")
+    #gmsh.model.add_physical_group(1, [-l6,-l5,-l4], -1, "Γ_slave")
     gmsh.model.add_physical_group(2, [surf], 1)
 
     gmsh.model.mesh.embed(0, [p2], 2, 1)
@@ -1287,6 +1291,7 @@ function createBoxMeshRounded_Flipped(filename, r, y₀, Δy, h)
 
     # Create the closed curve loop and the surface
     loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7])
+    #loop = gmsh.model.geo.add_curve_loop([-l7,-l6,-l5,-l4,-l3,-l2,-l1])
 
     gmsh.model.geo.remove_all_duplicates()
 
@@ -1297,6 +1302,7 @@ function createBoxMeshRounded_Flipped(filename, r, y₀, Δy, h)
 
     # Create the physical domains
     gmsh.model.add_physical_group(1, [l4,l5,l6], -1, "Γ_master")
+    #gmsh.model.add_physical_group(1, [-l6,-l5,-l4], -1, "Γ_master")
     gmsh.model.add_physical_group(2, [surf], 1)
 
     gmsh.model.mesh.embed(0, [p2], 2, 1)
@@ -1728,7 +1734,7 @@ function createHalfLabyrinthMesh(filename, x₀, y₀, t, B, b, Δx, H, h)
     gmsh.model.mesh.embed(0, [p_mitt], 2, 1)
     gmsh.model.mesh.generate(2)
     gmsh.model.mesh.optimize()
-    #gmsh.model.mesh.
+    #
     #gmsh.model.mesh.reverse(2)
     # Write to file
     grid = mktempdir() do dir
@@ -1796,7 +1802,7 @@ function createHalfLabyrinthMeshRounded(filename, x₀, y₀, t, B, b, Δx, H, r
     gmsh.model.mesh.embed(0, [p_mitt], 2, 1)
     gmsh.model.mesh.generate(2)
     gmsh.model.mesh.optimize()
-    #gmsh.model.mesh.
+    #
     #gmsh.model.mesh.reverse(2)
     # Write to file
     grid = mktempdir() do dir
@@ -1838,14 +1844,16 @@ function createQuarterLabyrinthMeshRounded(filename, x₀, y₀, t, B, b, Δx, H
     l6 = gmsh.model.geo.add_line(p_mitt_top, p_mitt)
     l7 = gmsh.model.geo.add_line(p_mitt, p1)
     # Loop
-    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7])
+    #loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6, l7])
+    loop = gmsh.model.geo.add_curve_loop([-l7,-l6,-l5,-l4,-l3,-l2,-l1])
     #loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l6, l7, l10, l11, l12, l13])
     # Surface
     surf = gmsh.model.geo.add_plane_surface([loop])
     gmsh.model.geo.synchronize()
     # Physical surface
-    gmsh.model.add_physical_group(1, [l3, l4, l5], -1, "")
-    #gmsh.model.add_physical_group(1, [l2, l3, l4, l5], -1, "")
+    #gmsh.model.add_physical_group(1, [l3, l4, l5], -1, "")
+    gmsh.model.add_physical_group(1, [-l5,-l4,-l3], -1, "") # istället för reverse (behåller ccw)
+
     gmsh.model.add_physical_group(2, [surf], -1, "")
     # Generate mesh
     gmsh.model.mesh.embed(0, [p_mitt], 2, 1)

@@ -153,13 +153,8 @@ function assemGlobal!(Kψ, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_rob
                 ke[face_dofs, face_dofs], fe[face_dofs] = Robin(Xc, Ψ[cell_dofs[face_dofs]], d[cell_dofs[face_dofs]], λ)
             end
         end
-        ##### Test penalty framför Robin-term
-        #if OptIter == 1 && true_iteration > 1
-         #assemble!(assembler, cell_dofs, kₑ + 0.1ke, fₑ + 0.1fe)
-        #### Penalty = 1.0
-        #else
-        assemble!(assembler, cell_dofs, kₑ +  ke, fₑ +  fe)
-        #end
+        #assemble!(assembler, cell_dofs, kₑ +  ke, fₑ +  fe)
+        assemble!(assembler, cell_dofs, -kₑ +  ke, -fₑ +  fe)
     end
     # Contact
     X_ordered = getXfromCoord(coord₀)
@@ -192,14 +187,15 @@ function assemGlobal!(K, Fᵢₙₜ, dh, t, a, coord, enod, ε, mp₁, mp₂)
         end
         kₑ, fₑ = assemElem(coord[enod[ie][2:end], :], a[cell_dofs], mp, t)
         # assemble into global
-        assemble!(assembler, cell_dofs, kₑ, fₑ)
+        assemble!(assembler, cell_dofs, -kₑ, -fₑ)
+        # assemble!(assembler, cell_dofs, kₑ, fₑ)
     end
     # Contact
     X_ordered = getXfromCoord(coord)
     rc = contact_residual_reduced(X_ordered, a[contact_dofs], a[freec_dofs], ε)
     Kc = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, a[freec_dofs], ε), a[contact_dofs])
     K[contact_dofs, contact_dofs] -= Kc
-    Fᵢₙₜ[contact_dofs] -= rc
+    Fᵢₙₜ[contact_dofs]           -= rc
 
     #rc = contact_residual(X_ordered, a, ε)
     #Kc = ForwardDiff.jacobian(u -> contact_residual(X_ordered, u, ε), a)
@@ -270,7 +266,7 @@ function StressExtract(dh,a,mp)
         end
         σxe                     = [cauchy[1, 1, 1] cauchy[2, 1, 1] cauchy[3, 1, 1]]
         σye                     = [cauchy[1, 2, 2] cauchy[2, 2, 2] cauchy[3, 2, 2]]
-        # τ_xy  = ....
+        τ_xy                    = [cauchy[1, 3, 3] cauchy[2, 3, 3] cauchy[3, 3, 3]]
         s_nodex                 = extrapolate_stress(σxe)
         s_nodey                 = extrapolate_stress(σye)
         σx[cell.nodes]         += s_nodex
@@ -281,6 +277,7 @@ function StressExtract(dh,a,mp)
     for i in 1 : length(dh.grid.nodes)
         σx[i] = σx[i] / occurences[i]
         σy[i] = σy[i] / occurences[i]
+        #σ_vm[i]  = 1.0
     end
     return σx,σy
 end

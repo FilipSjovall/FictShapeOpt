@@ -22,7 +22,7 @@ include("..//mma.jl")
 # - Block - #
 th = 0.1
 x₁ = 0.0
-y₁ = 0.2501
+y₁ = 0.25001#1
 Δx = 0.5
 Δy = 0.1
 # - Seal - #
@@ -48,10 +48,11 @@ fv = FaceVectorValues(qr_face, ip)
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createQuarterLabyrinthMeshRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h*1.2);
+grid1 = createQuarterLabyrinthMeshRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h);
 #grid1 = createQuarterLabyrinthMeshRoundedCavity("mesh_1", x₀, y₀, th, B, b, Δl, H, r, r2, h);
 Γ_1 = getBoundarySet(grid1);
-grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h/4);
+grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h/3);
+#grid2 = createBoxMesh("mesh_2", x₁, y₁, Δx, Δy, h);
 Γ_2 = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);
 grid1 = nothing;
@@ -217,6 +218,7 @@ global nloadsteps = 10
 global g  = 0.0
 global g₂ = 0.0
 global g₃ = 0.0
+global α  = 1.0
 # # # # # # # # # # # # # # # #
 # Init optimization variables #
 # # # # # # # # # # # # # # # #
@@ -362,7 +364,7 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-        p = 3
+        p = 2
         X_ordered = getXfromCoord(coord)
         g     = -contact_pressure(X_ordered, a, ε, p)
         ∂g_∂x = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
@@ -416,7 +418,7 @@ function Optimize(dh)
         low_old = low
         upp_old = upp
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
-                                                                        xold1[:], xold2[:], g ./ 1e4, ∂g_∂d[free_d] ./ 1e4,
+                                                                        xold1[:], xold2[:], g ./ 1, ∂g_∂d[free_d] ./ 1,
                                                                         vcat(g₁ .* 1e3, g₂*1e3, g₃*1e3),
                                                                         hcat(∂Ω∂d[free_d] .* 1e3,
                                                                         ∂g₂_∂d[free_d]*1e3,
@@ -427,10 +429,9 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        α     = 1.0
-        #if true_iteration == 40
-        #    α = 0.25
-        #end
+        if true_iteration % 100 == 0
+            global α = α / 2
+        end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
@@ -451,7 +452,7 @@ function Optimize(dh)
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
         println("Objective: ", g_hist[1:true_iteration])
         println("Volume constraint: ", v_hist[1:true_iteration])
-        println("Area constraint", " γ_min ≤ γ ≤ γ_max ", γ_min, " ≤ ", γc ," ≤ ", γ_max )
+        println("Area constraint", " γ_min ≤ γ ≤ γ_max:  ", γ_min, " ≤ ", γc ," ≤ ", γ_max )
         # ------------ #
         # write to vtu #
         # ------------ #

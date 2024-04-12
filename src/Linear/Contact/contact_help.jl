@@ -6,26 +6,25 @@ function create_contact_list(dh, Γs, Γm, coord_dual)
     element_types = Dict{Int64,Symbol}()
     slave_element_ids = Vector{Int64}()
     master_element_ids = Vector{Int64}()
+    # Slave surface
     for face in Γs
         i += 1
         face_el = face[1]
+        #face_nods = reverse(Ferrite.faces(dh.grid.cells[face_el])[face[2]]) # " face = (El, nod) "
         face_nods = Ferrite.faces(dh.grid.cells[face_el])[face[2]] # " face = (El, nod) "
         push!(elements,face_el => [face_nods[1],face_nods[2]])
-        #@show push!(elements, face_el => sort([face_nods[1], face_nods[2]], by=abs))
         push!(coords, face_nods[1] => coord_dual[face_nods[1], :])
         push!(coords, face_nods[2] => coord_dual[face_nods[2], :])
         push!(slave_element_ids, face_el)
         push!(slave_elements, face_el => [face_nods[1], face_nods[2]])
         push!(element_types, face_el => :Seg2)
     end
-
+    # Master surface
     for face in Γm
         i += 1
         face_el = face[1]
         face_nods = Ferrite.faces(dh.grid.cells[face_el])[face[2]]
         push!(elements, face_el => [face_nods[1], face_nods[2]])
-        #push!(elements, face_el => sort([face_nods[1], face_nods[2]], rev=true)) # test
-        #push!(elements, face_el => sort([face_nods[1], face_nods[2]], by=abs)) # test
         push!(coords, face_nods[1] => coord_dual[face_nods[1], :])
         push!(coords, face_nods[2] => coord_dual[face_nods[2], :])
         push!(master_element_ids, face_el)
@@ -83,13 +82,26 @@ function gap_function(X::AbstractVector{T}) where {T}
 
     # Loops are fast with the LLVM compiler
     #for (j, A) in (enumerate(slave_dofs))
-    for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
-    #for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2)))))
-        slave = [0.; 0.]
-        for B in slave_dofs
+    # for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
+    # #for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2)))))
+    #     slave = [0.; 0.]
+    #     for B in slave_dofs
+    #         slave += D[A, B] * coords[B]
+    #     end
+    #     master = [0.; 0.]
+    #     #for C in master_dofs
+    #     for C in intersect(master_dofs, 1:size(M, 2))
+    #         master += M[A, C] * coords[C]
+    #     end
+    #     # To compute the projected gap vector we multiply g[j,:] with the normal at node j
+    #     g0[j, :] = slave - master
+    # end
+    for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1)))))
+        slave = [0; 0]
+        for (jj,B) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1))))) # slave_dofs
             slave += D[A, B] * coords[B]
         end
-        master = [0.; 0.]
+        master = [0; 0]
         #for C in master_dofs
         for C in intersect(master_dofs, 1:size(M, 2))
             master += M[A, C] * coords[C]
@@ -265,8 +277,9 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
         λ_A = penalty(g[i, :] ⋅ normals[A] , ε)
         if λ_A != 0
             τ = λ_A * normals[A]/ κ[i]
-            push!(τ_c, A => λ_A / κ[i])
-            #push!(τ_c, A => τ[2])
+            #push!(τ_c, A => λ_A )
+            #push!(τ_c, A => λ_A / κ[i])
+            push!(τ_c, A => τ[2])
         end
         #
         #push!(τ_c, A => g[i,:] ⋅ [0.0 1.0] / κ[i])
@@ -279,22 +292,23 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
 end
 
 function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}, a_f::AbstractVector{T3}, ε::Number) where {T1,T2,T3}
-
     a_total = similar(X)
     a_total.= 0
 
+    # Contact dofs for AD
     a_total[contact_dofs] = a_c
 
+    # Non-contact dofs
     a_total[freec_dofs] = a_f
 
     # Order displacements according to nodes and not dofs
-
     a_ordered = getDisplacementsOrdered(dh, a_total)
 
     # Scaling
     κ = gap_scaling(X)
+    #@show κ
+
     # convert X to Real for compatibility with ForwardDiff
-    #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
     X_float = real.(X + a_ordered)
 
     # Extract the coordinate vector (nbr_nodes x 2 )
@@ -312,15 +326,14 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
     # Compute the projected gap function
     g = zeros(eltype(X_float), length(slave_dofs), 2)
 
-    # Loops are fast with the LLVM compiler
-    #for (j, A) in (enumerate(slave_dofs))
+    # Better to loop with the LLVM compiler
+    # We loop over a reduced set when dimensions don't agree
     for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1)))))
         slave = [0; 0]
         for (jj,B) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1))))) # slave_dofs
             slave += D[A, B] * coords[B]
         end
         master = [0; 0]
-        #for C in master_dofs
         for C in intersect(master_dofs, 1:size(M, 2))
             master += M[A, C] * coords[C]
         end
@@ -329,14 +342,12 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
     end
     r_c = zeros(eltype(X_float), length(contact_dofs)) # sparse...?
 
-    # ---------- #
-    # ∫ᵧ 𝛅g λ dγ  #
-    # ---------- #
-    #for (i, A) in enumerate(slave_dofs)
+    # ----------- #
+    # ∫ᵧ λ 𝛅g dγ  #
+    # ----------- #
     for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1)))))
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
         if λ_A != 0.0
-            # @show A, 1/κ[i], λ_A,  normals[A] g[i,:]
             for (j, B) in (enumerate(intersect(slave_dofs, 1:size(D, 2))))
                 # Extract nodal degrees of freedom
                 nod = order[B]

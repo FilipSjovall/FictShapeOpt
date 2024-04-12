@@ -20,8 +20,11 @@ r  = 0.49
 y₀ = 0.999
 h  = 0.1
 
+y₀ = 1.0
+Δy = 1.49
+
 grid1   = createBoxMeshRounded("rounded", r, h)
-grid2   = createBoxMeshRounded_Flipped("rounded_and_flipped", r, 1.0, 1.49, h)
+grid2   = createBoxMeshRounded_Flipped("rounded_and_flipped", r, y₀, Δy, h)
 
 dh2 = DofHandler(grid2)
 add!(dh2, :u, 2)
@@ -64,10 +67,10 @@ for (i, nod) ∈ enumerate(contact_nods)
 end
 global freec_dofs = setdiff(1:dh.ndofs.x, contact_dofs)
 # Define top nodeset for displacement controlled loading
-addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 2.0)
+addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ y₀ + Δy)
 global Γ_top = getnodeset(dh.grid, "Γ_top")
 
-addnodeset!(dh.grid, "n_top", x -> x[2] ≈ 2.0)
+addnodeset!(dh.grid, "n_top", x -> x[2] ≈ y₀ + Δy)
 global n_top = getnodeset(dh.grid, "n_top")
 
 # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot

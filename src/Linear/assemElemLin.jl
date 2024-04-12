@@ -6,6 +6,7 @@ using Tensors
 
 ngp = 3
 
+#ξ      = [2.0/3.0 1.0/6.0 1.0/6.0; 1.0/6.0 2.0/3.0 1.0/6.0; 1.0/6.0 1.0/6.0 2.0/3.0 ] # summa gps = 1?
 ξ      = [2.0/3.0 1.0/6.0 1.0/6.0; 1.0/6.0 2.0/3.0 1.0/6.0; 1.0/6.0 1.0/6.0 2.0/3.0 ]
 w      = [1.0/3.0 1.0/3.0 1.0/3.0]
 index  = [1 2 3; 4 5 6; 7 8 9]
@@ -59,6 +60,9 @@ function assemGP(coord,ed,gp,mp,t)
     Jᵀ[:,2:3]               = transpose(dNᵣ[:,index[gp,:]]) * coord # ??
     J⁻                      = inv(Jᵀ)
     detJ                    = det(Jᵀ)
+    if detJ < 0
+        println("Negative jacobian!!!")
+    end
     dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
 
     # Gradient matrices " ∇N "
@@ -94,8 +98,9 @@ function assemGP(coord,ed,gp,mp,t)
     # Vec(F)
     ef = [eff[1,1] eff[1,2] eff[2,1] eff[2,2]]
 
-    # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²
+    # Stress and : S = 0.5 ∂W / ∂C
     es = neohooke1(ef,mp)
+    # Material tangent D = 0.25 ∂²W / ∂C²
     D  = dneohooke1(ef,mp)
 
     # Reformulate as matrix
@@ -105,7 +110,7 @@ function assemGP(coord,ed,gp,mp,t)
     R[1:2,1:2]    = Stress
     R[3:4,3:4]    = Stress
 
-    # Internal force vector ∫ δE : S dΩ or ∫ ∇ₓδuᵢ : P dΩ
+    # Internal force vector ∫ δE : S dΩ or ∫ ∇ₓδu : P dΩ
     fₑ            = transpose(B₀)*S*detJ*t*w[gp]/2
     # ∫ δEᵀ D ΔE + ∇δuᵀ S ∇Δu dΩ
     kₑ            = ( transpose(B₀)*D*B₀ + transpose(H₀)*R*H₀ )*detJ*t*w[gp]/2

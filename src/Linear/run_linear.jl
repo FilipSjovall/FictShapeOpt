@@ -202,6 +202,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
                 #a += β * Δa
                 a += Δa
                 assemGlobal!(K, Fᵢₙₜ, dh, mp, t, a, coord, enod, ε)
+                @show size(K) size(Fᵢₙₜ)
                 solveq!(Δa,  K, -Fᵢₙₜ, bcdofs, bcvals)
                 bcvals = 0 * bcvals
                 res = Fᵢₙₜ - Fₑₓₜ
@@ -1333,8 +1334,12 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
     # ------------------- #
     bcdof_bot, bcval_bot = setBCY(0.0, dh, n_bot)
     bcdof_top, bcval_top = setBCY(Δ / nloadsteps, dh, n_top)
+    #bcdof_c1, bcval_c1   = setBCY(0.0, dh, nₛ)
+    #bcdof_c2, bcval_c2   = setBCY(0.0, dh, nₘ)
     bcdof_right, bcval_right = setBCX(0.0, dh, n_sym)
 
+    #bcdofs = [bcdof_bot; bcdof_top; bcdof_right;bcdof_c1; bcdof_c2]
+    #bcvals = [bcval_bot; bcval_top; bcval_right;bcval_c1; bcval_c2]
     bcdofs = [bcdof_bot; bcdof_top; bcdof_right]
     bcvals = [bcval_bot; bcval_top; bcval_right]
     ϵᵢⱼₖ  = sortperm(bcdofs)
@@ -1381,48 +1386,39 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
             end
             a += Δa
             assemGlobal!(K, Fᵢₙₜ, dh, t, a, coord, enod, ε, mp₁, mp₂)
-            #@show Fᵢₙₜ[contact_dofs]
             #assemGlobal!(K, Fᵢₙₜ, dh, t, a, coord, enod, ε, mp₁, mp₂, τ)
             solveq!(Δa, K, -Fᵢₙₜ, bcdofs, bcvals)
             bcvals = 0 * bcvals
-            res_old = res
             res = Fᵢₙₜ - Fₑₓₜ
             res[bcdofs] = 0 * res[bcdofs]
             residual = norm(res, 2)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_top[1]]
 
-            # Debugging shit
-            maximum(abs.(res[contact_dofs]-res_old[contact_dofs]))
-            maximum(abs.(res-res_old))
-            max_id = findall(x-> x == maximum(abs.(res-res_old)),abs.(res-res_old))
-            indeces = findall(x -> x > 1e-2, abs.(res))
-            @show maximum(Fᵢₙₜ)
-            @show a[indeces]
-            @show res[indeces]
-            #@show [res[contact_dofs] res_old[contact_dofs]]
-            open("file.txt","a") do io
-                println(io,"res: ",res[contact_dofs]-res_old[contact_dofs],"\n")
-            end
         #
-         if loadstep < 40 && iter < 20
-             σx, σy = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
-             #vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
-             vtk_grid("results/🍌-contact" * string(iter), dh) do vtkfile
-                 vtk_point_data(vtkfile, dh, a + Δa )
-                 vtk_point_data(vtkfile, σx, "σx")
-                 vtk_point_data(vtkfile, σy, "σy")
-             end
-         end
+        # if loadstep < 40 && iter < 20
+        #     σx, σy = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
+        #     #vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
+        #     vtk_grid("results/🍌-contact" * string(iter), dh) do vtkfile
+        #         vtk_point_data(vtkfile, dh, a + Δa )
+        #         vtk_point_data(vtkfile, σx, "σx")
+        #         vtk_point_data(vtkfile, σy, "σy")
+        #     end
+        # end
+         #X_c,tract = plotTraction()
+         #if length(tract) > 0
+         #    p5 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft, ylims = (0, 1.2*maximum(tract)) )
+         #    display(p5)
+         #end
         end
-        #if loadstep < 40 && iter < 20
-        #    σx, σy = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
-        #    vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
-        #        vtk_point_data(vtkfile, dh, a )
-        #        vtk_point_data(vtkfile, σx, "σx")
-        #        vtk_point_data(vtkfile, σy, "σy")
-        #    end
-        #end
-        Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
+        if loadstep < 40 && iter < 20
+            σx, σy = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
+            vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
+                vtk_point_data(vtkfile, dh, a )
+                vtk_point_data(vtkfile, σx, "σx")
+                vtk_point_data(vtkfile, σy, "σy")
+            end
+        end
+        #Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
     end
     # X_c,tract = plotTraction()
     # if length(tract) > 0
