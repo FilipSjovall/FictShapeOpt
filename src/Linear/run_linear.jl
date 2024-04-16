@@ -780,7 +780,7 @@ function fictitious_solver_with_contact_half(d, dh0, coord₀, nloadsteps)
         # # # # # # # # # #
         while residual > TOL || iter < 2
             iter += 1
-            if iter % 10 == 0 || norm(res) > 1e2 && Δλ > ((1.0 / n₀) * 1/16)
+            if iter % 10 == 0 || norm(res) > 1e2 && Δλ > ((1.0 / n₀) * 1/4)
                 Ψ = Ψ_old
                 #if Δλ > 0.1 * 1/8
                 global λ -= Δλ #* loadstep
@@ -900,13 +900,13 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
             res = Fᵢₙₜ - Fₑₓₜ
             res[bcdofs] = 0 * res[bcdofs]
             residual = norm(res, 2)
-            @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdofs[2]]
-            σx, σy = StressExtract(dh, a, mp)
-            vtk_grid("contact" * string(iter), dh) do vtkfile
-                vtk_point_data(vtkfile, dh, a) # displacement field
-                vtk_point_data(vtkfile, σx, "σx")
-                vtk_point_data(vtkfile, σy, "σy")
-            end
+            @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdofs[7]]
+            #σx, σy = StressExtract(dh, a, mp)
+            #vtk_grid("contact" * string(iter), dh) do vtkfile
+            #    vtk_point_data(vtkfile, dh, a + Δa) # displacement field
+            #    vtk_point_data(vtkfile, σx, "σx")
+            #    vtk_point_data(vtkfile, σy, "σy")
+            #end
         end
         if loadstep == 10
             # Plot traction , can be moved to function...

@@ -22,12 +22,12 @@ fv      = FaceVectorValues(qr_face, ip)
 # Create two grids
 case    = "box"
 r₀      = 0.5
-h       = 0.05
-Δx      = 0.5
+h       = 0.1
+Δx      = r₀ # * π/2  # 0.5
 y₀      = 0.5
 Δy      = 0.501 #1.001
-grid1   = createHalfCircleMesh("circle", 0.0, 1.5, r₀, h)
-grid2   = createBoxMeshRev("box_1",  0.0, y₀, Δx, Δy, h)
+grid1   = createHalfCircleMesh("circle", 0.0, 1.5, r₀, h*0.5)
+grid2   = createBoxMeshRev("box_1",  0.0, y₀, Δx, Δy, h*0.6)
 
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
@@ -94,23 +94,23 @@ global nₘ = getnodeset(dh.grid, "nₘ")
 # Extract all nbr nodes and dofs
 global contact_dofs = getContactDofs(nₛ, nₘ)
 global contact_nods = getContactNods(nₛ, nₘ)
-global order = Dict{Int64,Int64}()
+global order        = Dict{Int64,Int64}()
 for (i, nod) ∈ enumerate(contact_nods)
     push!(order, nod => i)
 end
 global freec_dofs    = setdiff(1:dh.ndofs.x,contact_dofs)
 
 # Define top nodeset for displacement controlled loading
-addnodeset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.5)
-global Γ_top = getnodeset(dh.grid, "Γ_top")
+addfaceset!(dh.grid, "Γ_top", x -> x[2] ≈ 1.5)
+global Γ_top = getfaceset(dh.grid, "Γ_top")
 
 addnodeset!(dh.grid, "n_top", x -> x[2] ≈ 1.5)
 global n_top = getnodeset(dh.grid, "n_top")
 
 if case == "box"
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
-    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ y₀)
-    global Γ_bot = getnodeset(dh.grid, "Γ_bot")
+    addfaceset!(dh.grid, "Γ_bot", x -> x[2] ≈ y₀)
+    global Γ_bot = getfaceset(dh.grid, "Γ_bot")
 
     addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ y₀)
     global n_bot = getnodeset(dh.grid, "n_bot")
@@ -134,14 +134,16 @@ global coord = getCoordfromX(X)
 global coord₀ = deepcopy(coord)
 
 global Γ_robin = union(
+    getfaceset(dh.grid, "Γ_top"), # test: bc-ränder
+    getfaceset(dh.grid, "Γ_bot"), # test: bc-ränder
     getfaceset(dh.grid, "Γ_slave"),
-    ###getfaceset(dh.grid, "Γ_left"),
     getfaceset(dh.grid, "Γ_right"),
     getfaceset(dh.grid, "Γ_master")
 )
 global n_robin = union(
+    getnodeset(dh.grid, "n_top"), # test: bc-ränder
+    getnodeset(dh.grid, "n_bot"), # test: bc-ränder
     getnodeset(dh.grid, "nₛ"),
-    ###getnodeset(dh.grid, "nₗ"),
     getnodeset(dh.grid, "nᵣ"),
     getnodeset(dh.grid, "nₘ")
 )
@@ -149,7 +151,7 @@ global n_robin = union(
 
 global free_d = []
 for jnod in n_robin
-    if in(jnod,n_left)
+    if in(jnod,n_bot) || in(jnod,n_top)
         append!(free_d, register[jnod, 1] )
     else
         append!(free_d, register[jnod, 1] )
@@ -176,15 +178,15 @@ function Optimize(dh)
         global Fᵢₙₜ= zeros(dh.ndofs.x)
         global Fₑₓₜ= zeros(dh.ndofs.x)
         # boundary conditions for contact analysis
-        bcdof_top_o, _    = setBCY(-0.01, dh, Γ_top)
-        bcdof_bot_o, _    = setBCY(0.0, dh, Γ_bot)
+        bcdof_top_o, _    = setBCY(0.0, dh, n_top)
+        bcdof_bot_o, _    = setBCY(0.0, dh, n_bot)
         bcdof_left_o, _   = setBCX(0.0, dh, n_left)
         bcdof_o           = [bcdof_top_o; bcdof_bot_o; bcdof_left_o]
         ϵᵢⱼₖ             = sortperm(bcdof_o)
         global bcdof_o    = bcdof_o[ϵᵢⱼₖ]
         global bcval_o    = bcdof_o .* 0.0
-        bcdof_top_o2, _   = setBCY(0.0, dh, Γ_top)
-        bcdof_bot_o2, _   = setBCY(0.0, dh, Γ_bot)
+        bcdof_top_o2, _   = setBCY(0.0, dh, n_top)
+        bcdof_bot_o2, _   = setBCY(0.0, dh, n_bot)
         bcdof_left_o2, _  = setBCX(0.0, dh, n_left)
         bcdof_o2          = [bcdof_top_o2; bcdof_bot_o2; bcdof_left_o2]
         ϵᵢⱼₖ             = sortperm(bcdof_o)
@@ -223,21 +225,16 @@ function Optimize(dh)
         global kktnorm       = kkttol + 10;
         global outit         = 0;
         global change        = 1;
-        global xmax         .=  0.2
-        global xmin         .= -0.2
-        global low           = -ones(n_mma);
-        global upp           =  ones(n_mma);
-        #include("src//Linear//initOptLin.jl")
-        #
-        #
-        #
-
+        global xmax         .= 0.2 #* π/2
+        global xmin         .=-0.2 #* π/2
+        global low           =-ones(n_mma);
+        global upp           = ones(n_mma);
         # Flytta allt nedan till init_opt?
         global dh0     = deepcopy(dh)
         global λψ      = similar(a)
         global λᵤ      = similar(a)
         global λᵥₒₗ   = similar(a)
-        Vₘₐₓ          = 0.75 #0.9 #1.1 * volume(dh, coord, enod)
+        Vₘₐₓ          = 0.5 #0.5 #0.9 #1.1 * volume(dh, coord, enod)
         tol            = 1e-6
         OptIter        = 0
         global true_iteration = 0
@@ -267,7 +264,7 @@ function Optimize(dh)
             xold2      = d[:]
             low        = xmin
             upp        = xmax
-            OptIter           = 1
+            OptIter    = 1
         end
 
             # # # # #
@@ -277,7 +274,7 @@ function Optimize(dh)
             # 1e5 för h=0.015
             # 5e3 för h=0.03
             # 1e4 standard
-            global μ = 0 #1e4
+            global μ = 1e3/2 #1e4
 
             # # # # # # # # # # # # # #
             # Fictitious equillibrium #
@@ -296,11 +293,8 @@ function Optimize(dh)
         # test  #
         # # # # #
         global nloadsteps = 10
-        global ε =  1e2 # 2?
+        global ε =  1e4 # 2?
 
-        if OptIter == 2
-            break
-        end
         # # # # # # # # #
         # Equillibrium  #
         # # # # # # # # #
@@ -376,14 +370,11 @@ function Optimize(dh)
 
         # Print results
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
-        #if mod(OptIter,1) == 0
-            #coord = getCoord(getX(dh0), dh0)
-            postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
-            postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
-            postprocess_opt(∂g_∂d,dh,"results/🛸" * string(true_iteration))
-        #end
+        postprocess_opt(Ψ, dh0, "results/Current design" * string(true_iteration))
+        postprocess_opt(d, dh0, "results/design_variables" * string(true_iteration))
+        postprocess_opt(∂g_∂d,dh,"results/🛸" * string(true_iteration))
         println("Objective: ", g_hist[1:true_iteration], " Constraint: ", v_hist[1:true_iteration] , p_hist[1:true_iteration])
-        p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*100,g_hist[1:true_iteration]],label = ["Volume Constraint" "Objective"], marker = :circle)
+        p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*10,g_hist[1:true_iteration]],label = ["Volume Constraint" "Objective"], marker = :cross)
         display(p2)
         GC.gc()
         #Profile.take_heap_snapshot( "snapshot.heapsnapshot" * string(true_iteration) )
@@ -406,22 +397,21 @@ g_hist, v_hist, OptIter, historia = Optimize(dh)
 #p2 = plot(1:true_iteration,  abs.(g_hist[1:true_iteration]), ylabel="Total contact force ", xlabel="Iteration")
 
 
-if loadstep == 10
-    # Plot traction , can be moved to function...
-    traction = ExtractContactTraction(a, 1e5, coord)
-    #traction = τ_c
-    X_c = []
-    tract = []
-    for (key, val) ∈ traction
-        append!(X_c, coord[key, 1])
-        append!(tract, val)
-    end
-    ϵᵢⱼₖ = sortperm(X_c)
-    tract = tract[ϵᵢⱼₖ]
-    X_c = X_c[ϵᵢⱼₖ]
-    p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
-    display(p)
+
+# Plot traction , can be moved to function...
+traction = ExtractContactTraction(a, 1e5, coord)
+#traction = τ_c
+X_c = []
+tract = []
+for (key, val) ∈ traction
+    append!(X_c, coord[key, 1])
+    append!(tract, val)
 end
+ϵᵢⱼₖ = sortperm(X_c)
+tract = tract[ϵᵢⱼₖ]
+X_c = X_c[ϵᵢⱼₖ]
+p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
+display(p)
 
 
 vtk_grid("gap📄" , dh) do vtkfile

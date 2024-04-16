@@ -456,16 +456,20 @@ function createHalfCircleMesh(filename, x₀, y₀, r, h)
     l3 = gmsh.model.geo.add_line(p1, p2)
 
     # Create the closed curve loop and the surface
-    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3])
+    #loop = gmsh.model.geo.add_curve_loop([l1, l2, l3])
+    loop = gmsh.model.geo.add_curve_loop([-l3, -l2, -l1])
     surf = gmsh.model.geo.add_plane_surface([loop])
 
     # Synchronize the model
     gmsh.model.geo.synchronize()
 
     # Create the physical domains
-    gmsh.model.add_physical_group(1, [l1], -1, "Γ")
-    gmsh.model.add_physical_group(1, [l2], -1, "Γ2")
-    gmsh.model.add_physical_group(1, [l3], -1, "Γ3")
+    #gmsh.model.add_physical_group(1, [l1], -1, "Γ")
+    #gmsh.model.add_physical_group(1, [l2], -1, "Γ2")
+    #gmsh.model.add_physical_group(1, [l3], -1, "Γ3")
+    gmsh.model.add_physical_group(1, [-l1], -1, "Γ")
+    gmsh.model.add_physical_group(1, [-l2], -1, "Γ2")
+    gmsh.model.add_physical_group(1, [-l3], -1, "Γ3")
     gmsh.model.add_physical_group(2, [surf])
 
     gmsh.model.mesh.generate(2)
