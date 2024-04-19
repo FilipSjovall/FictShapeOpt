@@ -804,12 +804,15 @@ function fictitious_solver_with_contact_half(d, dh0, coord₀, nloadsteps)
             res[bcdof_o2] = res[bcdof_o2] .* 0
             residual = norm(res, 2)
             Ψ[bcdof_o2] = bcval_o2
-            if loadstep < 40
-                postprocess_opt(Ψ, dh0, "results/fictitious" * string(loadstep))
-                #postprocess_opt(Ψ, dh0, "results/fictitious" * string(iter))
-            end
+            #if loadstep < 40
+            #    #postprocess_opt(Ψ, dh0, "results/fictitious" * string(loadstep))
+            #    postprocess_opt(Ψ + ΔΨ, dh0, "results/fictitious" * string(iter))
+            #end
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
         end
+        #if loadstep < 40
+        #        postprocess_opt(Ψ, dh0, "results/fictitious" * string(loadstep))
+        #end
     end
     return Ψ, dh0, Kψ, FΨ, λ
 end
@@ -883,12 +886,12 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
                     global β = β * 0.5
                     Δ_remaining = (Δ * nloadsteps - β * Δ - loadstep * Δ) / nloadsteps
                     remaining_steps = nloadsteps - loadstep
-                    nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
+                    nloadsteps = loadstep + 2remaining_steps + 1/β #(1 / β - 1)
                     bcvals = bcvals ./ 2 #
                     bcval₀ = bcvals
                 end
                 fill!(Δa, 0.0)
-                println("Penalty paremeter and updated: $ε, and step length $β ")
+                println("Updated step length $β ➡ number of total loadsteps: $nloadsteps")
             end
 
             #a += β * Δa
@@ -901,14 +904,18 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
             res[bcdofs] = 0 * res[bcdofs]
             residual = norm(res, 2)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdofs[7]]
-            #σx, σy = StressExtract(dh, a, mp)
-            #vtk_grid("contact" * string(iter), dh) do vtkfile
-            #    vtk_point_data(vtkfile, dh, a + Δa) # displacement field
-            #    vtk_point_data(vtkfile, σx, "σx")
-            #    vtk_point_data(vtkfile, σy, "σy")
-            #end
+            σx, σy,τ,σᵛᵐ = StressExtract(dh, a + Δa, mp)
+            vtk_grid("results/contact" * string(iter), dh) do vtkfile
+                vtk_point_data(vtkfile, dh, a + Δa) # displacement field
+                vtk_point_data(vtkfile, σx, "σx")
+                vtk_point_data(vtkfile, σy, "σy")
+                vtk_point_data(vtkfile, τ, "τ")
+                vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
+                vtk_point_data(vtkfile, res, "res")
+            end
+
         end
-        if loadstep == 10
+        if loadstep == nloadsteps
             # Plot traction , can be moved to function...
             τ_c = ExtractContactTraction(a, ε, coord)
             traction = ExtractContactTraction(a, ε, coord)
@@ -924,13 +931,15 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
             p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
             display(p)
         end
-        σx, σy = StressExtract(dh, a, mp)
-        vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
-            #vtk_grid("contact" * string(iter), dh) do vtkfile
-            vtk_point_data(vtkfile, dh, a) # displacement field
-            vtk_point_data(vtkfile, σx, "σx")
-            vtk_point_data(vtkfile, σy, "σy")
-        end
+        #σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp)
+        #vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
+        #    #vtk_grid("contact" * string(iter), dh) do vtkfile
+        #    vtk_point_data(vtkfile, dh, a) # displacement field
+        #    vtk_point_data(vtkfile, σx, "σx")
+        #    vtk_point_data(vtkfile, σy, "σy")
+        #    vtk_point_data(vtkfile, τ, "τ")
+        #    vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
+        #end
         fill!(Fₑₓₜ, 0.0)
         Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
     end

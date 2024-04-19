@@ -131,12 +131,12 @@ function gap_scaling(X::AbstractVector{T}) where {T}
 
     #  # Define scaling
     κ = zeros(eltype(X_float), length(slave_nods))
-
-    for (i, a) in enumerate(slave_nods) #(enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1))))) #
-        for (j, d) in enumerate(slave_nods) #(enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1))))) #
+    for (i, a) in (enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1)))))     #
+        for (j, d) in (enumerate(intersect(slave_nods, 1:min(size(D, 2), size(M, 1))))) #
             κ[i] += D[a, d]
         end
     end
+    #κ .= 1
     return κ
 end
 
@@ -235,10 +235,9 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
 
     # Scaling
     κ = gap_scaling(X)
-
+    #κ .= 0.005
     # convert X to Real for compatibility with ForwardDiff
-    #X_float = real.(X)  + real.(a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
-    X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, detta måste fixas!!!!!!!!!
+    X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, stämmer väl nu?
 
     # Extract the coordinate vector (nbr_nodes x 2 )
     coordu = getCoordfromX(X_float)
@@ -252,7 +251,6 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
     # Compute the projected gap function
     g = gap_function(X_float)
 
-    #println("norm(scaling): ",norm(κ))
     # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
     slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
 
@@ -272,7 +270,6 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
     # ---------- #
 
     # Loop over master side dofs
-    #for C in master_dofs
     for (i, A) in enumerate(slave_dofs)
         λ_A = penalty(g[i, :] ⋅ normals[A] , ε)
         if λ_A != 0
@@ -285,9 +282,8 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
         #push!(τ_c, A => g[i,:] ⋅ [0.0 1.0] / κ[i])
     end
     # ---------------------------------- #
-    # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods  #
+    # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods #
     # ---------------------------------- #
-    # @show normals
     return τ_c
 end
 
@@ -306,7 +302,7 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
 
     # Scaling
     κ = gap_scaling(X)
-    #@show κ
+    #κ .= 1
 
     # convert X to Real for compatibility with ForwardDiff
     X_float = real.(X + a_ordered)
@@ -328,9 +324,9 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
 
     # Better to loop with the LLVM compiler
     # We loop over a reduced set when dimensions don't agree
-    for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1)))))
+    for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1)))))
         slave = [0; 0]
-        for (jj,B) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1))))) # slave_dofs
+        for (jj,B) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1))))) # slave_dofs
             slave += D[A, B] * coords[B]
         end
         master = [0; 0]
@@ -345,7 +341,7 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
     # ----------- #
     # ∫ᵧ λ 𝛅g dγ  #
     # ----------- #
-    for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1)))))
+    for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1)))))
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
         if λ_A != 0.0
             for (j, B) in (enumerate(intersect(slave_dofs, 1:size(D, 2))))
@@ -402,9 +398,9 @@ function contact_residual_reduced_filter(X::AbstractVector{T1}, a_c::AbstractVec
 
     # Loops are fast with the LLVM compiler
     #for (j, A) in (enumerate(slave_dofs))
-    for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2), size(M, 1)))))
+    for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 2)))))
         slave = [0; 0]
-        for B in slave_dofs
+        for B in intersect(slave_dofs, 1:min(size(D, 2)))
             slave += D[A, B] * coords[B]
         end
         master = [0; 0]

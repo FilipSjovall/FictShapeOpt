@@ -60,9 +60,9 @@ function assemGP(coord,ed,gp,mp,t)
     Jᵀ[:,2:3]               = transpose(dNᵣ[:,index[gp,:]]) * coord # ??
     J⁻                      = inv(Jᵀ)
     detJ                    = det(Jᵀ)
-    #if detJ < 0
-    #    println("Negative jacobian!!!")
-    #end
+    if detJ < 0
+        println("Negative jacobian!!!")
+    end
     dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
 
     # Gradient matrices " ∇N "
@@ -420,6 +420,7 @@ function assemS(coord, ed, mp, t, gp, strain_type)
     ef = [eff[1, 1] eff[1, 2] eff[2, 1] eff[2, 2]]
     # Stress and material tangent: S = 0.5 ∂W / ∂C, D = 0.25 ∂²W / ∂C²
     es      = neohooke1(ef, mp)
+    S       = [es[1] es[4] 0.0;es[4] es[2] 0.0;0.0 0.0 es[3]]
     F       = zeros(3, 3)
     F[1, :] = [eff[1] eff[2] 0.0]
     F[2, :] = [eff[3] eff[4] 0.0]
@@ -431,5 +432,7 @@ function assemS(coord, ed, mp, t, gp, strain_type)
     else
         strain = inv(F)*(F' * F)*inv(F)' * det(F)
     end
-    return strain
+    J = det(F)
+    stress = inv(J)*F*S*F'
+    return stress # strain
 end

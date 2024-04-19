@@ -16,7 +16,6 @@ function solveq!(x,Kp,f,bcdofs_in,bcval_in)
     #    KLUFactorization())
     #x[fdofs_in] = solve(prob, LUFactorization()).u
 
-
     #x[fdofs_in] = solve(prob, UMFPACKFactorization()).u
     x[fdofs_in] = solve(prob, UMFPACKFactorization()).u
 

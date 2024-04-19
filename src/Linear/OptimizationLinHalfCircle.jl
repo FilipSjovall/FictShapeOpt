@@ -1,9 +1,10 @@
-using Mortar2D, ForwardDiff
+using ForwardDiff #, Mortar2D
 using Ferrite, FerriteGmsh#, FerriteMeshParser
 using LinearSolve, SparseArrays # LinearSolvePardiso
 using IterativeSolvers, IncompleteLU    # AlgebraicMultigrid
 using Plots, Printf, JLD2, Statistics
 #using LazySets: convex_hull
+include("Contact//Mortar2D//Mortar2D.jl")
 include("..//mesh_reader.jl")
 include("Contact//contact_help.jl")
 include("assemLin.jl")
@@ -20,15 +21,19 @@ qr_face = QuadratureRule{1,RefTetrahedron}(1)
 cv      = CellVectorValues(qr, ip)
 fv      = FaceVectorValues(qr_face, ip)
 # Create two grids
-case    = "box"
 r₀      = 0.5
-h       = 0.1
+h       = 0.075 # 0.075 #0.15 #0.1
 Δx      = r₀ # * π/2  # 0.5
+x₀      = 0.0
 y₀      = 0.5
 Δy      = 0.501 #1.001
-grid1   = createHalfCircleMesh("circle", 0.0, 1.5, r₀, h*0.5)
-grid2   = createBoxMeshRev("box_1",  0.0, y₀, Δx, Δy, h*0.6)
-
+grid1   = createHalfCircleMesh("circle", 0.0, 1.5, r₀, 1.5h)
+grid2   = createBoxMeshRev("box_1",  0.0, y₀, Δx, Δy, 0.75h)
+case    = "box"
+        # - - - - - Eller?
+        #y₀      = 0.501
+        #grid2   = createHalfCircleMeshFlipped("circlef", x₀, y₀, r₀, h*0.4)
+        #case    = "circle"
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
 grid1    = nothing
@@ -48,10 +53,10 @@ if case == "box"
     # ------------------ #
     # Create master sets #
     # ------------------ #
-    addfaceset!(dh.grid, "Γ_slave", x -> x[2] ≈ 1.001)
+    addfaceset!(dh.grid, "Γ_slave", x -> x[2] ≈ y₀ + Δy)
     global Γs = getfaceset(dh.grid, "Γ_slave")
 
-    addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ 1.001)
+    addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ y₀ + Δy)
     global nₛ = getnodeset(dh.grid, "nₛ")
 
     # ------------------ #
@@ -73,13 +78,21 @@ if case == "box"
 
 else
     # ------------------ #
-    # Create master sets #
+    # Create slave sets  #
     # ------------------ #
-    addfaceset!(dh.grid, "Γ_slave", x -> ((x[1] - r₀)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2 )
+    addfaceset!(dh.grid, "Γ_slave", x -> ((x[1] - x₀)^2 + (x[2] - y₀ )^2) ≈ r₀^2 )
     global Γs = getfaceset(dh.grid, "Γ_slave")
 
-    addnodeset!(dh.grid, "nₛ", x -> ((x[1] - r₀)^2 + (x[2] - 0.5001 )^2) ≈ r₀^2 )
+    addnodeset!(dh.grid, "nₛ", x -> ((x[1] - x₀)^2 + (x[2] - y₀ )^2) ≈ r₀^2 )
     global nₛ = getnodeset(dh.grid, "nₛ")
+    # ------------------ #
+    # Create left | sets #
+    # ------------------ #
+    addfaceset!(dh.grid, "Γ_left", x ->  x[1] ≈ 0.0)
+    global Γ_left = getfaceset(dh.grid, "Γ_left")
+
+    addnodeset!(dh.grid, "nₗ", x ->  x[1] ≈ 0.0)
+    global n_left = getnodeset(dh.grid, "nₗ")
 end
 
 # ----------------- #
@@ -116,10 +129,10 @@ if case == "box"
     global n_bot = getnodeset(dh.grid, "n_bot")
 else
     # Define bottom nodeset subject to  u(X) = 0 ∀ X ∈ Γ_bot
-    addnodeset!(dh.grid, "Γ_bot", x -> x[2] ≈ 0.5001)
-    global Γ_bot = getnodeset(dh.grid, "Γ_bot")
+    addfaceset!(dh.grid, "Γ_bot", x -> x[2] ≈ y₀)
+    global Γ_bot = getfaceset(dh.grid, "Γ_bot")
 
-    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ 0.5001)
+    addnodeset!(dh.grid, "n_bot", x -> x[2] ≈ y₀)
     global n_bot = getnodeset(dh.grid, "n_bot")
 end
 
@@ -144,7 +157,7 @@ global n_robin = union(
     getnodeset(dh.grid, "n_top"), # test: bc-ränder
     getnodeset(dh.grid, "n_bot"), # test: bc-ränder
     getnodeset(dh.grid, "nₛ"),
-    getnodeset(dh.grid, "nᵣ"),
+    getnodeset(dh.grid, "nᵣ"), # Intressanta resultat när endast n_r exkluderades
     getnodeset(dh.grid, "nₘ")
 )
 
@@ -225,8 +238,8 @@ function Optimize(dh)
         global kktnorm       = kkttol + 10;
         global outit         = 0;
         global change        = 1;
-        global xmax         .= 0.2 #* π/2
-        global xmin         .=-0.2 #* π/2
+        global xmax         .= 0.2 # 0.2 #* π/2
+        global xmin         .=-0.2 # 0.2 #* π/2
         global low           =-ones(n_mma);
         global upp           = ones(n_mma);
         # Flytta allt nedan till init_opt?
@@ -234,7 +247,7 @@ function Optimize(dh)
         global λψ      = similar(a)
         global λᵤ      = similar(a)
         global λᵥₒₗ   = similar(a)
-        Vₘₐₓ          = 0.5 #0.5 #0.9 #1.1 * volume(dh, coord, enod)
+        Vₘₐₓ          = 0.6 #0.75 # volume(dh, coord, enod) # 4(r₀ + Δy) * Δx # 0.5 #0.9 #1.1 * volume(dh, coord, enod)
         tol            = 1e-6
         OptIter        = 0
         global true_iteration = 0
@@ -257,11 +270,15 @@ function Optimize(dh)
         OptIter += 1
         true_iteration +=1
 
-        if OptIter % 10 == 0 ## && OptIter < 30
+        if OptIter % 10 == 0 && true_iteration < 250
             dh0 = deepcopy(dh)
             d          = zeros(dh.ndofs.x)
             xold1      = d[:]
             xold2      = d[:]
+            #if true_iteration > 50
+            #    xmin .= -0.1
+            #    xmax .=  0.1
+            #end
             low        = xmin
             upp        = xmax
             OptIter    = 1
@@ -274,7 +291,7 @@ function Optimize(dh)
             # 1e5 för h=0.015
             # 5e3 för h=0.03
             # 1e4 standard
-            global μ = 1e3/2 #1e4
+            global μ = 5e2 # 1e2 # 1e3/2 #1e4
 
             # # # # # # # # # # # # # #
             # Fictitious equillibrium #
@@ -292,8 +309,8 @@ function Optimize(dh)
         # # # # #
         # test  #
         # # # # #
-        global nloadsteps = 10
-        global ε =  1e4 # 2?
+        global nloadsteps = 5
+        global ε = 1e4 # 1e5 #1e4 # 2?
 
         # # # # # # # # #
         # Equillibrium  #
@@ -331,9 +348,9 @@ function Optimize(dh)
         # Volume constraint #
         # # # # # # # # # # #
         g₁    = volume(dh,coord,enod) / Vₘₐₓ - 1.0
-        ∂Ω_∂x = volume_sens(dh,coord)
+        ∂Ω_∂x = volume_sens(dh,coord)./ Vₘₐₓ
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdof_o2, bcval_o2.*0);
-        ∂Ω∂d  = Real.( -transpose(λᵥₒₗ)*dr_dd ./ Vₘₐₓ) ;
+        ∂Ω∂d  = Real.( -transpose(λᵥₒₗ)*dr_dd ) ;
         #∂Ω∂d[locked_d] .= 0.0
 
         # # # # # # # # # # # #
@@ -354,7 +371,17 @@ function Optimize(dh)
         # # # # #
         # M M A #
         # # # # #
+        d_old   = d
+        low_old = low
+        upp_old = upp
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
+        α      = 1.0  # 0.4 # 0.1 #
+        if true_iteration > 150
+            α = 0.5 # kanske testa 0.5 / 0.6 / 0.75 ... kan också testa annat villkor för dämpning
+        end
+        d_new  = d_old   + α .* (d_new - d_old)
+        low    = low_old + α .* (low   - low_old)
+        upp    = upp_old + α .* (upp   - upp_old)
         xold2  = xold1
         xold1  = d
         d      = d_new
@@ -377,25 +404,15 @@ function Optimize(dh)
         p2 = plot(1:true_iteration,[v_hist[1:true_iteration].*10,g_hist[1:true_iteration]],label = ["Volume Constraint" "Objective"], marker = :cross)
         display(p2)
         GC.gc()
+        @save "färdig_cyl.jld2" a dh dh0 OptIter v_hist g_hist d ε μ true_iteration
         #Profile.take_heap_snapshot( "snapshot.heapsnapshot" * string(true_iteration) )
     end
     return g_hist, v_hist, OptIter, historia
 end
-
 g_hist, v_hist, OptIter, historia = Optimize(dh)
+@save "färdig_cyl.jld2" a dh dh0 OptIter v_hist g_hist d ε μ true_iteration
 
-
-#using PProf
-#using Profile
-# Profile.Allocs.clear()
-# @time Profile.Allocs.@profile sample_rate=0.01 Optimize(dh)
-# PProf.Allocs.pprof(from_c = false)
-
-
-#@load "results/lunarc/OptimizationVariablesy.jld2"
-#true_iteration = 299
-#p2 = plot(1:true_iteration,  abs.(g_hist[1:true_iteration]), ylabel="Total contact force ", xlabel="Iteration")
-
+# Byta från att ladda Mortar2D från packages till lokal mapp
 
 
 # Plot traction , can be moved to function...

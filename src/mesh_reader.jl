@@ -346,12 +346,12 @@ function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
 
 
     # Add the points
-    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
-    p2 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, h)
-    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h)
-    p4 = gmsh.model.geo.add_point(x₀, y₀ + Δy, 0.0, h)
-    p5 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀, 0.0, h)
-    p6 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀ + Δy, 0.0, h)
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, 2h)
+    p2 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, 2h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h/2)
+    p4 = gmsh.model.geo.add_point(x₀, y₀ + Δy, 0.0, h/4)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀, 0.0, 2h)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀ + Δy, 0.0, h/2)
 
     # Add the lines
     l1 = gmsh.model.geo.add_line(p1, p4)
@@ -445,9 +445,9 @@ function createHalfCircleMesh(filename, x₀, y₀, r, h)
     gmsh.option.set_number("General.Verbosity", 2)
 
 
-    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
-    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h)
-    p3 = gmsh.model.geo.add_point(x₀, y₀ - r, 0.0, h)
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h/2)
+    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h/4)
+    p3 = gmsh.model.geo.add_point(x₀, y₀ - r, 0.0, h/2)
 
     # Add lines
     #    # Start - Center - End
@@ -470,6 +470,52 @@ function createHalfCircleMesh(filename, x₀, y₀, r, h)
     gmsh.model.add_physical_group(1, [-l1], -1, "Γ")
     gmsh.model.add_physical_group(1, [-l2], -1, "Γ2")
     gmsh.model.add_physical_group(1, [-l3], -1, "Γ3")
+    gmsh.model.add_physical_group(2, [surf])
+
+    gmsh.model.mesh.generate(2)
+
+    # Save the mesh, and read back in as a Ferrite Grid
+    grid = mktempdir() do dir
+        path = joinpath(dir, filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+
+    # Finalize the Gmsh library
+    Gmsh.finalize()
+
+    return grid
+end
+
+function createHalfCircleMeshFlipped(filename, x₀, y₀, r, h)
+
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀ + r, y₀, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀, y₀ + r, 0.0, h)
+
+    # Add lines
+    #    # Start - Center - End
+    l1 = gmsh.model.geo.add_circle_arc(p2, p1, p3)
+    l2 = gmsh.model.geo.add_line(p3, p1)
+    l3 = gmsh.model.geo.add_line(p1, p2)
+
+    # Create the closed curve loop and the surface
+    loop = gmsh.model.geo.add_curve_loop([l1, l2, l3])
+    #loop = gmsh.model.geo.add_curve_loop([-l3, -l2, -l1])
+    surf = gmsh.model.geo.add_plane_surface([loop])
+
+    # Synchronize the model
+    gmsh.model.geo.synchronize()
+
+    # Create the physical domains
+    gmsh.model.add_physical_group(1, [l1], -1, "Γ")
+    gmsh.model.add_physical_group(1, [l2], -1, "Γ2")
+    gmsh.model.add_physical_group(1, [l3], -1, "Γ3")
     gmsh.model.add_physical_group(2, [surf])
 
     gmsh.model.mesh.generate(2)

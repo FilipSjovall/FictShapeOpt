@@ -252,6 +252,9 @@ end
 function StressExtract(dh,a,mp)
     σx     = zeros(Int(dh.ndofs.x/2))
     σy     = zeros(Int(dh.ndofs.x/2))
+    σz     = zeros(Int(dh.ndofs.x/2))
+    τxy    = zeros(Int(dh.ndofs.x/2))
+    σᵛᵐ    = zeros(Int(dh.ndofs.x/2))
     ie     = 0
     cauchy = zeros(3,3,3)
     occurences = zeros(Int64(dh.ndofs.x/2))
@@ -262,24 +265,33 @@ function StressExtract(dh,a,mp)
         ie += 1
         cell_dofs = celldofs(cell)
         for gp in 1 : 3
+            # S        = [Stress[1,1]; Stress[2,2]; Stress[3,3]; Stress[1,2]]
             cauchy[gp,:,:] = assemS(coord[cell.nodes, :], a[cell_dofs], mp, t, gp)
         end
         σxe                     = [cauchy[1, 1, 1] cauchy[2, 1, 1] cauchy[3, 1, 1]]
         σye                     = [cauchy[1, 2, 2] cauchy[2, 2, 2] cauchy[3, 2, 2]]
-        τ_xy                    = [cauchy[1, 3, 3] cauchy[2, 3, 3] cauchy[3, 3, 3]]
+        τ_e                     = [cauchy[1, 1, 2] cauchy[2, 1, 2] cauchy[3, 1, 2]]
+        σze                     = [cauchy[1, 3, 3] cauchy[2, 3, 3] cauchy[3, 3, 3]]
+        # von mises saknar σz
         s_nodex                 = extrapolate_stress(σxe)
         s_nodey                 = extrapolate_stress(σye)
+        τ_node                  = extrapolate_stress(τ_e)
+        s_nodez                 = extrapolate_stress(σze)
         σx[cell.nodes]         += s_nodex
         σy[cell.nodes]         += s_nodey
+        σz[cell.nodes]         += s_nodez
+        τxy[cell.nodes]        += τ_node
         occurences[cell.nodes].+= 1
     end
 
     for i in 1 : length(dh.grid.nodes)
-        σx[i] = σx[i] / occurences[i]
-        σy[i] = σy[i] / occurences[i]
-        #σ_vm[i]  = 1.0
+        σx[i]  = σx[i] / occurences[i]
+        σy[i]  = σy[i] / occurences[i]
+        σz[i]  = σz[i] / occurences[i]
+        τxy[i] = τxy[i] / occurences[i]
+        σᵛᵐ[i]  = √(σx[i]^2 + σy[i]^2 + σz[i]^2 -σx[i]*σy[i] - σx[i]*σz[i] - σy[i]*σz[i] + 3τxy[i]^2)
     end
-    return σx,σy
+    return σx, σy, τxy, σᵛᵐ
 end
 
 function ExtractContactTraction(a,ε,coord)
