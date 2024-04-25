@@ -22,13 +22,13 @@ cv      = CellVectorValues(qr, ip)
 fv      = FaceVectorValues(qr_face, ip)
 # Create two grids
 r₀      = 0.5
-h       = 0.075 # 0.075 #0.15 #0.1
-Δx      = r₀ # * π/2  # 0.5
+h       = 0.15 #0.2 #0.15 #0.075 # 0.075 #0.15 #0.1
+Δx      = r₀  # * π/2  # 0.5
 x₀      = 0.0
 y₀      = 0.5
 Δy      = 0.501 #1.001
-grid1   = createHalfCircleMesh("circle", 0.0, 1.5, r₀, 1.5h)
-grid2   = createBoxMeshRev("box_1",  0.0, y₀, Δx, Δy, 0.75h)
+grid1   = createHalfCircleMesh("circle", 0.0, 1.5, r₀, 0.75h)
+grid2   = createBoxMeshRev("box_1",  0.0, y₀, Δx, Δy, 0.5h)
 case    = "box"
         # - - - - - Eller?
         #y₀      = 0.501
@@ -55,9 +55,14 @@ if case == "box"
     # ------------------ #
     addfaceset!(dh.grid, "Γ_slave", x -> x[2] ≈ y₀ + Δy)
     global Γs = getfaceset(dh.grid, "Γ_slave")
-
     addnodeset!(dh.grid, "nₛ", x -> x[2] ≈ y₀ + Δy)
     global nₛ = getnodeset(dh.grid, "nₛ")
+    ###
+    #addfaceset!(dh.grid, "Γ_master", x -> x[2] ≈ y₀ + Δy)
+    #global Γm = getfaceset(dh.grid, "Γ_master")
+    #addnodeset!(dh.grid, "nₘ", x -> x[2] ≈ y₀ + Δy)
+    #global nₘ = getnodeset(dh.grid, "nₘ")
+
 
     # ------------------ #
     # Create left | sets #
@@ -98,11 +103,17 @@ end
 # ----------------- #
 # Create slave sets #
 # ----------------- #
-addfaceset!(dh.grid, "Γ_master", x -> ((x[1] - 0.0 )^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
-global Γm = getfaceset(dh.grid, "Γ_master")
+ addfaceset!(dh.grid, "Γ_master", x -> ((x[1] - 0.0 )^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
+ global Γm = getfaceset(dh.grid, "Γ_master")
+ addnodeset!(dh.grid, "nₘ", x -> ((x[1] - 0.0)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
+ global nₘ = getnodeset(dh.grid, "nₘ")
 
-addnodeset!(dh.grid, "nₘ", x -> ((x[1] - 0.0)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
-global nₘ = getnodeset(dh.grid, "nₘ")
+#addfaceset!(dh.grid, "Γ_slave", x -> ((x[1] - 0.0 )^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
+#global Γs = getfaceset(dh.grid, "Γ_slave")
+#
+#addnodeset!(dh.grid, "nₛ", x -> ((x[1] - 0.0)^2 + (x[2] - 1.5)^2) ≈ r₀^2 )
+#global nₛ = getnodeset(dh.grid, "nₛ")
+
 
 # Extract all nbr nodes and dofs
 global contact_dofs = getContactDofs(nₛ, nₘ)
@@ -147,15 +158,15 @@ global coord = getCoordfromX(X)
 global coord₀ = deepcopy(coord)
 
 global Γ_robin = union(
-    getfaceset(dh.grid, "Γ_top"), # test: bc-ränder
-    getfaceset(dh.grid, "Γ_bot"), # test: bc-ränder
+   #getfaceset(dh.grid, "Γ_top"), # test: bc-ränder
+    #getfaceset(dh.grid, "Γ_bot"), # test: bc-ränder
     getfaceset(dh.grid, "Γ_slave"),
     getfaceset(dh.grid, "Γ_right"),
     getfaceset(dh.grid, "Γ_master")
 )
 global n_robin = union(
-    getnodeset(dh.grid, "n_top"), # test: bc-ränder
-    getnodeset(dh.grid, "n_bot"), # test: bc-ränder
+    #getnodeset(dh.grid, "n_top"), # test: bc-ränder
+    #getnodeset(dh.grid, "n_bot"), # test: bc-ränder
     getnodeset(dh.grid, "nₛ"),
     getnodeset(dh.grid, "nᵣ"), # Intressanta resultat när endast n_r exkluderades
     getnodeset(dh.grid, "nₘ")
@@ -165,7 +176,7 @@ global n_robin = union(
 global free_d = []
 for jnod in n_robin
     if in(jnod,n_bot) || in(jnod,n_top)
-        append!(free_d, register[jnod, 1] )
+        #append!(free_d, register[jnod, 1] )
     else
         append!(free_d, register[jnod, 1] )
         append!(free_d, register[jnod, 2] )
@@ -216,7 +227,7 @@ function Optimize(dh)
 
         global dr_dd = similar(K)
         # Material parameters
-        global mp₀   = [1.0 5.0]
+        global mp₀   = [1.0 5.0] # [0.1 5.0]#
         global mp    = [175 80.769230769230759]
         global t     = 1.0
         # Optimization parameters
@@ -238,8 +249,8 @@ function Optimize(dh)
         global kktnorm       = kkttol + 10;
         global outit         = 0;
         global change        = 1;
-        global xmax         .= 0.2 # 0.2 #* π/2
-        global xmin         .=-0.2 # 0.2 #* π/2
+        global xmax         .=  0.2 #  0.2 # 0.2 #* π/2
+        global xmin         .= -0.2 # -0.2 # 0.2 #* π/2
         global low           =-ones(n_mma);
         global upp           = ones(n_mma);
         # Flytta allt nedan till init_opt?
@@ -247,7 +258,7 @@ function Optimize(dh)
         global λψ      = similar(a)
         global λᵤ      = similar(a)
         global λᵥₒₗ   = similar(a)
-        Vₘₐₓ          = 0.6 #0.75 # volume(dh, coord, enod) # 4(r₀ + Δy) * Δx # 0.5 #0.9 #1.1 * volume(dh, coord, enod)
+        Vₘₐₓ          = 0.75 #0.5# 0.6 #0.75 # volume(dh, coord, enod) # 4(r₀ + Δy) * Δx # 0.5 #0.9 #1.1 * volume(dh, coord, enod)
         tol            = 1e-6
         OptIter        = 0
         global true_iteration = 0
@@ -270,7 +281,7 @@ function Optimize(dh)
         OptIter += 1
         true_iteration +=1
 
-        if OptIter % 10 == 0 && true_iteration < 250
+        if true_iteration % 10 == 0 && true_iteration < 200
             dh0 = deepcopy(dh)
             d          = zeros(dh.ndofs.x)
             xold1      = d[:]
@@ -291,7 +302,7 @@ function Optimize(dh)
             # 1e5 för h=0.015
             # 5e3 för h=0.03
             # 1e4 standard
-            global μ = 5e2 # 1e2 # 1e3/2 #1e4
+            global μ = 1e4 #5e2 # 1e2 # 1e3/2 #1e4
 
             # # # # # # # # # # # # # #
             # Fictitious equillibrium #
@@ -309,8 +320,8 @@ function Optimize(dh)
         # # # # #
         # test  #
         # # # # #
-        global nloadsteps = 5
-        global ε = 1e4 # 1e5 #1e4 # 2?
+        global nloadsteps = 10
+        global ε = 1e4 #1e4 # 1e5 #1e4 # 2?
 
         # # # # # # # # #
         # Equillibrium  #
@@ -374,7 +385,8 @@ function Optimize(dh)
         d_old   = d
         low_old = low
         upp_old = upp
-        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
+        #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
+        d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, g₁.*10, ∂Ω∂d.*10, low, upp, a0, am, C, d2)
         α      = 1.0  # 0.4 # 0.1 #
         if true_iteration > 150
             α = 0.5 # kanske testa 0.5 / 0.6 / 0.75 ... kan också testa annat villkor för dämpning

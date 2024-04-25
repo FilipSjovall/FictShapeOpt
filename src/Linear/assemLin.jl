@@ -109,6 +109,7 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,ε)
     Kc                             = ForwardDiff.jacobian(u -> contact_residual_reduced(X_ordered, u, a[freec_dofs], ε), a[contact_dofs]);
     K[contact_dofs, contact_dofs] -= Kc
     Fᵢₙₜ[contact_dofs]           -= rc
+    #@show rc
 end
 
 function assemGlobal!(K, Fᵢₙₜ, rc, dh, mp, t, a, coord, enod, ε, Γ_top, τ)

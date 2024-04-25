@@ -111,7 +111,7 @@ function drᵤ_dx_c(∂rᵤ_∂x, dh, mp, t, a, coord, enod, ε)
         cell_dofs = celldofs(cell)
         drₑ = assem_dr(coord[enod[ie][2:end], :], a[cell_dofs], mp, t)
         dre = zeros(6, 6)
-        assemble!(assembler, cell_dofs, drₑ + dre)
+        assemble!(assembler, cell_dofs, -drₑ)
     end
 
     X_ordered = getXinDofOrder(dh, X, coord)
@@ -137,7 +137,7 @@ function drᵤ_dx_c(∂rᵤ_∂x, dh, t, a, coord, enod, ε, mp₁, mp₂)
         end
         drₑ = assem_dr(coord[enod[ie][2:end], :], a[cell_dofs], mp, t)
         dre = zeros(6, 6)
-        assemble!(assembler, cell_dofs, drₑ + dre)
+        assemble!(assembler, cell_dofs, -drₑ)
     end
 
     X_ordered = getXinDofOrder(dh, X, coord)

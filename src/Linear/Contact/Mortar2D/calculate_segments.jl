@@ -78,7 +78,7 @@ function calculate_segments(slave_element_ids, master_element_ids, elements,
             xi2b = project_from_slave_to_master(Val{:Seg2}, xs2, ns2, xm1, xm2)
             xi2a >  1.0 && xi2b >  1.0 && continue
             xi2a < -1.0 && xi2b < -1.0 && continue
-            norm(xi2a) > 1.0 && norm(xi2b) > 1.0 && continue # fix?
+#            norm(xi2a) > 1.0 && norm(xi2b) > 1.0 && continue # fix?
             xi1a = project_from_master_to_slave(Val{:Seg2}, xm1, xs1, xs2, ns1, ns2)
             xi1b = project_from_master_to_slave(Val{:Seg2}, xm2, xs1, xs2, ns1, ns2)
 #            xi1a ≈ -123456 && xi1b ≈ -123456 && continue # kommer aldrig hända?

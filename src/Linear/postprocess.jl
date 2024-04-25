@@ -73,4 +73,4 @@ using FerriteViz
 using GLMakie
 a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
 plotter = FerriteViz.MakiePlotter(dh,a);
-FerriteViz.solutionplot(plotter,colormap=:turbo)
+FerriteViz.solutionplot(plotter,colormap=:jet)
