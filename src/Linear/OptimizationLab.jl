@@ -1,12 +1,13 @@
 using Pkg
 Pkg.activate()
 # kolla Pkg.status() vid problem / jämför med att bara starta julia i en terminal
-using Mortar2D, ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
+using ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
 using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
 using SparseDiffTools, Plots, Printf, JLD2, Statistics, AlgebraicMultigrid
 # kan behöva köra export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 plotlyjs()
 #
+include("Contact//Mortar2D//Mortar2D.jl")
 include("..//mesh_reader.jl")
 include("Contact//contact_help.jl")
 include("assemLin.jl")
@@ -51,7 +52,7 @@ fv = FaceVectorValues(qr_face, ip)
 grid1 = createQuarterLabyrinthMeshRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h);
 #grid1 = createQuarterLabyrinthMeshRoundedCavity("mesh_1", x₀, y₀, th, B, b, Δl, H, r, r2, h);
 Γ_1 = getBoundarySet(grid1);
-grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h/3);
+grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h);
 #grid2 = createBoxMesh("mesh_2", x₁, y₁, Δx, Δy, h);
 Γ_2 = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);

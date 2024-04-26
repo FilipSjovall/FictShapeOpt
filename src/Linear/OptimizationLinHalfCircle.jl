@@ -28,7 +28,7 @@ x₀      = 0.0
 y₀      = 0.5
 Δy      = 0.501 #1.001
 grid1   = createHalfCircleMesh("circle", 0.0, 1.5, r₀, 0.75h)
-grid2   = createBoxMeshRev("box_1",  0.0, y₀, Δx, Δy, 0.5h)
+grid2   = createBoxMeshRev("box_1",  0.0, y₀, Δx, Δy, 0.25h)
 case    = "box"
         # - - - - - Eller?
         #y₀      = 0.501
@@ -258,7 +258,8 @@ function Optimize(dh)
         global λψ      = similar(a)
         global λᵤ      = similar(a)
         global λᵥₒₗ   = similar(a)
-        Vₘₐₓ          = 0.75 #0.5# 0.6 #0.75 # volume(dh, coord, enod) # 4(r₀ + Δy) * Δx # 0.5 #0.9 #1.1 * volume(dh, coord, enod)
+        Vₘₐₓ          = 0.9
+         #0.5# 0.6 #0.75 # volume(dh, coord, enod) # 4(r₀ + Δy) * Δx # 0.5 #0.9 #1.1 * volume(dh, coord, enod)
         tol            = 1e-6
         OptIter        = 0
         global true_iteration = 0
@@ -281,7 +282,7 @@ function Optimize(dh)
         OptIter += 1
         true_iteration +=1
 
-        if true_iteration % 10 == 0 && true_iteration < 200
+        if true_iteration % 10 == 0 && true_iteration < 250
             dh0 = deepcopy(dh)
             d          = zeros(dh.ndofs.x)
             xold1      = d[:]
@@ -388,7 +389,7 @@ function Optimize(dh)
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, g₁.*100, ∂Ω∂d.*100, low, upp, a0, am, C, d2)
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[:], xmin[:], xmax[:], xold1[:], xold2[:], g, ∂g_∂d, g₁.*10, ∂Ω∂d.*10, low, upp, a0, am, C, d2)
         α      = 1.0  # 0.4 # 0.1 #
-        if true_iteration > 150
+        if true_iteration > 300
             α = 0.5 # kanske testa 0.5 / 0.6 / 0.75 ... kan också testa annat villkor för dämpning
         end
         d_new  = d_old   + α .* (d_new - d_old)

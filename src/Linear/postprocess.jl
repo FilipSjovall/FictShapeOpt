@@ -68,9 +68,57 @@ f = Figure()
 end
 
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Plot optimization history: f and g₁ using separate y-axis #
+# / specifically for Cylinder - Block problem               #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+using JLD2
+#@load "färdig_cyl.jld2"
+@load "results//Cylinder + Platta//Bäst cylinder + platta//färdig_cyl.jld2"
+using CairoMakie
+set_theme!(theme_latexfonts(),fontsize=12)
+CairoMakie.activate!(type = "png")
+cm_convert = 72#28.3465
+w_cm  = 5
+h_cm  = 4
+width = w_cm*cm_convert
+height= h_cm*cm_convert
+px_per_cm = 600
+reso = w_cm * px_per_cm / width
+#f = Figure(fontsize=12,pt_per_unit = 1, px_per_unit = reso, size = (3000,2400) )
+f = Figure()
+ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
+           xgridvisible = false, ygridvisible = false,
+           ylabel = L"Objective function $f$ [N]",
+           limits = (0, 400, 4, -g_hist[true_iteration]*1.25),
+           leftspinecolor = :blue,
+           ylabelcolor = :blue,
+           xminorticksvisible = true, yminorticksvisible = true,
+           topspinevisible = false)
+ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
+           xgridvisible = false, ygridvisible = false,
+           ylabel = L"Volume constraint $g_1$", xlabel = L"\text{Iteration}",
+           limits = (0, 400, v_hist[1], 0.5),
+           rightspinecolor = :red,
+           ylabelcolor = :red,
+           xminorticksvisible = true, yminorticksvisible = true,
+           title = L"\text{Optimization history}",
+           topspinevisible = false)
+ax3 = Axis(f[1,1], width=Relative(0.2), height=Relative(0.2), halign=0.1, valign=1.0, backgroundcolor=:white)
+lines!(ax1,1:true_iteration,-g_hist[1:true_iteration], color = :blue )
+lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
+lines!(ax3,1:20,-g_hist[1:20],color =:blue )
+f
+#Makie.save("optimization_history.png",f; resolution = (3000,2400))
+Makie.save("optimization_history.png",f; px_per_unit=reso)
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#  Plot heat maps using FerriteViz and GLMakie          #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Heatmaps
-using FerriteViz
-using GLMakie
-a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
-plotter = FerriteViz.MakiePlotter(dh,a);
-FerriteViz.solutionplot(plotter,colormap=:jet)
+# using FerriteViz
+# using GLMakie
+# a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
+# plotter = FerriteViz.MakiePlotter(dh,a);
+# FerriteViz.solutionplot(plotter,colormap=:jet)
