@@ -27,7 +27,7 @@ h       = 0.15 #0.2 #0.15 #0.075 # 0.075 #0.15 #0.1
 x₀      = 0.0
 y₀      = 0.5
 Δy      = 0.501 #1.001
-grid1   = createHalfCircleMesh("circle", 0.0, 1.5, r₀, 0.75h)
+grid1   = createHalfCircleMesh("circle", 0.0, 1.5, r₀, 0.5h)
 grid2   = createBoxMeshRev("box_1",  0.0, y₀, Δx, Δy, 0.25h)
 case    = "box"
         # - - - - - Eller?
@@ -258,7 +258,7 @@ function Optimize(dh)
         global λψ      = similar(a)
         global λᵤ      = similar(a)
         global λᵥₒₗ   = similar(a)
-        Vₘₐₓ          = 0.9
+        Vₘₐₓ          = 0.5
          #0.5# 0.6 #0.75 # volume(dh, coord, enod) # 4(r₀ + Δy) * Δx # 0.5 #0.9 #1.1 * volume(dh, coord, enod)
         tol            = 1e-6
         OptIter        = 0

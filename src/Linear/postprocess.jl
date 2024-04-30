@@ -76,17 +76,16 @@ using JLD2
 #@load "färdig_cyl.jld2"
 @load "results//Cylinder + Platta//Bäst cylinder + platta//färdig_cyl.jld2"
 using CairoMakie
-set_theme!(theme_latexfonts(),fontsize=12)
-CairoMakie.activate!(type = "png")
+set_theme!(theme_latexfonts())
 cm_convert = 72#28.3465
 w_cm  = 5
 h_cm  = 4
 width = w_cm*cm_convert
 height= h_cm*cm_convert
-px_per_cm = 600
+px_per_cm = 600 # dpi
 reso = w_cm * px_per_cm / width
 #f = Figure(fontsize=12,pt_per_unit = 1, px_per_unit = reso, size = (3000,2400) )
-f = Figure()
+f = Figure( size = (width,height), fontsize = 12)
 ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
            xgridvisible = false, ygridvisible = false,
            ylabel = L"Objective function $f$ [N]",
@@ -104,13 +103,13 @@ ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
            xminorticksvisible = true, yminorticksvisible = true,
            title = L"\text{Optimization history}",
            topspinevisible = false)
-ax3 = Axis(f[1,1], width=Relative(0.2), height=Relative(0.2), halign=0.1, valign=1.0, backgroundcolor=:white)
+#ax3 = Axis(f[1,1], width=Relative(0.2), height=Relative(0.2), halign=0.1, valign=1.0, backgroundcolor=:white)
 lines!(ax1,1:true_iteration,-g_hist[1:true_iteration], color = :blue )
 lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
-lines!(ax3,1:20,-g_hist[1:20],color =:blue )
+#lines!(ax3,1:20,-g_hist[1:20],color =:blue )
 f
 #Makie.save("optimization_history.png",f; resolution = (3000,2400))
-Makie.save("optimization_history.png",f; px_per_unit=reso)
+Makie.save("optimization_history.png",f, px_per_unit=reso)
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
