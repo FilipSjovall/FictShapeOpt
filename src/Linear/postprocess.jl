@@ -85,7 +85,7 @@ height= h_cm*cm_convert
 px_per_cm = 600 # dpi
 reso = w_cm * px_per_cm / width
 #f = Figure(fontsize=12,pt_per_unit = 1, px_per_unit = reso, size = (3000,2400) )
-f = Figure( size = (width,height), fontsize = 12)
+f = Figure( size = (width,height), fontsize = 12, px_per_unit = reso)
 ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
            xgridvisible = false, ygridvisible = false,
            ylabel = L"Objective function $f$ [N]",
@@ -109,7 +109,7 @@ lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
 #lines!(ax3,1:20,-g_hist[1:20],color =:blue )
 f
 #Makie.save("optimization_history.png",f; resolution = (3000,2400))
-Makie.save("optimization_history.png",f, px_per_unit=reso)
+Makie.save("optimization_history.png",f)
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
