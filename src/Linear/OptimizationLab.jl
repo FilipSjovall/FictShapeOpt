@@ -37,7 +37,7 @@ r  = 0.025 #0.0125
 r2 = 0.025
 # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
 # grid size
-h = 0.05 # 0.05
+h = 0.04 # 0.05
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -52,7 +52,7 @@ fv = FaceVectorValues(qr_face, ip)
 grid1 = createQuarterLabyrinthMeshRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h);
 #grid1 = createQuarterLabyrinthMeshRoundedCavity("mesh_1", x₀, y₀, th, B, b, Δl, H, r, r2, h);
 Γ_1 = getBoundarySet(grid1);
-grid2 = createBoxMeshRev("mesh_2", x₁, y₁, Δx, Δy, h);
+grid2 = createBoxMeshRev2("mesh_2", x₁, y₁, Δx, Δy, h/4);
 #grid2 = createBoxMesh("mesh_2", x₁, y₁, Δx, Δy, h);
 Γ_2 = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);
@@ -321,7 +321,7 @@ function Optimize(dh)
         # # # # #
         # Reset #
         # # # # #
-        if OptIter % 15 == 0 && true_iteration < 31
+        if OptIter % 10 == 0 && true_iteration < 100
             dh0 = deepcopy(dh)
             global d = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -365,7 +365,7 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-        p = 2
+        p = 1
         X_ordered = getXfromCoord(coord)
         g     = -contact_pressure(X_ordered, a, ε, p)
         ∂g_∂x = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
@@ -398,13 +398,13 @@ function Optimize(dh)
         # ∂g_∂u = -T' * K
 
         #g₂ = γc / γ_max - 1.0
-        Fₘₐₓ  = 100.0
-        g₂     = -T' * Fᵢₙₜ ./ Fₘₐₓ - 1.0
-        ∂g₂_∂x = -T' * ∂rᵤ_∂x ./ Fₘₐₓ
-        ∂g₂_∂u = -T' * K ./ Fₘₐₓ
-        solveq!(λᵤ, K', ∂g₂_∂u, bcdofs, bcvals.*0)
-        solveq!(λψ, Kψ', ∂g₂_∂x' - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
-        ∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' )'
+        #Fₘₐₓ  = 100.0
+        #g₂     = -T' * Fᵢₙₜ ./ Fₘₐₓ - 1.0
+        #∂g₂_∂x = -T' * ∂rᵤ_∂x ./ Fₘₐₓ
+        #∂g₂_∂u = -T' * K ./ Fₘₐₓ
+        #solveq!(λᵤ, K', ∂g₂_∂u, bcdofs, bcvals.*0)
+        #solveq!(λψ, Kψ', ∂g₂_∂x' - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
+        #∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' )'
 
         ∂g₃_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, ε), getXinDofOrder(dh, X_ordered, coord))
         ∂g₃_∂u = ForwardDiff.gradient(u -> contact_area(X_ordered, u, ε), a)
@@ -418,13 +418,21 @@ function Optimize(dh)
         d_old = d[free_d]
         low_old = low
         upp_old = upp
+        #
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
                                                                         xold1[:], xold2[:], g ./ 1, ∂g_∂d[free_d] ./ 1,
-                                                                        vcat(g₁ .* 1e3, g₂*1e3, g₃*1e3),
+                                                                        vcat(g₁ .* 1e3, g₃*1e3),
                                                                         hcat(∂Ω∂d[free_d] .* 1e3,
-                                                                        ∂g₂_∂d[free_d]*1e3,
                                                                         ∂g₃_∂d[free_d]*1e3)',
                                                                         low, upp, a0, am, C, d2)
+        # d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
+        #                                                                 xold1[:], xold2[:], g ./ 1, ∂g_∂d[free_d] ./ 1,
+        #                                                                 vcat(g₁ .* 1e3, g₂*1e3, g₃*1e3),
+        #                                                                 hcat(∂Ω∂d[free_d] .* 1e3,
+        #                                                                 ∂g₂_∂d[free_d]*1e3,
+        #                                                                 ∂g₃_∂d[free_d]*1e3)',
+        #                                                                 low, upp, a0, am, C, d2)
+        #
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:], xold1[:], xold2[:], g ./ 1e3, ∂g_∂d[free_d] ./ 1e3, vcat(g₁ .* 1e2, g₂*100), hcat(∂Ω∂d[free_d] .* 1e2, ∂g₂_∂d[free_d]*100)', low, upp, a0, am, C, d2)
         #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:], xold1[:], xold2[:], g .* 10, ∂g_∂d[free_d] .* 10, g₁ .* 1e2, ∂Ω∂d[free_d]' .* 1e2, low, upp, a0, am, C, d2)
         # ----------------- #

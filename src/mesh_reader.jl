@@ -393,6 +393,61 @@ function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
     return grid
 end
 
+function createBoxMeshRev2(filename, x₀, y₀, Δx, Δy, h)
+
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.set_number("General.Verbosity", 2)
+
+
+    # Add the points
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h)
+    p4 = gmsh.model.geo.add_point(x₀, y₀ + Δy, 0.0, h)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀, 0.0, h)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀ + Δy, 0.0, h)
+
+    # Add the lines
+    l1 = gmsh.model.geo.add_line(p1, p4)
+    l2 = gmsh.model.geo.add_line(p4, p6)
+    l3 = gmsh.model.geo.add_line(p6, p3)
+    l4 = gmsh.model.geo.add_line(p3, p2)
+    l5 = gmsh.model.geo.add_line(p2, p5)
+    l6 = gmsh.model.geo.add_line(p5, p1)
+
+    # Create the closed curve loop and the surface
+    #loop = gmsh.model.geo.add_curve_loop([l1, l2, l3, l4, l5, l6])
+    loop = gmsh.model.geo.add_curve_loop([-l6,-l5,-l4,-l3,-l2,-l1])
+    surf = gmsh.model.geo.add_plane_surface([loop])
+
+    # Synchronize the model
+    gmsh.model.geo.synchronize()
+
+    # Create the physical domains
+    #gmsh.model.add_physical_group(1, [l2, l3], -1, "Γ")
+    gmsh.model.add_physical_group(1, [-l3,-l2], -1, "Γ")
+    gmsh.model.add_physical_group(2, [surf])
+
+    gmsh.model.mesh.embed(0, [p5], 2 ,1)
+    gmsh.model.mesh.embed(0, [p6], 2, 1)
+
+
+    gmsh.model.mesh.generate(2)
+    #gmsh.model.mesh.reverse(2)
+    # Save the mesh, and read back in as a Ferrite Grid
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+
+    # Finalize the Gmsh library
+    Gmsh.finalize()
+
+    return grid
+end
+
 function createCircleMesh(filename, x₀, y₀, r, h)
 
     # Initialize gmsh

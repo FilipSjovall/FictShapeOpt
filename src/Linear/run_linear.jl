@@ -1403,28 +1403,16 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
             residual = norm(res, 2)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_top[1]]
 
-        #
-        # if loadstep < 40 && iter < 20
-        #     σx, σy = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
-        #     #vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
-        #     vtk_grid("results/🍌-contact" * string(iter), dh) do vtkfile
-        #         vtk_point_data(vtkfile, dh, a + Δa )
-        #         vtk_point_data(vtkfile, σx, "σx")
-        #         vtk_point_data(vtkfile, σy, "σy")
-        #     end
-        # end
-         #X_c,tract = plotTraction()
-         #if length(tract) > 0
-         #    p5 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft, ylims = (0, 1.2*maximum(tract)) )
-         #    display(p5)
-         #end
         end
+
         if loadstep < 40 && iter < 20
-            σx, σy = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
+            σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁) # måste ändra så att vi kör med mp₁ & mp₂
             vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
-                vtk_point_data(vtkfile, dh, a )
+                vtk_point_data(vtkfile, dh, a) # displacement field
                 vtk_point_data(vtkfile, σx, "σx")
                 vtk_point_data(vtkfile, σy, "σy")
+                vtk_point_data(vtkfile, τ, "τ")
+                vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
             end
         end
         #Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
@@ -1496,10 +1484,10 @@ function fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
             residual        = norm(res, 2)
             Ψ[bcdofs_opt]  .= 0.0
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
-            if loadstep < 40 && iter < 20
+        end
+        if loadstep < 40 && iter < 20
                 postprocess_opt(Ψ, dh0, "results/fictitious_t2" * string(loadstep))
-                postprocess_opt(Ψ, dh0, "results/fictitious_iter_t2" * string(iter))
-            end
+                #postprocess_opt(Ψ, dh0, "results/fictitious_iter_t2" * string(iter))
         end
     end
     return Ψ, dh0, Kψ, FΨ, λ

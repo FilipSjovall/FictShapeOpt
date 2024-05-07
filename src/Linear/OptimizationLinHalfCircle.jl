@@ -29,6 +29,7 @@ y₀      = 0.5
 Δy      = 0.501 #1.001
 grid1   = createHalfCircleMesh("circle", 0.0, 1.5, r₀, 0.5h)
 grid2   = createBoxMeshRev("box_1",  0.0, y₀, Δx, Δy, 0.25h)
+
 case    = "box"
         # - - - - - Eller?
         #y₀      = 0.501
@@ -36,8 +37,8 @@ case    = "box"
         #case    = "circle"
 # Merge into one grid
 grid_tot = merge_grids(grid1, grid2; tol=1e-6)
-grid1    = nothing
-grid2    = nothing
+#grid1    = nothing
+#grid2    = nothing
 
 # Create dofhandler with displacement field u
 global dh = DofHandler(grid_tot)

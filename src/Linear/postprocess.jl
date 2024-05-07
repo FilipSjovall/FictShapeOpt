@@ -19,19 +19,47 @@ include("..//mma.jl")
 # Plot objective function #
 # - - - - - - - - - - - - #
 # Load results
-@load "results//seal//p = 1/p=1_packning.jld2"
-f = Figure(size = (360,288), fontsize=  12)
+
+# Kombinera dessa i en bild..
+#
+#
+using JLD2
+using CairoMakie
+set_theme!(theme_latexfonts())
+cm_convert = 28.3465
+w_cm  = 13
+h_cm  = 13
+width = w_cm*cm_convert
+height= h_cm*cm_convert
+px_per_cm = 1200 # dpi
+
+reso = (w_cm * px_per_cm / width)
+
+f = Figure( resolution = (width,height), fontsize = 12, px_per_unit = reso)
 ax = Axis(f[1, 1],
     xgridvisible = false,
     ygridvisible = false,
-    title  = L"\text{Objective function}", # L enables LaTeX strings
+    title  = L"\text{Optimization history}", # L enables LaTeX strings
     xlabel = L"\text{Iteration}", #
-    ylabel = L"g_0", #
+    #ylabelrotation = 3π/2,
+    ylabel = L"$\frac{f}{f^0}$", #
     xtickalign = 1,  # Ticks inwards
-    ytickalign = 1   # # Ticks inwards
+    ytickalign = 1,   # # Ticks inwards
+    topspinevisible = false,
+    rightspinevisible = false,
+    xminorticksvisible = true, yminorticksvisible = true,
+    limits = (0, 110, 1.0, 2.5),
 )
-lines!(1:true_iteration,g_hist[1:true_iteration], color = :blue)
+@load "results//seal//p = 1/p=1.jld2" g_hist true_iteration
+lines!(1:true_iteration,(g_hist[1:true_iteration]./g_hist[1]), color = :blue, label = L"p = 1")
+@load "results//seal//p = 2/p=2.jld2" g_hist true_iteration
+lines!(1:true_iteration,(g_hist[1:true_iteration]./g_hist[1]), color = :red, label = L"p = 2")
+@load "results//seal//p = 3/p=3.jld2" g_hist true_iteration
+lines!(1:true_iteration,(g_hist[1:true_iteration]./g_hist[1]), color = :green, label = L"p = 3")
+#f[2, 1] = Legend(f, ax, L"\text{Exponent}", framevisible = true, orientation = :horizontal, tellwidth = false, tellheight = true)
+f[2, 1] = Legend(f, ax, framevisible = false, orientation = :horizontal, tellwidth = false, tellheight = true)
 f
+Makie.save("optimization_history_seal.pdf",f)
 # - - - - - - - - - - - - - - - - - - #
 # Extract and plot contact tractions  #
 # - - - - - - - - - - - - - - - - - - #
@@ -77,15 +105,15 @@ using JLD2
 @load "results//Cylinder + Platta//Bäst cylinder + platta//färdig_cyl.jld2"
 using CairoMakie
 set_theme!(theme_latexfonts())
-cm_convert = 72#28.3465
-w_cm  = 5
-h_cm  = 4
+cm_convert = 28.3465
+w_cm  = 13
+h_cm  = 10
 width = w_cm*cm_convert
 height= h_cm*cm_convert
 px_per_cm = 600 # dpi
 reso = w_cm * px_per_cm / width
 #f = Figure(fontsize=12,pt_per_unit = 1, px_per_unit = reso, size = (3000,2400) )
-f = Figure( size = (width,height), fontsize = 12, px_per_unit = reso)
+f = Figure( resolution = (width,height), fontsize = 12, px_per_unit = reso)
 ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
            xgridvisible = false, ygridvisible = false,
            ylabel = L"Objective function $f$ [N]",
@@ -99,6 +127,7 @@ ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
            ylabel = L"Volume constraint $g_1$", xlabel = L"\text{Iteration}",
            limits = (0, 400, v_hist[1], 0.5),
            rightspinecolor = :red,
+           leftspinecolor = :blue,
            ylabelcolor = :red,
            xminorticksvisible = true, yminorticksvisible = true,
            title = L"\text{Optimization history}",
@@ -108,9 +137,8 @@ lines!(ax1,1:true_iteration,-g_hist[1:true_iteration], color = :blue )
 lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
 #lines!(ax3,1:20,-g_hist[1:20],color =:blue )
 f
-#Makie.save("optimization_history.png",f; resolution = (3000,2400))
-Makie.save("optimization_history.png",f)
-
+# Makie.save("optimization_history.svg",f)
+Makie.save("optimization_history.pdf",f)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #  Plot heat maps using FerriteViz and GLMakie          #
