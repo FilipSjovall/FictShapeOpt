@@ -1,10 +1,10 @@
 function create_contact_list(dh, Γs, Γm, coord_dual)
     i = 0
-    elements = Dict{Int64,Vector{Int64}}()
-    coords = Dict{Int64,Vector{Real}}()
-    slave_elements = Dict{Int64,Vector{Int64}}()
-    element_types = Dict{Int64,Symbol}()
-    slave_element_ids = Vector{Int64}()
+    elements           = Dict{Int64,Vector{Int64}}()
+    coords             = Dict{Int64,Vector{Real}}()
+    slave_elements     = Dict{Int64,Vector{Int64}}()
+    element_types      = Dict{Int64,Symbol}()
+    slave_element_ids  = Vector{Int64}()
     master_element_ids = Vector{Int64}()
     # Slave surface
     for face in Γs

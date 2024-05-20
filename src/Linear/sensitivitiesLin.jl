@@ -443,7 +443,11 @@ function contact_pressure(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) w
     λ_list = Dict{Int64, Real}()
     for (i, A) in enumerate(slave_dofs)
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
-        λ_list[A] = λ_A / κ[i]
+        if ( λ_A != 0.0 && κ[i] != 0 )
+            λ_list[A] = λ_A / κ[i]
+        else
+            λ_list[A] = 0.0
+        end
     end
     γᶜ = Mortar2D.calculate_assembly_area(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list)
     fc = Mortar2D.calculate_assembly_force(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list,p)

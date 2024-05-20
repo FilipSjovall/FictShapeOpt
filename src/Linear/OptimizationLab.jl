@@ -37,7 +37,7 @@ r  = 0.025 #0.0125
 r2 = 0.025
 # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
 # grid size
-h = 0.04 # 0.05
+h = 0.06 # 0.04 # 0.05
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -260,7 +260,7 @@ function Optimize(dh)
     global λψ   = similar(a)
     global λᵤ   = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = volume(dh, coord, enod) * 1.0 # "volfrac"
+    Vₘₐₓ = volume(dh, coord, enod) * 1.2# 1.0 # "volfrac"
     tol   = 1e-3
     global OptIter = 0
     global true_iteration = 0
@@ -321,7 +321,7 @@ function Optimize(dh)
         # # # # #
         # Reset #
         # # # # #
-        if OptIter % 10 == 0 && true_iteration < 100
+        if OptIter % 10 == 0 && true_iteration < 200
             dh0 = deepcopy(dh)
             global d = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -335,7 +335,7 @@ function Optimize(dh)
         # Fictitious equillibrium #
         # # # # # # # # # # # # # #
         global nloadsteps = 10 #10
-        global μ = 1e4 #1e3
+        global μ = 1e3 #1e4
         global coord₀ = getCoord(getX(dh0), dh0) # x₀
         Ψ, _, Kψ, _, λ = fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
 
@@ -365,7 +365,7 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-        p = 1
+        p = 3
         X_ordered = getXfromCoord(coord)
         g     = -contact_pressure(X_ordered, a, ε, p)
         ∂g_∂x = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
@@ -389,8 +389,9 @@ function Optimize(dh)
         # # # # # # # # # # # #
         # Area constraint #
         # # # # # # # # # # # #
-        γ_max = 0.10
-        γ_min = 0.04
+        γ_max = 0.15
+
+        γ_min = 0.15 # 0.13 # 0.12
         γc = contact_area(X_ordered, a, ε)
 
         # g     = -T' * Fᵢₙₜ
@@ -438,7 +439,7 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        if true_iteration % 100 == 0
+        if (true_iteration % 50 == 0 && true_iteration > 49)
             global α = α / 2
         end
         d_new = d_old   + α .* (d_new - d_old)
@@ -449,6 +450,7 @@ function Optimize(dh)
         xold1     = d[free_d]
         d[free_d] = d_new
         change    = norm(d[free_d] .- xold1)
+        kktnorm   = change
 
         # # # # # # # # # #
         # Postprocessing  #
@@ -457,10 +459,9 @@ function Optimize(dh)
         v_hist[true_iteration]  = g₁
         au_hist[true_iteration] = g₂
         al_hist[true_iteration] = g₃
-        kktnorm = change
-        println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g)
-        println("Objective: ", g_hist[1:true_iteration])
-        println("Volume constraint: ", v_hist[1:true_iteration])
+        println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g / 1e4)
+        #println("Objective: ", g_hist[1:true_iteration])
+        #println("Volume constraint: ", v_hist[1:true_iteration])
         println("Area constraint", " γ_min ≤ γ ≤ γ_max:  ", γ_min, " ≤ ", γc ," ≤ ", γ_max )
         # ------------ #
         # write to vtu #
@@ -471,17 +472,17 @@ function Optimize(dh)
         # ---- #
         # plot #
         # ---- #
-        red_condition_v  = [y > 0 ? :red : :green for y in v_hist[1:true_iteration]]
+        red_condition_v  = [y > 0 ? :red : :green  for y in v_hist[1:true_iteration]]
         red_condition_au = [y > 0 ? :red : :orange for y in au_hist[1:true_iteration]]
         red_condition_al = [y > 0 ? :red : :yellow for y in al_hist[1:true_iteration]]
 
-        p2 = plot(1:true_iteration, [v_hist[1:true_iteration]*10 au_hist[1:true_iteration] al_hist[1:true_iteration]],
+        p2 = plot(1:true_iteration, [v_hist[1:true_iteration]*10 au_hist[1:true_iteration]*10 al_hist[1:true_iteration]*10],
                   label=["Volume" "γ_max" "γ_min"],
                   linecolor=hcat(red_condition_v, red_condition_au, red_condition_al),
                   background_color=RGB(0.2, 0.2, 0.2),
                   legend=:outerleft, grid=false)
         hspan!(p2,[-2,0], color = :green, alpha = 0.2, labels = "👌");
-        hspan!(p2,[2,0], color = :red, alpha = 0.2, labels = "🤚");
+        hspan!(p2,[2,0],  color = :red, alpha = 0.2, labels = "🤚");
         #p2 = plot(1:true_iteration, v_hist[1:true_iteration]*10 ,
         #           label="Volume" ,
         #           background_color=RGB(0.2, 0.2, 0.2),
@@ -499,7 +500,7 @@ function Optimize(dh)
         #@save "asymptoter.jld2" low_hist upp_hist d_hist2
         GC.gc() # Collect garbage
     end
-    return g_hist, v_hist, OptIter
+    return g_hist, v_hist, al_hist, au_hist, OptIter
 end
 
 function plotTraction()

@@ -144,6 +144,7 @@ function calculate_assembly_area(elements, element_types, coords,
     area = 0.
     for sid in slave_element_ids
         mids = [mid for (mid, xi) in segmentation[sid]]
+        isempty(mids) && continue
         ae = calculate_segment_area(sid, elements, element_types,
                                            coords, normals, segmentation, λ)
         area += ae
@@ -171,6 +172,7 @@ function calculate_assembly_force(elements, element_types, coords,
     fc = 0.
     for sid in slave_element_ids
         mids = [mid for (mid, xi) in segmentation[sid]]
+        isempty(mids) && continue
         fce = calculate_segment_force(sid, elements, element_types,
                                            coords, normals, segmentation,
                                            λ, p)
