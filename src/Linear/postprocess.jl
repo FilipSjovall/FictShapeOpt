@@ -116,7 +116,7 @@ reso = w_cm * px_per_cm / width
 f = Figure( resolution = (width,height), fontsize = 12, px_per_unit = reso)
 ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
            xgridvisible = false, ygridvisible = false,
-           ylabel = L"Objective function $f$ [N]",
+           ylabel = L"Objective function $|f|$ [N]",
            limits = (0, 400, 4, -g_hist[true_iteration]*1.25),
            leftspinecolor = :blue,
            ylabelcolor = :blue,

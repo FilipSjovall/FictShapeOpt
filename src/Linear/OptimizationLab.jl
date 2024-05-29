@@ -37,7 +37,7 @@ r  = 0.025 #0.0125
 r2 = 0.025
 # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
 # grid size
-h = 0.06 # 0.04 # 0.05
+h = 0.04 # 0.04 # 0.05
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -321,7 +321,7 @@ function Optimize(dh)
         # # # # #
         # Reset #
         # # # # #
-        if OptIter % 10 == 0 && true_iteration < 200
+        if OptIter % 20 == 0 && true_iteration < 101
             dh0 = deepcopy(dh)
             global d = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -365,7 +365,7 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-        p = 3
+        p = 2
         X_ordered = getXfromCoord(coord)
         g     = -contact_pressure(X_ordered, a, ε, p)
         ∂g_∂x = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
@@ -390,9 +390,7 @@ function Optimize(dh)
         # Area constraint #
         # # # # # # # # # # # #
         γ_max = 0.15
-
-        γ_min = 0.15 # 0.13 # 0.12
-        γc = contact_area(X_ordered, a, ε)
+        γ_min = 0.125 # 0.15 # 0.13 # 0.12
 
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
@@ -407,10 +405,17 @@ function Optimize(dh)
         #solveq!(λψ, Kψ', ∂g₂_∂x' - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
         #∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' )'
 
-        ∂g₃_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, ε), getXinDofOrder(dh, X_ordered, coord))
-        ∂g₃_∂u = ForwardDiff.gradient(u -> contact_area(X_ordered, u, ε), a)
+        #γc = contact_area(X_ordered, a, ε)4
+        #∂g₃_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, ε), getXinDofOrder(dh, X_ordered, coord))
+        #∂g₃_∂u = ForwardDiff.gradient(u -> contact_area(X_ordered, u, ε), a)
+        #g₃ = 1.0 - γc / γ_min
+
+
+        γc = contact_area(X_ordered, a, 1.0)
+        ∂g₃_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, 1.0), getXinDofOrder(dh, X_ordered, coord))
         g₃ = 1.0 - γc / γ_min
-        solveq!(λᵤ, K',  -∂g₃_∂u./γ_min, bcdofs, bcvals.*0)
+        #solveq!(λᵤ, K',  -∂g₃_∂u./γ_min, bcdofs, bcvals.*0)
+        λᵤ = λᵤ .* 0.0
         solveq!(λψ, Kψ', -∂g₃_∂x./γ_min - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
         ∂g₃_∂d = Real.((-transpose(λψ) * dr_dd)' )'
         # # # # #
@@ -420,11 +425,13 @@ function Optimize(dh)
         low_old = low
         upp_old = upp
         #
+        # Skalning: p = 3 g/1e3 ; p = 2 g/1e2 ; p = 1 g/?
+        #
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
-                                                                        xold1[:], xold2[:], g ./ 1, ∂g_∂d[free_d] ./ 1,
-                                                                        vcat(g₁ .* 1e3, g₃*1e3),
-                                                                        hcat(∂Ω∂d[free_d] .* 1e3,
-                                                                        ∂g₃_∂d[free_d]*1e3)',
+                                                                        xold1[:], xold2[:], g / 1e2 , ∂g_∂d[free_d] / 1e2,
+                                                                        vcat(g₁ .* 1e2, g₃*1e2),
+                                                                        hcat(∂Ω∂d[free_d] .* 1e2,
+                                                                        ∂g₃_∂d[free_d]*1e2)',
                                                                         low, upp, a0, am, C, d2)
         # d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
         #                                                                 xold1[:], xold2[:], g ./ 1, ∂g_∂d[free_d] ./ 1,
@@ -439,9 +446,9 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        if (true_iteration % 50 == 0 && true_iteration > 49)
-            global α = α / 2
-        end
+        #if (true_iteration % 50 == 0 && true_iteration > 99)
+        #    global α = α / 2
+        #end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
@@ -459,7 +466,7 @@ function Optimize(dh)
         v_hist[true_iteration]  = g₁
         au_hist[true_iteration] = g₂
         al_hist[true_iteration] = g₃
-        println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g / 1e4)
+        println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g / 1e2)
         #println("Objective: ", g_hist[1:true_iteration])
         #println("Volume constraint: ", v_hist[1:true_iteration])
         println("Area constraint", " γ_min ≤ γ ≤ γ_max:  ", γ_min, " ≤ ", γc ," ≤ ", γ_max )
@@ -487,7 +494,7 @@ function Optimize(dh)
         #           label="Volume" ,
         #           background_color=RGB(0.2, 0.2, 0.2),
         #           legend=:outerleft, grid=false)
-        p3 = plot(1:true_iteration, g_hist[1:true_iteration]/1e4, label="Objective",
+        p3 = plot(1:true_iteration, g_hist[1:true_iteration] ./ 1e2, label="Objective",
                   background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, lc=:purple, grid=false)
         X_c,tract = plotTraction()
         p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
@@ -519,3 +526,14 @@ end
 
 
 g_hist, v_hist, OptIter = Optimize(dh)
+
+
+g_ini = any
+locked_d = any
+mp = any
+n = 0
+n_right = any
+traction = 1
+xval = d
+Γ_right = any
+@save "packning.jld2"

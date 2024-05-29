@@ -110,7 +110,7 @@ function calculate_segment_area(slave_element_id, elements, element_types,
             else
                 H = 0.0
             end
-            #@show H
+            #@show H ξ
             #@show λ_gp
             Ae += H * w * s * J
         end

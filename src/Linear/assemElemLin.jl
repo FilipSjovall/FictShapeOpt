@@ -287,6 +287,20 @@ function Robin(coorde,Ψe,de,λ)
     return  Kc, Kc * (Ψe - λ*de) # [0;∫N1;0;∫N2;0;∫N3]*0.5
 end
 
+function RobinVol(coorde,Ψe,de,λ)
+    M = zeros(6,6)
+
+    # Mappa till isoparametriskt element
+    for gp ∈ 1 : ngp
+
+    end
+    # M = N'*N * detJdΩ
+    # detJdΩ borde räknas för hand eftersom vi kan vilja differentiera den?
+    # ∫ M ( Ψ - λ d ) dΩ är dock i referensdomän Ω₀ med X₀ som inte beror på d
+    # därför borde Δ(detJ dΩ₀) = 0
+    return  M, M * (Ψe - λ*de)
+end
+
 function tractionLoad(coorde,τ)
     L = sqrt((coorde[1,1] - coorde[2,1])^2 + (coorde[1,2] - coorde[2,2])^2)
     ∫Nᵀ = (L/2) * [1.0 0.0 1.0 0.0; 0.0 1.0 0.0 1.0]
