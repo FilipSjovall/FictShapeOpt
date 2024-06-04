@@ -321,14 +321,14 @@ function Optimize(dh)
         # # # # #
         # Reset #
         # # # # #
-        if OptIter % 20 == 0 && true_iteration < 101
+        if (true_iteration % 10 == 0 && true_iteration < 101)
             dh0 = deepcopy(dh)
             global d = zeros(dh.ndofs.x)
             global xold1 = d[:]
             global xold2 = d[:]
-            global low = xmin
-            global upp = xmax
-            OptIter = 1
+            global low   = xmin
+            global upp   = xmax
+            OptIter      = 1
         end
 
         # # # # # # # # # # # # # #
@@ -365,7 +365,7 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-        p = 3
+        p = 2
         X_ordered = getXfromCoord(coord)
         g     = -contact_pressure(X_ordered, a, ε, p)
         ∂g_∂x = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
@@ -425,7 +425,7 @@ function Optimize(dh)
         low_old = low
         upp_old = upp
         #
-        # Skalning: p = 3 g/1e3 ; p = 2 g/1e2 ; p = 1 g/?
+        # Skalning: p = 3 g/1e2 ; p = 2 g/1e2 ; p = 1 g/1e2?
         #
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
                                                                         xold1[:], xold2[:], g / 1e2 , ∂g_∂d[free_d] / 1e2,
