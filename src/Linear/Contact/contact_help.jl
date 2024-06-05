@@ -275,8 +275,10 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
         if λ_A != 0 && κ[i] != 0
             τ = λ_A * normals[A]/ κ[i]
             #push!(τ_c, A => λ_A )
-            #push!(τ_c, A => λ_A / κ[i])
-            push!(τ_c, A => τ[2])
+            push!(τ_c, A => λ_A / κ[i])
+            #push!(τ_c, A => τ[2])
+        else
+            push!(τ_c, A => 0.0)
         end
         #
         #push!(τ_c, A => g[i,:] ⋅ [0.0 1.0] / κ[i])

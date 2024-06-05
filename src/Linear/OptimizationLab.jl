@@ -506,6 +506,10 @@ function Optimize(dh)
         #d_hist2[free_d, true_iteration]  = d[free_d]
         #@save "asymptoter.jld2" low_hist upp_hist d_hist2
         GC.gc() # Collect garbage
+        if true_iteration == 1
+            @save "initiellt_tryck" X_c tract
+        end
+        #@save "packningen.jld2" lägg till relevanta variabler så som a, dh, ψ etc
     end
     return g_hist, v_hist, al_hist, au_hist, OptIter
 end
