@@ -85,11 +85,11 @@ function calculate_mortar_assembly(elements, element_types, coords,
     for mid in master_element_ids
         push!(M, elements[mid]...)
     end
-    S = sort(unique(S))
-    M = sort(unique(M))
-    ns = length(S)
-    nm = length(M)
-    normals = calculate_normals(elements, element_types, coords)
+    S            = sort(unique(S))
+    M            = sort(unique(M))
+    ns           = length(S)
+    nm           = length(M)
+    normals      = calculate_normals(elements, element_types, coords)
     segmentation = calculate_segments(slave_element_ids, master_element_ids,elements, element_types, coords, normals)
 
     D_I = Int[]

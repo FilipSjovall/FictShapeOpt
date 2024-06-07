@@ -304,7 +304,6 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
 
     # Scaling
     κ = gap_scaling(X)
-    #κ .= 1
 
     # convert X to Real for compatibility with ForwardDiff
     X_float = real.(X + a_ordered)
@@ -313,6 +312,7 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
     coordu = getCoordfromX(X_float)
 
     # Create dictionaries that are needed for the Mortar2D package
+    # byt mot update_coords ... ? kanske kan loopa över nycklarna i Contact.coords med...
     elements, element_types, slave_elements, slave_element_ids, master_element_ids, coords = create_contact_list(dh, Γs, Γm, coordu)
 
     # Compute nodal normals
@@ -323,9 +323,8 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
 
     # Compute the projected gap function
     g = zeros(eltype(X_float), length(slave_dofs), 2)
-
-    # Better to loop with the LLVM compiler
-    # We loop over a reduced set when dimensions don't agree
+    #
+    # byt mot funktion?
     for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1)))))
         slave = [0; 0]
         for (jj,B) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1))))) # slave_dofs
@@ -339,10 +338,10 @@ function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}
         g[j, :] = slave - master
     end
     r_c = zeros(eltype(X_float), length(contact_dofs)) # sparse...?
-
     # ----------- #
     # ∫ᵧ λ 𝛅g dγ  #
     # ----------- #
+    # skall detta vara en funktion?
     for (i, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1)))))
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
         if ( λ_A != 0.0 && κ[i] != 0 )

@@ -68,9 +68,34 @@ function compute_face_coords(dh<:DofHandler, Γs, Γm, coord_dual)
 end
 
 
-Δn = ForwardDiff.gradient(x->calculate_normals(elements,x),X) # funkar?
+function compute_residual_and_tangent(ContactParameters,mfl)
+    normals = calculate_normals(elements, X)
 
-Δg = ForwardDiff.gradient(x->gap_function(elements,x),X) # funkar?
-
-ΔM =
-ΔD =
+    for sid in ContactParameters.slave_element_ids
+        sdofs   = contact_dofs[sid]
+        xs1,xs2 = ContactParameters.coord[sid]
+        ns1,ns2 = normals[sid]
+        for mid in ContactParameters.master_element_ids
+            mdofs   = contact_dofs[mid]
+            xm1,xm2 = ContactParameters.coord[mid]
+            xi1a = master_toslave(...)
+            xi1b = master_toslave(...)
+            xi1 = clamp.([xi1a; xi1b], -1.0, 1.0)
+            l = 1/2*abs(xi1[2]-xi1[1])
+            isapprox(l, 0.0) && continue # no contribution in this master element
+            for ip in integration_points
+                w   = weights[ip]
+                ξ_s = (1-η)/2*ξ₁ + (1+η)/2*ξ₂
+                N1  = [(1-ξ_s)/2 (1+ξ_s)/2]
+                N2  = [(1-ξ_m)/2 (1+ξ_m)/2] # ??
+                x_s = N1*[xs1 xs2]
+                x_m = N2*[xm1 xm2]
+                n_s = N1*[ns1 ns2]
+                g   = n_s ⋅ (x_s - x_m)
+                λ   = ε*max(g⋅n,0)
+                rc[slave_dofs]  += N1'*N1*w*J*λ
+                rc[master_dofs] -= N1'*N2*w*J*λ
+            end
+        end
+    end
+end
