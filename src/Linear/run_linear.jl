@@ -1402,9 +1402,7 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
             res[bcdofs] = 0 * res[bcdofs]
             residual = norm(res, 2)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_top[1]]
-
         end
-
         if loadstep < 40 && iter < 20
             σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
             vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile

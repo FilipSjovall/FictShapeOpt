@@ -37,7 +37,7 @@ r  = 0.025 #0.0125
 r2 = 0.025
 # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
 # grid size
-h = 0.075 # 0.04 # 0.05
+h = 0.04 # 0.075
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
