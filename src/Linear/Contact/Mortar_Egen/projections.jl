@@ -9,34 +9,20 @@ function master_to_slave(xm, xs1, xs2, ns1, ns2)
     #---------------------------------------------------------
     # Borde bytas till analytisk lösn
     #---------------------------------------------------------
-    N1s(ξ)  = (1.0 - ξ) / 2
-    N2s(ξ)  = (1.0 + ξ) / 2
-    Ns(ξ)   = [N1s(ξ) N2s(ξ)]
 
-    dN1s(ξ) = -1.0 / 2.0
-    dN2s(ξ) =  1.0 / 2.0
-    dNs(ξ)  = [dN1s(ξ) dN2s(ξ)]
+    # Δx && Δy
 
-    xs(ξ)   = Ns(ξ)  * [vcat(xs1,0.0) vcat(xs2,0.0)]'
-    dxs(ξ)  = dNs(ξ) * [vcat(xs1,0.0) vcat(xs2,0.0)]'
+    # Förtydliga n1 // n2
 
-    ns(ξ)   = Ns(ξ)  * [ vcat(ns1, 0.0) vcat(ns2, 0.0) ]'
-    dns(ξ)  = dNs(ξ) * [ vcat(ns1, 0.0) vcat(ns2, 0.0) ]'
-
-    res(ξ)  = cross(vec(xs(ξ))-vec(vcat(xm,0.0)),vec(ns(ξ)))[3]
-    dres(ξ) = cross(vec(dxs(ξ)), vec(ns(ξ)))[3] + cross(vec(xs(ξ)) - vec(vcat(xm, 0.0)), vec(dns(ξ)))[3]
-
-
-    ξᵢ    = 0.0
-    ξᵢ₊₁ = 0.0
-    dξ    = 0.0
-    for i ∈ 1:20
-        dξ    = -res(ξᵢ) ./ dres(ξᵢ)
-        ξᵢ₊₁  = ξᵢ + dξ
-        if norm(ξᵢ₊₁ - ξᵢ) < 1e-6
-            return ξᵢ₊₁
-        end
-        ξᵢ = ξᵢ₊₁
+    a =   Δx[1] * ( n1[2] - n2[2] ) + Δx[2] * ( n2[2] - n1[2] )
+        - Δy[1] * ( n1[1] - n2[2] ) - Δy[2] * ( n2[1] - n1[1] )
+    b =   Δx[2] * n2[2] - Δx[2] * n2[2] + Δy[1] * n1[1] - Δy[2] * n2[1]
+    c =   Δx[1] * ( n1[2] + n2[2] ) + Δx[2] * ( n2[2] + n1[2] )
+        - Δy[1] * ( n1[1] + n2[2] ) - Δy[2] * ( n2[1] + n1[1] )
+    if (b^2 -4 * a * c) ≈ 0
+        return ξₚ = -b/2a
     end
-    return -1000.
+    ξp₁ = ( - b + √(b^2 -4 * a * c) )/2a
+    ξp₂ = ( - b - √(b^2 -4 * a * c) )/2a
+
 end

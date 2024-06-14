@@ -37,7 +37,7 @@ r  = 0.025 #0.0125
 r2 = 0.025
 # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
 # grid size
-h = 0.04 # 0.075
+h = 0.08#0.04 # 0.075
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -260,7 +260,7 @@ function Optimize(dh)
     global λψ   = similar(a)
     global λᵤ   = similar(a)
     global λᵥₒₗ = similar(a)
-    Vₘₐₓ = volume(dh, coord, enod) * 1.2# 1.0 # "volfrac"
+    Vₘₐₓ = volume(dh, coord, enod) #* 1.2# 1.0 # "volfrac"
     tol   = 1e-3
     global OptIter = 0
     global true_iteration = 0
@@ -365,7 +365,7 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-        p = 2
+        p = 3
         X_ordered = getXfromCoord(coord)
         g     = -contact_pressure(X_ordered, a, ε, p)
         ∂g_∂x = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
@@ -429,9 +429,8 @@ function Optimize(dh)
         #
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
                                                                         xold1[:], xold2[:], g / 1e2 , ∂g_∂d[free_d] / 1e2,
-                                                                        vcat(g₁ .* 1e2, g₃*1e2),
-                                                                        hcat(∂Ω∂d[free_d] .* 1e2,
-                                                                        ∂g₃_∂d[free_d]*1e2)',
+                                                                        g₁ .* 1e2,
+                                                                        ∂Ω∂d[free_d].* 1e2,
                                                                         low, upp, a0, am, C, d2)
         # d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
         #                                                                 xold1[:], xold2[:], g ./ 1, ∂g_∂d[free_d] ./ 1,
@@ -490,10 +489,6 @@ function Optimize(dh)
                   legend=:outerleft, grid=false)
         hspan!(p2,[-2,0], color = :green, alpha = 0.2, labels = "👌");
         hspan!(p2,[2,0],  color = :red, alpha = 0.2, labels = "🤚");
-        #p2 = plot(1:true_iteration, v_hist[1:true_iteration]*10 ,
-        #           label="Volume" ,
-        #           background_color=RGB(0.2, 0.2, 0.2),
-        #           legend=:outerleft, grid=false)
         p3 = plot(1:true_iteration, g_hist[1:true_iteration] ./ 1e2, label="Objective",
                   background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, lc=:purple, grid=false)
         X_c,tract = plotTraction()

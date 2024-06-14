@@ -904,16 +904,6 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
             res[bcdofs] = 0 * res[bcdofs]
             residual = norm(res, 2)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdofs[7]]
-            #σx, σy,τ,σᵛᵐ = StressExtract(dh, a + Δa, mp)
-            #vtk_grid("results/contact" * string(iter), dh) do vtkfile
-            #    vtk_point_data(vtkfile, dh, a + Δa) # displacement field
-            #    vtk_point_data(vtkfile, σx, "σx")
-            #    vtk_point_data(vtkfile, σy, "σy")
-            #    vtk_point_data(vtkfile, τ, "τ")
-            #    vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
-            #    vtk_point_data(vtkfile, res, "res")
-            #end
-
         end
         if loadstep == nloadsteps
             # Plot traction , can be moved to function...

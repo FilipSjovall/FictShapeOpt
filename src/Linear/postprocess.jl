@@ -36,11 +36,11 @@ px_per_cm = 1200 # dpi
 
 reso = (w_cm * px_per_cm / width)
 
-f = Figure( resolution = (width,height), fontsize = 12, px_per_unit = reso)
+f = Figure( resolution = (width,height),font="CMU", fontsize = 12, px_per_unit = reso)
 ax = Axis(f[1, 1],
     xgridvisible = false,
     ygridvisible = false,
-    title  = L"\text{Optimization history}", # L enables LaTeX strings
+    #title  = L"\text{Optimization history}", # L enables LaTeX strings
     xlabel = L"\text{Iteration}", #
     #ylabelrotation = 3π/2,
     ylabel = L"$\frac{f}{f^0}$", #
@@ -58,7 +58,6 @@ lines!(1:true_iteration,(g_hist[1:true_iteration]./g_hist[1]), color = :blue, la
 lines!(1:true_iteration,(g_hist[1:true_iteration]./g_hist[1]), color = :red, label = L"p = 2")
 @load "results//seal//v2//p = 3/packning.jld2" g_hist true_iteration
 lines!(1:true_iteration,(g_hist[1:true_iteration]./g_hist[1]), color = :green, label = L"p = 3")
-#f[2, 1] = Legend(f, ax, L"\text{Exponent}", framevisible = true, orientation = :horizontal, tellwidth = false, tellheight = true)
 f[2, 1] = Legend(f, ax, framevisible = false, orientation = :horizontal, tellwidth = false, tellheight = true)
 f
 Makie.save("optimization_history_seal.pdf",f)
@@ -82,6 +81,8 @@ function plotTraction()
     X_c = X_c[ϵᵢⱼₖ]
     return X_c, tract
 end
+
+
 cm_convert = 28.3465
 w_cm  = 8
 h_cm  = 13
@@ -105,13 +106,15 @@ ax = Axis(f[1, 1],
     xminorticksvisible = true, yminorticksvisible = true,
     limits = (0.35, 0.5, 1.0, 200.0),
 )
-#### params
-Δ          = -0.025
-ε          = 1e5
-nloadsteps = 10
-mp₁        = [180 80].*1e3     # [K G]
-mp₂        = [2.5 0.1].*1e3    #
+
 begin
+    # parameters that should have been saved?
+    Δ          = -0.025
+    ε          = 1e5
+    nloadsteps = 10
+    mp₁        = [180 80].*1e3     # [K G]
+    mp₂        = [2.5 0.1].*1e3    #
+    #
     @load "results//seal//v2//p = 1/packning.jld2" dh
     coord, enod = getTopology(dh);
     n_bot = getnodeset(dh.grid,"n_bot")
@@ -130,6 +133,14 @@ begin
     end
     t = 1
     a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
+    σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
+    vtk_grid("results/seal/v2/p = 1/p = 1 - contact", dh) do vtkfile
+        vtk_point_data(vtkfile, dh, a) # displacement field
+        vtk_point_data(vtkfile, σx, "σx")
+        vtk_point_data(vtkfile, σy, "σy")
+        vtk_point_data(vtkfile, τ, "τ")
+        vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
+    end
     xc1,tract1 = plotTraction()
 
     @load "results//seal//v2//p = 2/packning.jld2" dh
@@ -151,6 +162,14 @@ begin
     end
     t = 1
     a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
+    σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
+    vtk_grid("results/seal/v2/p = 2/p = 2-contact", dh) do vtkfile
+        vtk_point_data(vtkfile, dh, a) # displacement field
+        vtk_point_data(vtkfile, σx, "σx")
+        vtk_point_data(vtkfile, σy, "σy")
+        vtk_point_data(vtkfile, τ, "τ")
+        vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
+    end
     xc2,tract2 = plotTraction()
 
 
@@ -174,8 +193,15 @@ begin
     end
     t = 1
     a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
+    σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
+    vtk_grid("results/seal/v2/p = 3/p = 3-contact", dh) do vtkfile
+        vtk_point_data(vtkfile, dh, a) # displacement field
+        vtk_point_data(vtkfile, σx, "σx")
+        vtk_point_data(vtkfile, σy, "σy")
+        vtk_point_data(vtkfile, τ, "τ")
+        vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
+    end
     xc3,tract3 = plotTraction()
-   #return xc1, tract1, xc2, tract2, xc3, tract3
 end
 
 lines!(convert(Vector{Float32},xc1),convert(Vector{Float32},tract1), color = :blue,  label = L"p = 1")
@@ -194,8 +220,6 @@ Makie.save("traction_seal.pdf",f)
 # / specifically for Cylinder - Block problem               #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 using JLD2
-#@load "färdig_cyl.jld2"
-#@load "results//Cylinder + Platta//Bäst cylinder + platta//färdig_cyl.jld2"
 @load "results//lunarc//flat | volume0.9//OptimizationVariablesy.jld2"
 using CairoMakie
 set_theme!(theme_latexfonts())
@@ -206,8 +230,7 @@ width = w_cm*cm_convert
 height= h_cm*cm_convert
 px_per_cm = 600 # dpi
 reso = w_cm * px_per_cm / width
-#f = Figure(fontsize=12,pt_per_unit = 1, px_per_unit = reso, size = (3000,2400) )
-f = Figure( resolution = (width,height), fontsize = 12, px_per_unit = reso)
+f = Figure( resolution = (width,height), fontsize = 12,font="CMU", px_per_unit = reso)
 ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
            xgridvisible = false, ygridvisible = false,
            ylabel = L"Objective function $|f|$ [N]",
@@ -224,28 +247,84 @@ ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
            leftspinecolor = :blue,
            ylabelcolor = :red,
            xminorticksvisible = true, yminorticksvisible = true,
-           title = L"\text{Optimization history}",
            topspinevisible = false)
-#ax3 = Axis(f[1,1], width=Relative(0.2), height=Relative(0.2), halign=0.1, valign=1.0, backgroundcolor=:white)
 lines!(ax1,1:true_iteration,-g_hist[1:true_iteration], color = :blue )
 lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
-#lines!(ax3,1:20,-g_hist[1:20],color =:blue )
 f
-# Makie.save("optimization_history.svg",f)
 Makie.save("optimization_history.pdf",f)
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-#  Plot heat maps using FerriteViz and GLMakie          #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+## plot traction in paraview
+begin
+    @load "results//lunarc//flat | volume0.9//OptimizationVariablesy.jld2"
+    coord, enod = getTopology(dh);
+    n_bot = getnodeset(dh.grid,"n_bot")
+    n_top = getnodeset(dh.grid,"n_top")
+    nₛ    = getnodeset(dh.grid,"nₛ")
+    nₘ    = getnodeset(dh.grid,"nₘ")
+    contact_dofs = getContactDofs(nₛ, nₘ)
+    contact_nods = getContactNods(nₛ, nₘ)
+    freec_dofs = setdiff(1:dh.ndofs.x, contact_dofs)
+    Γs = getfaceset(dh.grid,"Γ_slave")
+    Γm = getfaceset(dh.grid,"Γ_master")
+    global order = Dict{Int64,Int64}()
+    for (i, nod) ∈ enumerate(contact_nods)
+        push!(order, nod => i)
+    end
+    register = getNodeDofs(dh)
+    #τ_c = ExtractContactTractionVec(a,ε,coord)
+    τ_c = ExtractContactTractionVec(Ψ, μ, coord)
+    traction = zeros(size(a))
+    for (key,val) in τ_c
+        dofs = register[key,:]
+        traction[dofs] = val
+    end
+    vtk_grid("results/cylinder_traction_🚜", dh) do vtkfile
+                vtk_point_data(vtkfile, dh, Ψ) # displacement field
+                vtk_point_data(vtkfile, dh, traction, "traction")
+    end
+end
+
+## plot traction after 1 iteration paraview
+begin
+    @load "results//lunarc//flat_first_design_updates//OptimizationVariablesy2.jld2"
+    coord, enod = getTopology(dh);
+    n_bot = getnodeset(dh.grid,"n_bot")
+    n_top = getnodeset(dh.grid,"n_top")
+    nₛ    = getnodeset(dh.grid,"nₛ")
+    nₘ    = getnodeset(dh.grid,"nₘ")
+    contact_dofs = getContactDofs(nₛ, nₘ)
+    contact_nods = getContactNods(nₛ, nₘ)
+    freec_dofs = setdiff(1:dh.ndofs.x, contact_dofs)
+    Γs = getfaceset(dh.grid,"Γ_slave")
+    Γm = getfaceset(dh.grid,"Γ_master")
+    global order = Dict{Int64,Int64}()
+    for (i, nod) ∈ enumerate(contact_nods)
+        push!(order, nod => i)
+    end
+    register = getNodeDofs(dh)
+    #τ_c = ExtractContactTractionVec(a,ε,coord)
+    τ_c = ExtractContactTractionVec(Ψ, μ, coord)
+    traction = zeros(size(a))
+    for (key,val) in τ_c
+        dofs = register[key,:]
+        traction[dofs] = val
+    end
+    vtk_grid("results/cylinder_traction_🚜_iter1", dh) do vtkfile
+                vtk_point_data(vtkfile, dh, Ψ) # displacement field
+                vtk_point_data(vtkfile, dh, traction, "traction")
+    end
+end
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # #
+#  Plot heat maps using FerriteViz and GLMakie  #
+# # # # # # # # # # # # # # # # # # # # # # # # #
 # Heatmaps
 # using FerriteViz
 # using GLMakie
 # a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
 # plotter = FerriteViz.MakiePlotter(dh,a);
 # FerriteViz.solutionplot(plotter,colormap=:jet)
-
-
-
 
 ### Från Jakob
 function default_theme2(; size = (140, 70), rasterize=600, font="CMU", fontsizemajor=8, fontsizeminor=6)

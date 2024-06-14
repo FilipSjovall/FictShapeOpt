@@ -110,8 +110,6 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
       low    = xval .- factor.*(xold1 .- low);
       upp    = xval .+ factor.*(upp .- xold1);
       lowmin = xval - 10*(xmax-xmin);
-      #lowmax = xval - 0.01*(xmax-xmin);
-      #uppmin = xval + 0.01*(xmax-xmin);
       lowmax = xval - 0.001 * (xmax - xmin) ###### Ändrade värden
       uppmin = xval + 0.001 * (xmax - xmin) ###### Ändrade värden
       uppmax = xval + 10*(xmax-xmin);

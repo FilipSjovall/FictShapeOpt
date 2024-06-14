@@ -311,14 +311,17 @@ function StressExtract(dh,a,mp₁,mp₂)
         ie += 1
         cell_dofs = celldofs(cell)
         if ie ∈ dh.grid.cellsets["top mesh"]
-            mp = mp₁
+            #mp = mp₁
+            for gp in 1 : 3
+                cauchy[gp,:,:] = assemS(coord[cell.nodes, :], a[cell_dofs], mp₁, t, gp)
+            end
         else
-            mp = mp₂
+            #mp = mp₂
+            for gp in 1 : 3
+                cauchy[gp,:,:] = assemS(coord[cell.nodes, :], a[cell_dofs], mp₂, t, gp)
+            end
         end
-        for gp in 1 : 3
-            # S        = [Stress[1,1]; Stress[2,2]; Stress[3,3]; Stress[1,2]]
-            cauchy[gp,:,:] = assemS(coord[cell.nodes, :], a[cell_dofs], mp, t, gp)
-        end
+
         σxe                     = [cauchy[1, 1, 1] cauchy[2, 1, 1] cauchy[3, 1, 1]]
         σye                     = [cauchy[1, 2, 2] cauchy[2, 2, 2] cauchy[3, 2, 2]]
         τ_e                     = [cauchy[1, 1, 2] cauchy[2, 1, 2] cauchy[3, 1, 2]]
@@ -348,6 +351,12 @@ end
 function ExtractContactTraction(a,ε,coord)
     X_ordered = getXfromCoord(coord)
     τ_c       = contact_traction(X_ordered, a, ε)
+    return τ_c
+end
+
+function ExtractContactTractionVec(a,ε,coord)
+    X_ordered = getXfromCoord(coord)
+    τ_c       = contact_traction_vector(X_ordered, a, ε)
     return τ_c
 end
 

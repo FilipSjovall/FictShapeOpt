@@ -389,7 +389,7 @@ end
 function extrapolate_stress(s)
     stress = zeros(3)
     for nod in  1 : 3
-        stress[nod] = (N[:,nod]./N[:,nod]) ⋅ s # ??
+        stress[nod] = (N[:,nod]./N[:,nod]) ⋅ s / 3 # ??
     end
     return stress
 end

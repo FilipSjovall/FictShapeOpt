@@ -275,8 +275,8 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
         if λ_A != 0 && κ[i] != 0
             τ = λ_A * normals[A]/ κ[i]
             #push!(τ_c, A => λ_A )
-            push!(τ_c, A => λ_A / κ[i])
-            #push!(τ_c, A => τ[2])
+            #push!(τ_c, A => λ_A / κ[i])
+            push!(τ_c, A => τ[2])
         else
             push!(τ_c, A => 0.0)
         end
@@ -288,6 +288,65 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
     # ---------------------------------- #
     return τ_c
 end
+
+function contact_traction_vector(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) where {T1,T2}
+
+    # Order displacements according to nodes and not dofs
+    a_ordered = getDisplacementsOrdered(dh, a)
+
+    # Scaling
+    κ = gap_scaling(X)
+    #κ .= 0.005
+    # convert X to Real for compatibility with ForwardDiff
+    X_float = real.(X + a_ordered) # a ska vara sorterad på samma sätt som X, stämmer väl nu?
+
+    # Extract the coordinate vector (nbr_nodes x 2 )
+    coordu = getCoordfromX(X_float)
+
+    # Create dictionaries that are needed for the Mortar2D package
+    elements, element_types, slave_elements, slave_element_ids, master_element_ids, coords = create_contact_list(dh, Γs, Γm, coordu)
+
+    # Compute nodal normals
+    normals = Mortar2D.calculate_normals(elements, element_types, coords)
+
+    # Compute the projected gap function
+    g = gap_function(X_float)
+
+    # Assemble D and M matrices and the slave and master dofs corresponding to the mortar segmentation
+    slave_dofs, master_dofs, D, M = Mortar2D.calculate_mortar_assembly(elements, element_types, coords, slave_element_ids, master_element_ids)
+
+    # Initialize the nodal gap vector.
+    gₙ = zeros(eltype(X_float), length(slave_dofs))
+
+    # Loop to compute weigted gap at each node
+    for i ∈ eachindex(gₙ)
+        gₙ[i] = g[i, :] ⋅ normals[slave_dofs[i]]
+    end
+
+    # Initialize r_c
+    #τ_c = Dict{Int64,Real}()
+    τ_c = Dict{Int64, Vector{Float64} }()
+
+    # ---------- #
+    # ∫ᵧ 𝛅g λ dγ #
+    # ---------- #
+    # Loop over master side dofs
+    for (i, A) in enumerate(slave_dofs)
+        λ_A = penalty(g[i, :] ⋅ normals[A] , ε)
+        if (λ_A != 0 && κ[i] != 0)
+            τ = λ_A * normals[A]/ κ[i]
+            push!(τ_c, A => τ)
+        else
+            τ = 0.0*λ_A * normals[A]/ κ[i]
+            push!(τ_c, A => τ)
+        end
+    end
+    # ---------------------------------- #
+    # ∫ᵧ g 𝛅λ dγ = 0 for penalty methods #
+    # ---------------------------------- #
+    return τ_c
+end
+
 
 function contact_residual_reduced(X::AbstractVector{T1}, a_c::AbstractVector{T2}, a_f::AbstractVector{T3}, ε::Number) where {T1,T2,T3}
     a_total = similar(X)
