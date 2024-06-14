@@ -97,9 +97,10 @@ function compute_residual_and_tangent(ContactParameters,a)
                 w   = weights[ip]
                 η   = points[ip]
                 ξ_s = (1-η)/2*ξ₁ + (1+η)/2*ξ₂
-                j   = ... # ∂x¹e / ∂ξ
+                #Jseg= J?   # ∂x¹e / ∂ξ
+                Jseg=  l*J
                 N1  = [(1-ξ_s)/2 (1+ξ_s)/2]
-                x_s = N1*[xs1 xs2]
+                x_s = N1*[xs1 xs2] # gör till funktion?
                 n_s = N1*[ns1 ns2]
                 ξ_m = slave_to_master(xs, ns, xm1, xm2)
                 N2  = [(1-ξ_m)/2 (1+ξ_m)/2] # ??
@@ -107,8 +108,8 @@ function compute_residual_and_tangent(ContactParameters,a)
                 # τ_s = [-n[2] n[1]]
                 g   = n_s ⋅ (x_s - x_m) # saknas en formfunktion?
                 λ   = ε*max(g⋅n,0)
-                rc[sdofs] += N1'*N1*w*J*λ*n
-                rc[mdofs] -= N1'*N2*w*J*λ*n
+                rc[sdofs] += N1' * N1 * λ * n * Jseg * w
+                rc[mdofs] -= N1' * N2 * λ * n * Jseg * w
             end
         end
     end

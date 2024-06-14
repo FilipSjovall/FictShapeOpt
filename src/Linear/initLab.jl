@@ -15,7 +15,7 @@ mp₀ = [1.0 5.0]        #
 #
 t = 1.0
 # Optimization parameters
-global m = 1;
+global m = 2;
 global n_mma   = length(free_d);
 global epsimin = 0.0000001;
 #global xvalue    = d[:];
@@ -31,8 +31,8 @@ global kkttol    = 0.001;
 global changetol = 0.001;
 global outit  = 0;
 global change = 1;
-global xmax =  0.025 * ones(n_mma) ;# 0.025 * ones(n_mma) ;
-global xmin = -0.025 * ones(n_mma) ;#-0.025 * ones(n_mma) ;
+global xmax =  0.1 * ones(n_mma) ;# 0.025 * ones(n_mma) ;
+global xmin = -0.1 * ones(n_mma) ;#-0.025 * ones(n_mma) ;
 
 # global xmax[1:2:end-1] .= 0.0001
 # global xmin[1:2:end-1] .= 0.0001

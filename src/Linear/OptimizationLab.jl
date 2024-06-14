@@ -158,7 +158,8 @@ addfaceset!(dh.grid, "Γ_left", x->x[1] ≈ x₀)
 # ----------------- #
 #Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm, Γ_sym, Γ_lr))
 #Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm, Γ_sym, Γ_lr))
-Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γ_sym, Γ_lr))
+#Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γ_sym, Γ_lr))
+Γ_robin = union(Γs,Γm)
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
 n_robin = getBoundarySet(dh.grid, Γ_robin)
@@ -382,15 +383,15 @@ function Optimize(dh)
         # # # # # # # # # # #
         # Volume constraint #
         # # # # # # # # # # #
-        g₁ = volume(dh, coord, enod) / Vₘₐₓ - 1.0
-        ∂Ω_∂x = volume_sens(dh, coord)
+        g₁ = volume(dh, coord, enod)./ Vₘₐₓ - 1.0
+        ∂Ω_∂x = volume_sens(dh, coord)./ Vₘₐₓ
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
-        ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd ./ Vₘₐₓ)
+        ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd)
         # # # # # # # # # # # #
         # Area constraint #
         # # # # # # # # # # # #
         γ_max = 0.15
-        γ_min = 0.125 # 0.15 # 0.13 # 0.12
+        γ_min = 0.04 # 0.15 # 0.13 # 0.12
 
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
@@ -429,8 +430,8 @@ function Optimize(dh)
         #
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
                                                                         xold1[:], xold2[:], g / 1e2 , ∂g_∂d[free_d] / 1e2,
-                                                                        g₁ .* 1e2,
-                                                                        ∂Ω∂d[free_d].* 1e2,
+                                                                        vcat(g₁ .* 1e2, g₃*1e3),
+                                                                        hcat(∂Ω∂d[free_d].* 1e2,∂g₃_∂d[free_d]*1e3)',
                                                                         low, upp, a0, am, C, d2)
         # d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
         #                                                                 xold1[:], xold2[:], g ./ 1, ∂g_∂d[free_d] ./ 1,
@@ -467,8 +468,8 @@ function Optimize(dh)
         al_hist[true_iteration] = g₃
         println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g / 1e2)
         #println("Objective: ", g_hist[1:true_iteration])
-        #println("Volume constraint: ", v_hist[1:true_iteration])
-        println("Area constraint", " γ_min ≤ γ ≤ γ_max:  ", γ_min, " ≤ ", γc ," ≤ ", γ_max )
+        println("Volume constraint: ", v_hist[1:true_iteration])
+        #println("Area constraint", " γ_min ≤ γ ≤ γ_max:  ", γ_min, " ≤ ", γc ," ≤ ", γ_max )
         # ------------ #
         # write to vtu #
         # ------------ #
