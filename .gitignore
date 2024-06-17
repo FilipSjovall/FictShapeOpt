@@ -7,5 +7,7 @@ products/
 *.vtu
 *.heapsnapshot*
 
+*.jld2
+
 results/
 
