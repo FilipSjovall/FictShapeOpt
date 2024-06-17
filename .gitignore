@@ -9,5 +9,13 @@ products/
 
 *.jld2
 
+*.svg
+
+*.pdf
+
+*.png
+
+*.eps
+
 results/
 
