@@ -323,7 +323,7 @@ function Optimize(dh)
         # Reset #
         # # # # #
         #if (true_iteration % 10 == 0 && true_iteration < 101)
-        if (true_iteration % 10 == 0 && true_iteration < 51)
+        if (true_iteration % 10 == 0 && true_iteration < 101)
             dh0 = deepcopy(dh)
             global d = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -384,7 +384,7 @@ function Optimize(dh)
         # # # # # # # # # # #
         # Volume constraint #
         # # # # # # # # # # #
-        g₁ = volume(dh, coord, enod)./ Vₘₐₓ - 1.0
+        g₁    = volume(dh, coord, enod)./ Vₘₐₓ - 1.0
         ∂Ω_∂x = volume_sens(dh, coord)./ Vₘₐₓ
         solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
         ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd)
@@ -432,7 +432,7 @@ function Optimize(dh)
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
                                                                         xold1[:], xold2[:], g / 1e2 , ∂g_∂d[free_d] / 1e2,
                                                                         vcat(g₁ .* 1e2, g₃*1e2),
-                                                                        hcat(∂Ω∂d[free_d].* 1e2,∂g₃_∂d[free_d]*1e2)',
+                                                                        hcat(∂Ω∂d[free_d].* 1e2, ∂g₃_∂d[free_d]*1e2)',
                                                                         low, upp, a0, am, C, d2)
         # d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
         #                                                                 xold1[:], xold2[:], g ./ 1, ∂g_∂d[free_d] ./ 1,
@@ -447,9 +447,9 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        if (true_iteration % 50 == 0 && true_iteration > 99)
-            global α = 0.4
-        end
+        #if (true_iteration % 50 == 0 && true_iteration > 99)
+        #    global α = 0.4
+        #end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
@@ -484,7 +484,7 @@ function Optimize(dh)
         red_condition_au = [y > 0 ? :red : :orange for y in au_hist[1:true_iteration]]
         red_condition_al = [y > 0 ? :red : :yellow for y in al_hist[1:true_iteration]]
 
-        p2 = plot(1:true_iteration, [v_hist[1:true_iteration]*10^2 au_hist[1:true_iteration]*10^2 al_hist[1:true_iteration]*10^2],
+        p2 = plot(1:true_iteration, [v_hist[1:true_iteration]*10^2 au_hist[1:true_iteration].*0 al_hist[1:true_iteration]*10],
                   label=["Volume" "γ_max" "γ_min"],
                   linecolor=hcat(red_condition_v, red_condition_au, red_condition_al),
                   background_color=RGB(0.2, 0.2, 0.2),
