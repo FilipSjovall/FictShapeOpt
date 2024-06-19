@@ -323,7 +323,7 @@ function Optimize(dh)
         # Reset #
         # # # # #
         #if (true_iteration % 10 == 0 && true_iteration < 101)
-        if (true_iteration % 10 == 0 && true_iteration < 101)
+        if (true_iteration % 10 == 0 && true_iteration < 51)
             dh0 = deepcopy(dh)
             global d = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -367,7 +367,7 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-        p = 3
+        p = 2
         X_ordered = getXfromCoord(coord)
         g     = -contact_pressure(X_ordered, a, ε, p)
         ∂g_∂x = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
@@ -393,11 +393,9 @@ function Optimize(dh)
         # # # # # # # # # # # #
         γ_max = 0.15
         γ_min = 0.08 # 0.15 # 0.13 # 0.12
-
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-
         #g₂ = γc / γ_max - 1.0
         #Fₘₐₓ  = 100.0
         #g₂     = -T' * Fᵢₙₜ ./ Fₘₐₓ - 1.0
@@ -406,13 +404,10 @@ function Optimize(dh)
         #solveq!(λᵤ, K', ∂g₂_∂u, bcdofs, bcvals.*0)
         #solveq!(λψ, Kψ', ∂g₂_∂x' - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
         #∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' )'
-
         #γc = contact_area(X_ordered, a, ε)
         #∂g₃_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, ε), getXinDofOrder(dh, X_ordered, coord))
         #∂g₃_∂u = ForwardDiff.gradient(u -> contact_area(X_ordered, u, ε), a)
         #g₃ = 1.0 - γc / γ_min
-
-
         γc = contact_area(X_ordered, a, 1.0)
         ∂g₃_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, 1.0), getXinDofOrder(dh, X_ordered, coord))
         g₃ = 1.0 - γc / γ_min
@@ -427,10 +422,10 @@ function Optimize(dh)
         low_old = low
         upp_old = upp
         #
-        # Skalning: p = 3 g/1e2 ; p = 2 g/1e2 ; p = 1 g/1e2?
+        # Skalning: p = 3 g/1e2 ; p = 2 g/1e4?
         #
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
-                                                                        xold1[:], xold2[:], g / 1e2 , ∂g_∂d[free_d] / 1e2,
+                                                                        xold1[:], xold2[:], g / 1e4 , ∂g_∂d[free_d] / 1e4,
                                                                         vcat(g₁ .* 1e2, g₃*1e2),
                                                                         hcat(∂Ω∂d[free_d].* 1e2, ∂g₃_∂d[free_d]*1e2)',
                                                                         low, upp, a0, am, C, d2)
@@ -467,7 +462,7 @@ function Optimize(dh)
         v_hist[true_iteration]  = g₁
         au_hist[true_iteration] = g₂
         al_hist[true_iteration] = g₃
-        println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g / 1e2)
+        println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g / 1e4)
         #println("Objective: ", g_hist[1:true_iteration])
         println("Volume constraint: ", v_hist[1:true_iteration])
         #println("Area constraint", " γ_min ≤ γ ≤ γ_max:  ", γ_min, " ≤ ", γc ," ≤ ", γ_max )
@@ -491,7 +486,7 @@ function Optimize(dh)
                   legend=:outerleft, grid=false)
         hspan!(p2,[-2,0], color = :green, alpha = 0.2, labels = "👌");
         hspan!(p2,[2,0],  color = :red, alpha = 0.2, labels = "🤚");
-        p3 = plot(1:true_iteration, g_hist[1:true_iteration] ./ 1e2, label="Objective",
+        p3 = plot(1:true_iteration, g_hist[1:true_iteration] ./ 1e4, label="Objective",
                   background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, lc=:purple, grid=false)
         X_c,tract = plotTraction()
         p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)

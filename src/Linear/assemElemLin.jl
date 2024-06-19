@@ -3,10 +3,7 @@ using LinearAlgebra
 using Tensors
 
 ## Gör om allt till Tensorer?
-
 ngp = 3
-
-#ξ      = [2.0/3.0 1.0/6.0 1.0/6.0; 1.0/6.0 2.0/3.0 1.0/6.0; 1.0/6.0 1.0/6.0 2.0/3.0 ] # summa gps = 1?
 ξ      = [2.0/3.0 1.0/6.0 1.0/6.0; 1.0/6.0 2.0/3.0 1.0/6.0; 1.0/6.0 1.0/6.0 2.0/3.0 ]
 w      = [1.0/3.0 1.0/3.0 1.0/3.0]
 index  = [1 2 3; 4 5 6; 7 8 9]
@@ -64,52 +61,41 @@ function assemGP(coord,ed,gp,mp,t)
         println("Negative jacobian!!!")
     end
     dNₓ                     = P₀ * J⁻ * transpose(dNᵣ[:,index[gp,:]])
-
     # Gradient matrices " ∇N "
     H₀[1,1:2:5]  = dNₓ[1,:]
     H₀[2,1:2:5]  = dNₓ[2,:]
     H₀[3,2:2:6]  = dNₓ[1,:]
     H₀[4,2:2:6]  = dNₓ[2,:]
-
+    #
     Bₗ₀[1,1:2:5] = dNₓ[1,:]
     Bₗ₀[2,2:2:6] = dNₓ[2,:]
     Bₗ₀[3,1:2:5] = dNₓ[2,:]
     Bₗ₀[3,2:2:6] = dNₓ[1,:]
-
     # ∇u = ∇ₓN u
     A_temp       = H₀*ed
     A[1,:]       = [A_temp[1] 0.0 A_temp[3] 0.0]
     A[2,:]       = [0.0 A_temp[2] 0.0 A_temp[4]]
     A[3,:]       = [A_temp[2] A_temp[1] A_temp[4] A_temp[3]]
-
     # ∇N + ∂N∂x ⋅ ∇u
     B₀           = Bₗ₀ + A*H₀
-
     # Deformation gradient F = I + ∇u
-    #eff[1, 1] = dNₓ[1, :]' * ed[1:2:5] + 1.0
-    #eff[1, 2] = dNₓ[2, :]' * ed[1:2:5]
-    #eff[2, 1] = dNₓ[1, :]' * ed[2:2:6]
-    #eff[2, 2] = dNₓ[2, :]' * ed[2:2:6] + 1.0
     eff[1,1]     = A_temp[1] + 1.0
     eff[1,2]     = A_temp[2]
     eff[2,1]     = A_temp[3]
     eff[2,2]     = A_temp[4] + 1.0
-
     # Vec(F)
     ef = [eff[1,1] eff[1,2] eff[2,1] eff[2,2]]
-
     # Stress and : S = 0.5 ∂W / ∂C
     es = neohooke1(ef,mp)
     # Material tangent D = 0.25 ∂²W / ∂C²
     D  = dneohooke1(ef,mp)
-
     # Reformulate as matrix
     S             = [es[1]; es[2]; es[4]]
     Stress[1,:]   = [S[1] S[3]]
     Stress[2,:]   = [S[3] S[2]]
     R[1:2,1:2]    = Stress
     R[3:4,3:4]    = Stress
-
+    # Symmetrisk - kanske bara övre triangel
     # Internal force vector ∫ δE : S dΩ or ∫ ∇ₓδu : P dΩ
     fₑ            = transpose(B₀)*S*detJ*t*w[gp]/2
     # ∫ δEᵀ D ΔE + ∇δuᵀ S ∇Δu dΩ

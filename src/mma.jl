@@ -82,22 +82,22 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   #          in the current MMA subproblem.
   #
   #epsimin = sqrt(m+n)*10^(-9);
-  epsimin = 10^(-9);
+  epsimin = 10^(-7);
   raa0 = 0.00001;
 
-#  move = 0.1;# har fungerat bra för "hertz"
+  move = 0.1;# har fungerat bra för "hertz"
 #  move = 0.5;# "standard"
-  move = 1.0;
+#  move = 1.0;
 
-  #albefa  = 0.1;
-  #asyinit = 0.5;
-  #asyincr = 1.2;
-  #asydecr = 0.7;
-  albefa  = 0.4;
-  asyinit = 0.2;
-
-  asyincr = 1.1;
-  asydecr = 0.6;
+  albefa  = 0.1;
+  asyinit = 0.5;
+  asyincr = 1.2;
+  asydecr = 0.7;
+#  albefa  = 0.4;
+#  asyinit = 0.2;
+#
+#  asyincr = 1.1;
+#  asydecr = 0.6;
 
   eeen = ones(n);
   eeem = ones(m);

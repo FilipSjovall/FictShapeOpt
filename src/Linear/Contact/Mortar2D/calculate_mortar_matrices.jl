@@ -134,12 +134,10 @@ function calculate_segment_force(slave_element_id, elements, element_types,
         s = abs(xi2-xi1)/2.0
         for (w, ip) in seg_integration_points[3]
             xi_s = (1-ip)/2*xi1 + (1+ip)/2*xi2
-            N1 = [(1-xi_s)/2 (1+xi_s)/2]
-            λ_gp = N1 * [λ[scon[1]]; λ[scon[2]]]
+            N1 = [(1-xi_s)/2, (1+xi_s)/2]
+            λ_gp = N1[1]*λ[scon[1]] + N1[2]*λ[scon[2]] #N1 * [λ[scon[1]]; λ[scon[2]]]
             if all(λ_gp .> 0.)
-                fce += λ_gp[1]^p * w * s * J
-            else
-                H = 0.0
+                fce += λ_gp^p * w * s * J
             end
         end
     end

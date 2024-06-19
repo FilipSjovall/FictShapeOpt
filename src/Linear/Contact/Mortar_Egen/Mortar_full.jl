@@ -107,7 +107,7 @@ function compute_residual_and_tangent(ContactParameters,a)
                 x_m = N2*[xm1 xm2]
                 # τ_s = [-n[2] n[1]]
                 g   = n_s ⋅ (x_s - x_m) # saknas en formfunktion?
-                λ   = ε*max(g⋅n,0)
+                λ   = ε*max(g⋅n,0.0)
                 rc[sdofs] += N1' * N1 * λ * n * Jseg * w
                 rc[mdofs] -= N1' * N2 * λ * n * Jseg * w
             end
