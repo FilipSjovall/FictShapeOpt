@@ -37,7 +37,7 @@ r  = 0.025 #0.0125
 r2 = 0.025
 # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
 # grid size
-h = 0.08#0.04 # 0.075
+h = 0.05 # 0.075 #0.04 # 0.075
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -195,11 +195,11 @@ for jnod in n_robin
 end
 
 # Initialize tangents
-global K  = create_sparsity_pattern(dh)
-global Kψ = create_sparsity_pattern(dh)
-global a  = zeros(dh.ndofs.x)
-global d  = zeros(dh.ndofs.x)
-global Ψ  = zeros(dh.ndofs.x)
+global K      = create_sparsity_pattern(dh)
+global Kψ     = create_sparsity_pattern(dh)
+global a      = zeros(dh.ndofs.x)
+global d      = zeros(dh.ndofs.x)
+global Ψ      = zeros(dh.ndofs.x)
 global Fᵢₙₜ  = zeros(dh.ndofs.x)
 global rc     = zeros(dh.ndofs.x)
 global Fₑₓₜ  = zeros(dh.ndofs.x)
@@ -323,7 +323,7 @@ function Optimize(dh)
         # Reset #
         # # # # #
         #if (true_iteration % 10 == 0 && true_iteration < 101)
-        if (true_iteration % 10 == 0 && true_iteration < 51)
+        if (true_iteration % 10 == 0 && true_iteration < 101)
             dh0 = deepcopy(dh)
             global d = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -367,11 +367,11 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-        p = 2
+        p = 3
         X_ordered = getXfromCoord(coord)
-        g     = -contact_pressure(X_ordered, a, ε, p)
-        ∂g_∂x = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
-        ∂g_∂u = -ForwardDiff.gradient(u -> contact_pressure(X_ordered, u, ε, p), a)
+        g         = -contact_pressure(X_ordered, a, ε, p)
+        ∂g_∂x     = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p), getXinDofOrder(dh, X_ordered, coord))
+        ∂g_∂u     = -ForwardDiff.gradient(u -> contact_pressure(X_ordered, u, ε, p), a)
         # # # # # # #
         # Adjoints  #
         # # # # # # #
@@ -425,7 +425,7 @@ function Optimize(dh)
         # Skalning: p = 3 g/1e2 ; p = 2 g/1e4?
         #
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
-                                                                        xold1[:], xold2[:], g / 1e4 , ∂g_∂d[free_d] / 1e4,
+                                                                        xold1[:], xold2[:], g  , ∂g_∂d[free_d] ,
                                                                         vcat(g₁ .* 1e2, g₃*1e2),
                                                                         hcat(∂Ω∂d[free_d].* 1e2, ∂g₃_∂d[free_d]*1e2)',
                                                                         low, upp, a0, am, C, d2)
@@ -442,9 +442,9 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        #if (true_iteration % 50 == 0 && true_iteration > 99)
-        #    global α = 0.4
-        #end
+        if (true_iteration % 50 == 0 && true_iteration > 99)
+            global α = 0.4
+        end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
@@ -462,7 +462,7 @@ function Optimize(dh)
         v_hist[true_iteration]  = g₁
         au_hist[true_iteration] = g₂
         al_hist[true_iteration] = g₃
-        println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g / 1e4)
+        println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g )
         #println("Objective: ", g_hist[1:true_iteration])
         println("Volume constraint: ", v_hist[1:true_iteration])
         #println("Area constraint", " γ_min ≤ γ ≤ γ_max:  ", γ_min, " ≤ ", γc ," ≤ ", γ_max )
@@ -486,7 +486,7 @@ function Optimize(dh)
                   legend=:outerleft, grid=false)
         hspan!(p2,[-2,0], color = :green, alpha = 0.2, labels = "👌");
         hspan!(p2,[2,0],  color = :red, alpha = 0.2, labels = "🤚");
-        p3 = plot(1:true_iteration, g_hist[1:true_iteration] ./ 1e4, label="Objective",
+        p3 = plot(1:true_iteration, g_hist[1:true_iteration] ./ 1e2, label="Objective",
                   background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, lc=:purple, grid=false)
         X_c,tract = plotTraction()
         p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)

@@ -3,7 +3,7 @@ Pkg.activate()
 using ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
 using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
 using SparseDiffTools, Printf, JLD2, Statistics, AlgebraicMultigrid
-using CairoMakie #, Plots
+using CairoMakie #, Plots926
 #
 include("Contact//Mortar2D//Mortar2D.jl")
 include("..//mesh_reader.jl")
@@ -35,32 +35,32 @@ height= h_cm*cm_convert
 px_per_cm = 1200 # dpi
 
 reso = (w_cm * px_per_cm / width)
+begin
+    f = Figure( resolution = (width,height),font="CMU", fontsize = 12, px_per_unit = reso)
+    ax = Axis(f[1, 1],
+        xgridvisible = false,
+        ygridvisible = false,
+        xlabel = L"\text{Iteration}", #
+        ylabelrotation = 0,
+        ylabel = L"$f^{1/p}$ [N/m$^2$]", #
+        xtickalign = 1,  # Ticks inwards
+        ytickalign = 1,   # # Ticks inwards
+        xticks = 0:50:200,
+        topspinevisible = false,
+        rightspinevisible = false,
+        xminorticksvisible = false, yminorticksvisible = false,
+        limits = (0, 120, 40.0, 85.0),
+    )
+    @load "results//seal//v2//p = 1/packning.jld2" g_hist true_iteration
+    lines!(1:true_iteration,(abs.(g_hist[1:true_iteration])), color = :blue, label = L"p = 1")
+    @load "results//seal//v2//p = 3/packning.jld2" g_hist true_iteration
+    lines!(1:true_iteration,(abs.(g_hist[1:true_iteration]).^(1/3)), color = :green, label = L"p = 3")
+    #f[1,2] = Legend(f, ax, framevisible = false, orientation = :vertical, tellwidth = true, tellheight = false)
+    axislegend(ax, position = :rc, framevisible = false)
+    f
+    Makie.save("optimization_history_seal.pdf",f)
+end
 
-f = Figure( resolution = (width,height),font="CMU", fontsize = 12, px_per_unit = reso)
-ax = Axis(f[1, 1],
-    xgridvisible = false,
-    ygridvisible = false,
-    #title  = L"\text{Optimization history}", # L enables LaTeX strings
-    xlabel = L"\text{Iteration}", #
-    #ylabelrotation = 3π/2,
-    ylabel = L"$\frac{f}{f^0}$", #
-    xtickalign = 1,  # Ticks inwards
-    ytickalign = 1,   # # Ticks inwards
-    xticks = 0:50:200,
-    topspinevisible = false,
-    rightspinevisible = false,
-    xminorticksvisible = false, yminorticksvisible = false,
-    limits = (0, 225, 1.0, 4.0),
-)
-@load "results//seal//v2//p = 1/packning.jld2" g_hist true_iteration
-lines!(1:true_iteration,(g_hist[1:true_iteration]./g_hist[1]), color = :blue, label = L"p = 1")
-@load "results//seal//v2//p = 2/packning.jld2" g_hist true_iteration
-lines!(1:true_iteration,(g_hist[1:true_iteration]./g_hist[1]), color = :red, label = L"p = 2")
-@load "results//seal//v2//p = 3/packning.jld2" g_hist true_iteration
-lines!(1:true_iteration,(g_hist[1:true_iteration]./g_hist[1]), color = :green, label = L"p = 3")
-f[2, 1] = Legend(f, ax, framevisible = false, orientation = :horizontal, tellwidth = false, tellheight = true)
-f
-Makie.save("optimization_history_seal.pdf",f)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
@@ -95,7 +95,7 @@ f = Figure( resolution = (width,height), fontsize = 12, px_per_unit = reso)
 ax = Axis(f[1, 1],
     xgridvisible = false,
     ygridvisible = false,
-    title  = L"\text{Contact traction λ}", # L enables LaTeX strings
+    #title  = L"\text{Contact traction λ}", # L enables LaTeX strings
     xlabel = L"\text{Horizontal position [mm]}", #
     #ylabelrotation = 3π/2,
     ylabel = L"$λ$ [MPa]", #
@@ -143,34 +143,33 @@ begin
     end
     xc1,tract1 = plotTraction()
 
-    @load "results//seal//v2//p = 2/packning.jld2" dh
-    coord, enod = getTopology(dh);
-    n_bot = getnodeset(dh.grid,"n_bot")
-    n_top = getnodeset(dh.grid,"n_top")
-    n_sym = getnodeset(dh.grid,"n_sym")
-    nₛ    = getnodeset(dh.grid,"nₛ")
-    nₘ    = getnodeset(dh.grid,"nₘ")
-    contact_dofs = getContactDofs(nₛ, nₘ)
-    contact_nods = getContactNods(nₛ, nₘ)
-    freec_dofs = setdiff(1:dh.ndofs.x, contact_dofs)
-    Γs = getfaceset(dh.grid,"Γ_slave")
-    Γm = getfaceset(dh.grid,"Γ_master")
-    global order = Dict{Int64,Int64}()
-
-    for (i, nod) ∈ enumerate(contact_nods)
-        push!(order, nod => i)
-    end
-    t = 1
-    a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
-    σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
-    vtk_grid("results/seal/v2/p = 2/p = 2-contact", dh) do vtkfile
-        vtk_point_data(vtkfile, dh, a) # displacement field
-        vtk_point_data(vtkfile, σx, "σx")
-        vtk_point_data(vtkfile, σy, "σy")
-        vtk_point_data(vtkfile, τ, "τ")
-        vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
-    end
-    xc2,tract2 = plotTraction()
+    #@load "results//seal//v2//p = 2/packning.jld2" dh
+    #coord, enod = getTopology(dh);
+    #n_bot = getnodeset(dh.grid,"n_bot")
+    #n_top = getnodeset(dh.grid,"n_top")
+    #n_sym = getnodeset(dh.grid,"n_sym")
+    #nₛ    = getnodeset(dh.grid,"nₛ")
+    #nₘ    = getnodeset(dh.grid,"nₘ")
+    #contact_dofs = getContactDofs(nₛ, nₘ)
+    #contact_nods = getContactNods(nₛ, nₘ)
+    #freec_dofs = setdiff(1:dh.ndofs.x, contact_dofs)
+    #Γs = getfaceset(dh.grid,"Γ_slave")
+    #Γm = getfaceset(dh.grid,"Γ_master")
+    #global order = Dict{Int64,Int64}()
+    #for (i, nod) ∈ enumerate(contact_nods)
+    #    push!(order, nod => i)
+    #end
+    #t = 1
+    #a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
+    #σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
+    #vtk_grid("results/seal/v2/p = 2/p = 2-contact", dh) do vtkfile
+    #    vtk_point_data(vtkfile, dh, a) # displacement field
+    #    vtk_point_data(vtkfile, σx, "σx")
+    #    vtk_point_data(vtkfile, σy, "σy")
+    #    vtk_point_data(vtkfile, τ, "τ")
+    #    vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
+    #end
+    #xc2,tract2 = plotTraction()
 
 
     @load "results//seal//v2//p = 3/packning.jld2" dh
@@ -204,12 +203,13 @@ begin
     xc3,tract3 = plotTraction()
 end
 
-lines!(convert(Vector{Float32},xc1),convert(Vector{Float32},tract1), color = :blue,  label = L"p = 1")
-lines!(convert(Vector{Float32},xc2),convert(Vector{Float32},tract2), color = :red,   label = L"p = 2")
-lines!(convert(Vector{Float32},xc3),convert(Vector{Float32},tract3), color = :green, label = L"p = 3")
+lines!(convert(Vector{Float32},xc1),convert(Vector{Float32},tract1), color = :blue,  label = L"p = 1", linestyle = :dash)
+#lines!(convert(Vector{Float32},xc2),convert(Vector{Float32},tract2), color = :red,   label = L"p = 2")
+lines!(convert(Vector{Float32},xc3),convert(Vector{Float32},tract3), color = :green, label = L"p = 3", linestyle = :dash)
 @load "initiellt_tryck" X_c tract
-lines!(convert(Vector{Float32},X_c),convert(Vector{Float32},tract), color = :black, label = L"\text{Initial}")
-f[2, 1] = Legend(f, ax, orientation=:horizontal,framevisible = false,tellwidth = false, tellheight = true, nbanks=2, colgap=5, halign= :right, valign = :top)
+lines!(convert(Vector{Float32},X_c),convert(Vector{Float32},tract), color = :black, label = L"\text{Initial}", linestyle = :dot)
+axislegend(ax, position = :rc, framevisible = false)
+#f[2, 1] = Legend(f, ax, orientation=:horizontal,framevisible = false,tellwidth = false, tellheight = true, nbanks=2, colgap=5, halign= :right, valign = :top)
 f
 Makie.save("traction_seal.pdf",f)
 

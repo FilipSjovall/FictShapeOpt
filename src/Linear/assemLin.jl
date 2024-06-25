@@ -188,7 +188,7 @@ function assemGlobal!(K, Fᵢₙₜ, dh, t, a, coord, enod, ε, mp₁, mp₂)
         end
         kₑ, fₑ = assemElem(coord[enod[ie][2:end], :], a[cell_dofs], mp, t)
         # assemble into global
-        assemble!(assembler, cell_dofs, -kₑ, -fₑ)
+        assemble!(assembler, cell_dofs, -kₑ, -fₑ) # minus pga minus framför kontakt
         # assemble!(assembler, cell_dofs, kₑ, fₑ)
     end
     # Contact

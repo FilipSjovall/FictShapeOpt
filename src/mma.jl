@@ -82,7 +82,7 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   #          in the current MMA subproblem.
   #
   #epsimin = sqrt(m+n)*10^(-9);
-  epsimin = 10^(-7);
+  epsimin = 10^(-9); # epsimin = 10^(-10);
   raa0 = 0.00001;
 
   move = 0.1;# har fungerat bra för "hertz"
