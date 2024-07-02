@@ -337,7 +337,7 @@ function contact_traction_vector(X::AbstractVector{T1}, a::AbstractVector{T2}, �
             τ = λ_A * normals[A]/ κ[i]
             push!(τ_c, A => τ)
         else
-            τ = 0.0*λ_A * normals[A]/ κ[i]
+            τ = 0.0 * normals[A]
             push!(τ_c, A => τ)
         end
     end

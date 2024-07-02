@@ -402,7 +402,7 @@ function createBoxMeshRev2(filename, x₀, y₀, Δx, Δy, h)
 
     # Add the points
     p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h/2)
-    p2 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, h/4)
+    p2 = gmsh.model.geo.add_point(x₀ + Δx, y₀, 0.0, h/2)
     p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + Δy, 0.0, h)
     p4 = gmsh.model.geo.add_point(x₀, y₀ + Δy, 0.0, h)
     p5 = gmsh.model.geo.add_point(x₀ + Δx/2, y₀, 0.0, h/2)
@@ -1957,7 +1957,8 @@ function createQuarterLabyrinthMeshRounded(filename, x₀, y₀, t, B, b, Δx, H
     gmsh.model.geo.synchronize()
     # Physical surface
     #gmsh.model.add_physical_group(1, [l3, l4, l5], -1, "")
-    gmsh.model.add_physical_group(1, [-l5,-l4,-l3], -1, "") # istället för reverse (behåller ccw)
+    #gmsh.model.add_physical_group(1, [-l5,-l4,-l3], -1, "") # istället för reverse (behåller ccw)
+    gmsh.model.add_physical_group(1, [-l5,-l4], -1, "") # istället för reverse (behåller ccw)
 
     gmsh.model.add_physical_group(2, [surf], -1, "")
     # Generate mesh

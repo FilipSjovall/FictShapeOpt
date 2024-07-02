@@ -30,14 +30,14 @@ y₁ = 0.25001#1
 x₀ = 0.0
 y₀ = 0.0
 B  = 0.15
-b  = 0.1 #+ 0.0125*2
+b  = 0.1 # 0.1 #+ 0.0125*2
 Δl = (Δx - B)  #0.05
 H  = 0.15
 r  = 0.025 #0.0125
-r2 = 0.025
+#r2 = 0.05# 0.025 ## radius of cavity
 # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
 # grid size
-h = 0.05 # 0.075 #0.04 # 0.075
+h = 0.06 # 0.075 #0.04 # 0.075
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -158,8 +158,8 @@ addfaceset!(dh.grid, "Γ_left", x->x[1] ≈ x₀)
 # ----------------- #
 #Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm, Γ_sym, Γ_lr))
 #Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γm, Γ_sym, Γ_lr))
-#Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γ_sym, Γ_lr))
-Γ_robin = union(Γs,Γm)
+Γ_robin = setdiff(Γ_all, union(Γ_top, Γ_bot, Γ_sym))
+#Γ_robin = union(Γs,Γm)
 addfaceset!(dh.grid, "Γ_robin", Γ_robin)
 
 n_robin = getBoundarySet(dh.grid, Γ_robin)
@@ -360,7 +360,7 @@ function Optimize(dh)
         # - - - - - - - #
         ∂rᵤ_∂x = similar(K)
         ∂rᵤ_∂x = drᵤ_dx_c(∂rᵤ_∂x, dh, t, a, coord, enod, ε, mp₁, mp₂)
-        dr_dd = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
+        dr_dd  = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
         # # # # # # #
         # Objective #
         # # # # # # #
@@ -398,12 +398,13 @@ function Optimize(dh)
         # ∂g_∂u = -T' * K
         #g₂ = γc / γ_max - 1.0
         #Fₘₐₓ  = 100.0
-        #g₂     = -T' * Fᵢₙₜ ./ Fₘₐₓ - 1.0
-        #∂g₂_∂x = -T' * ∂rᵤ_∂x ./ Fₘₐₓ
-        #∂g₂_∂u = -T' * K ./ Fₘₐₓ
-        #solveq!(λᵤ, K', ∂g₂_∂u, bcdofs, bcvals.*0)
-        #solveq!(λψ, Kψ', ∂g₂_∂x' - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
-        #∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' )'
+        Fₘₐₓ  = 7.0
+        g₂     = T' * Fᵢₙₜ / Fₘₐₓ - 1.0
+        ∂g₂_∂x = T' * ∂rᵤ_∂x ./ Fₘₐₓ
+        ∂g₂_∂u = T' * K ./ Fₘₐₓ
+        solveq!(λᵤ, K', ∂g₂_∂u, bcdofs, bcvals.*0)
+        solveq!(λψ, Kψ', ∂g₂_∂x' - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcdofs_opt.*0)
+        ∂g₂_∂d = Real.((-transpose(λψ) * dr_dd)' )'
         #γc = contact_area(X_ordered, a, ε)
         #∂g₃_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, ε), getXinDofOrder(dh, X_ordered, coord))
         #∂g₃_∂u = ForwardDiff.gradient(u -> contact_area(X_ordered, u, ε), a)
@@ -426,8 +427,8 @@ function Optimize(dh)
         #
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
                                                                         xold1[:], xold2[:], g  , ∂g_∂d[free_d] ,
-                                                                        vcat(g₁ .* 1e2, g₃*1e2),
-                                                                        hcat(∂Ω∂d[free_d].* 1e2, ∂g₃_∂d[free_d]*1e2)',
+                                                                        vcat(g₁ .* 1e3, g₂),
+                                                                        hcat(∂Ω∂d[free_d].* 1e3, ∂g₂_∂d[free_d])',
                                                                         low, upp, a0, am, C, d2)
         # d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
         #                                                                 xold1[:], xold2[:], g ./ 1, ∂g_∂d[free_d] ./ 1,
@@ -442,9 +443,10 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        if (true_iteration % 50 == 0 && true_iteration > 99)
-            global α = 0.4
-        end
+        #if (true_iteration % 50 == 0 && true_iteration > 99)
+            #if true_iteration % 50 == 0
+            #    global α = 0.4
+            #end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
@@ -462,10 +464,9 @@ function Optimize(dh)
         v_hist[true_iteration]  = g₁
         au_hist[true_iteration] = g₂
         al_hist[true_iteration] = g₃
-        println("Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g )
-        #println("Objective: ", g_hist[1:true_iteration])
-        println("Volume constraint: ", v_hist[1:true_iteration])
-        #println("Area constraint", " γ_min ≤ γ ≤ γ_max:  ", γ_min, " ≤ ", γc ," ≤ ", γ_max )
+        println("\n Iter: ", true_iteration, " Norm of change: ", kktnorm, " Objective: ", g )
+        println("\n Volume constraint: ", v_hist[true_iteration].*1e3)
+        println("\n Compliance constraint: ", au_hist[true_iteration].*1e3)
         # ------------ #
         # write to vtu #
         # ------------ #
@@ -479,7 +480,7 @@ function Optimize(dh)
         red_condition_au = [y > 0 ? :red : :orange for y in au_hist[1:true_iteration]]
         red_condition_al = [y > 0 ? :red : :yellow for y in al_hist[1:true_iteration]]
 
-        p2 = plot(1:true_iteration, [v_hist[1:true_iteration]*10^2 au_hist[1:true_iteration].*0 al_hist[1:true_iteration]*10],
+        p2 = plot(1:true_iteration, [v_hist[1:true_iteration]*10^2 au_hist[1:true_iteration] al_hist[1:true_iteration]*10],
                   label=["Volume" "γ_max" "γ_min"],
                   linecolor=hcat(red_condition_v, red_condition_au, red_condition_al),
                   background_color=RGB(0.2, 0.2, 0.2),

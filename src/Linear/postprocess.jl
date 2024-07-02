@@ -29,7 +29,7 @@ using CairoMakie
 set_theme!(theme_latexfonts())
 cm_convert = 28.3465
 w_cm  = 13
-h_cm  = 13
+h_cm  = 8
 width = w_cm*cm_convert
 height= h_cm*cm_convert
 px_per_cm = 1200 # dpi
@@ -84,8 +84,8 @@ end
 
 
 cm_convert = 28.3465
-w_cm  = 8
-h_cm  = 13
+w_cm  = 13# 8
+h_cm  = 8# 13
 width = w_cm*cm_convert
 height= h_cm*cm_convert
 px_per_cm = 1200 # dpi
@@ -134,15 +134,23 @@ begin
     t = 1
     a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
     σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
+    # Ny shit
+    τ_c = ExtractContactTractionVec(a, ε, coord)
+    traction = zeros(size(a))
+    for (key,val) in τ_c
+        dofs = register[key,:]
+        traction[dofs] = val
+    end
+    #
     vtk_grid("results/seal/v2/p = 1/p = 1 - contact", dh) do vtkfile
-        vtk_point_data(vtkfile, dh, a) # displacement field
+        vtk_point_data(vtkfile, dh, a)
         vtk_point_data(vtkfile, σx, "σx")
         vtk_point_data(vtkfile, σy, "σy")
         vtk_point_data(vtkfile, τ, "τ")
         vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
+        vtk_point_data(vtkfile, dh, traction, "traction") # ny shit
     end
     xc1,tract1 = plotTraction()
-
     #@load "results//seal//v2//p = 2/packning.jld2" dh
     #coord, enod = getTopology(dh);
     #n_bot = getnodeset(dh.grid,"n_bot")
@@ -193,24 +201,34 @@ begin
     t = 1
     a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
     σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
+    # Ny shit
+    τ_c = ExtractContactTractionVec(a, ε, coord)
+    traction = zeros(size(a))
+    for (key,val) in τ_c
+        dofs = register[key,:]
+        traction[dofs] = val
+    end
+    #
     vtk_grid("results/seal/v2/p = 3/p = 3-contact", dh) do vtkfile
         vtk_point_data(vtkfile, dh, a) # displacement field
         vtk_point_data(vtkfile, σx, "σx")
         vtk_point_data(vtkfile, σy, "σy")
         vtk_point_data(vtkfile, τ, "τ")
         vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
+        vtk_point_data(vtkfile, dh, traction, "traction") # ny shit
     end
     xc3,tract3 = plotTraction()
 end
-
-lines!(convert(Vector{Float32},xc1),convert(Vector{Float32},tract1), color = :blue,  label = L"p = 1", linestyle = :dash)
-#lines!(convert(Vector{Float32},xc2),convert(Vector{Float32},tract2), color = :red,   label = L"p = 2")
-lines!(convert(Vector{Float32},xc3),convert(Vector{Float32},tract3), color = :green, label = L"p = 3", linestyle = :dash)
-@load "initiellt_tryck" X_c tract
-lines!(convert(Vector{Float32},X_c),convert(Vector{Float32},tract), color = :black, label = L"\text{Initial}", linestyle = :dot)
-axislegend(ax, position = :rc, framevisible = false)
-#f[2, 1] = Legend(f, ax, orientation=:horizontal,framevisible = false,tellwidth = false, tellheight = true, nbanks=2, colgap=5, halign= :right, valign = :top)
-f
+begin
+    lines!(convert(Vector{Float32},xc1),convert(Vector{Float32},tract1), color = :blue,  label = L"p = 1", linestyle = :solid)
+    #lines!(convert(Vector{Float32},xc2),convert(Vector{Float32},tract2), color = :red,   label = L"p = 2")
+    lines!(convert(Vector{Float32},xc3),convert(Vector{Float32},tract3), color = :green, label = L"p = 3", linestyle = :solid)
+    @load "initiellt_tryck" X_c tract
+    lines!(convert(Vector{Float32},X_c),convert(Vector{Float32},tract), color = :black, label = L"\text{Initial}", linestyle = :dash)
+    axislegend(ax, position = :rc, framevisible = false)
+    #f[2, 1] = Legend(f, ax, orientation=:horizontal,framevisible = false,tellwidth = false, tellheight = true, nbanks=2, colgap=5, halign= :right, valign = :top)
+    f
+end
 Makie.save("traction_seal.pdf",f)
 
 
@@ -255,7 +273,7 @@ Makie.save("optimization_history.pdf",f)
 
 ## plot traction in paraview
 begin
-    @load "results//lunarc//flat | volume0.9//OptimizationVariablesy.jld2"
+    @load "results//lunarc//flat | volume0.9//OptimizationVariablesy2_filter.jld2"
     coord, enod = getTopology(dh);
     n_bot = getnodeset(dh.grid,"n_bot")
     n_top = getnodeset(dh.grid,"n_top")
@@ -272,21 +290,22 @@ begin
     end
     register = getNodeDofs(dh)
     #τ_c = ExtractContactTractionVec(a,ε,coord)
-    τ_c = ExtractContactTractionVec(Ψ, μ, coord)
+    τ_c = ExtractContactTractionVec(Ψ.*0, μ, coord)
     traction = zeros(size(a))
     for (key,val) in τ_c
         dofs = register[key,:]
         traction[dofs] = val
     end
     vtk_grid("results/cylinder_traction_🚜", dh) do vtkfile
-                vtk_point_data(vtkfile, dh, Ψ) # displacement field
+                vtk_point_data(vtkfile, dh, a) # displacement field
                 vtk_point_data(vtkfile, dh, traction, "traction")
     end
 end
 
 ## plot traction after 1 iteration paraview
 begin
-    @load "results//lunarc//flat_first_design_updates//OptimizationVariablesy2.jld2"
+    #@load "results//lunarc//flat_first_design_updates//OptimizationVariablesy2.jld2"
+    @load "results//lunarc//flat_first_design_updates//OptimizationVariablesy2_nofilter.jld2"
     coord, enod = getTopology(dh);
     n_bot = getnodeset(dh.grid,"n_bot")
     n_top = getnodeset(dh.grid,"n_top")
@@ -303,15 +322,15 @@ begin
     end
     register = getNodeDofs(dh)
     #τ_c = ExtractContactTractionVec(a,ε,coord)
-    τ_c = ExtractContactTractionVec(Ψ, μ, coord)
+    τ_c = ExtractContactTractionVec(a, μ, coord)
     traction = zeros(size(a))
     for (key,val) in τ_c
         dofs = register[key,:]
         traction[dofs] = val
     end
-    vtk_grid("results/cylinder_traction_🚜_iter1", dh) do vtkfile
-                vtk_point_data(vtkfile, dh, Ψ) # displacement field
-                vtk_point_data(vtkfile, dh, traction, "traction")
+    vtk_grid("results/cylinder_traction_🚜_iter1", dh0) do vtkfile
+                vtk_point_data(vtkfile, dh0, Ψ) # displacement field
+                vtk_point_data(vtkfile, dh0, traction, "traction")
     end
 end
 

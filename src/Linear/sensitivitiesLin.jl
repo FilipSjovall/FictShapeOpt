@@ -449,7 +449,8 @@ function contact_pressure(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) w
             λ_list[A] = 0.0
         end
     end
-    γᶜ = Mortar2D.calculate_assembly_area(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list)
+    #γᶜ = Mortar2D.calculate_assembly_area(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list)
+    γᶜ = 1
     fc = Mortar2D.calculate_assembly_force(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list,p)
     return fc/γᶜ
 end
