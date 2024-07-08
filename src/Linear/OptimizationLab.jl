@@ -275,7 +275,7 @@ function Optimize(dh)
     #global T[bcdof_top[iseven.(bcdof_top)]] .=  1.0
     g₁ = 0.0
     #
-    while kktnorm > tol || OptIter < 2
+    while kktnorm > tol || OptIter < 2 && true_iteration < 500
         global d
         global Ψ
         global a
@@ -427,26 +427,17 @@ function Optimize(dh)
         #
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
                                                                         xold1[:], xold2[:], g  , ∂g_∂d[free_d] ,
-                                                                        vcat(g₁ .* 1e3, g₂),
-                                                                        hcat(∂Ω∂d[free_d].* 1e3, ∂g₂_∂d[free_d])',
+                                                                        vcat(g₁ .* 1e3, g₂, g₃.*1e2),
+                                                                        hcat(∂Ω∂d[free_d].* 1e3, ∂g₂_∂d[free_d], ∂g₃_∂d[free_d].*1e2)',
                                                                         low, upp, a0, am, C, d2)
-        # d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
-        #                                                                 xold1[:], xold2[:], g ./ 1, ∂g_∂d[free_d] ./ 1,
-        #                                                                 vcat(g₁ .* 1e3, g₂*1e3, g₃*1e3),
-        #                                                                 hcat(∂Ω∂d[free_d] .* 1e3,
-        #                                                                 ∂g₂_∂d[free_d]*1e3,
-        #                                                                 ∂g₃_∂d[free_d]*1e3)',
-        #                                                                 low, upp, a0, am, C, d2)
-        #
-        #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:], xold1[:], xold2[:], g ./ 1e3, ∂g_∂d[free_d] ./ 1e3, vcat(g₁ .* 1e2, g₂*100), hcat(∂Ω∂d[free_d] .* 1e2, ∂g₂_∂d[free_d]*100)', low, upp, a0, am, C, d2)
-        #d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:], xold1[:], xold2[:], g .* 10, ∂g_∂d[free_d] .* 10, g₁ .* 1e2, ∂Ω∂d[free_d]' .* 1e2, low, upp, a0, am, C, d2)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        #if (true_iteration % 50 == 0 && true_iteration > 99)
-            #if true_iteration % 50 == 0
-            #    global α = 0.4
-            #end
+        if true_iteration == 100
+            global α = 0.1
+        elseif true_iteration == 200
+            global α = 0.05
+        end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
@@ -481,14 +472,14 @@ function Optimize(dh)
         red_condition_al = [y > 0 ? :red : :yellow for y in al_hist[1:true_iteration]]
 
         p2 = plot(1:true_iteration, [v_hist[1:true_iteration]*10^2 au_hist[1:true_iteration] al_hist[1:true_iteration]*10],
-                  label=["Volume" "γ_max" "γ_min"],
-                  linecolor=hcat(red_condition_v, red_condition_au, red_condition_al),
-                  background_color=RGB(0.2, 0.2, 0.2),
+                  label=["Volume" "Compliance" "γ_min"],
+                  linecolor=hcat(red_condition_v, red_condition_au, red_condition_al),background_color=RGB(0.2, 0.2, 0.2),
                   legend=:outerleft, grid=false)
-        hspan!(p2,[-2,0], color = :green, alpha = 0.2, labels = "👌");
-        hspan!(p2,[2,0],  color = :red, alpha = 0.2, labels = "🤚");
-        p3 = plot(1:true_iteration, g_hist[1:true_iteration] ./ 1e2, label="Objective",
-                  background_color=RGB(0.2, 0.2, 0.2), legend=:outerleft, lc=:purple, grid=false)
+        # background_color=RGB(0.2, 0.2, 0.2)
+        #hspan!(p2,[-2,0], color = :green, alpha = 0.2, labels = "👌");
+        #hspan!(p2,[2,0],  color = :red, alpha = 0.2, labels = "🤚");
+        p3 = plot(1:true_iteration, g_hist[1:true_iteration] ./ 1e2, label="Objective", background_color=RGB(0.2, 0.2, 0.2),
+                   legend=:outerleft, lc=:purple, grid=false)
         X_c,tract = plotTraction()
         p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
         p = plot(p2, p3, p4, layout=(3, 1), size=(600, 600))
