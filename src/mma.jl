@@ -82,7 +82,7 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   #          in the current MMA subproblem.
   #
   #epsimin = sqrt(m+n)*10^(-9);
-  epsimin = 10^(-9); # epsimin = 10^(-10);
+  epsimin = 10^(-7); # epsimin = 10^(-10);
   raa0 = 0.00001;
 
   move = 0.1;# har fungerat bra för "hertz"
@@ -91,13 +91,13 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
 
   albefa  = 0.1;
   asyinit = 0.5;
-  asyincr = 1.2;
-  asydecr = 0.7;
+  #asyincr = 1.2;
+  #asydecr = 0.7;
 #  albefa  = 0.4;
 #  asyinit = 0.2;
 #
-#  asyincr = 1.1;
-#  asydecr = 0.6;
+asyincr = 1.1;
+asydecr = 0.6;
 
   eeen = ones(n);
   eeem = ones(m);
@@ -180,8 +180,8 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
   # Check asymptotes
   #
     #append!(asy_counter, length(findall(zzz .< 0)))
-    temp = zeros(size(xval))
-    temp[findall(zzz .< 0)] .= 1
+    #temp = zeros(size(xval))
+    #temp[findall(zzz .< 0)] .= 1
     #asy_counter[free_d,true_iteration] = temp
     #append!(asy_counter, findall(zzz .< 0))
   #

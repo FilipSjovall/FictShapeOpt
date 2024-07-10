@@ -89,7 +89,7 @@ end
 
 function calculate_segment_area(slave_element_id, elements, element_types,
                                    coords, normals, segmentation, λ)
-    @assert element_types[slave_element_id] == :Seg2
+    #@assert element_types[slave_element_id] == :Seg2
     # Initialization + calculate jacobian
     Ae = 0. # zeros(2,1) # zeros(1, 1)
     scon = elements[slave_element_id]

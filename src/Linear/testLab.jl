@@ -1,12 +1,13 @@
 using Pkg
 Pkg.activate()
 # kolla Pkg.status() vid problem / jämför med att bara starta julia i en terminal
-using Mortar2D, ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
+using ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
 using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
 using SparseDiffTools, Plots, Printf, JLD2, Statistics, AlgebraicMultigrid
 # kan behöva köra export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 plotlyjs()
 #
+include("Contact//Mortar2D//Mortar2D.jl")
 include("..//mesh_reader.jl")
 include("Contact//contact_help.jl")
 include("assemLin.jl")
@@ -22,7 +23,7 @@ include("..//mma.jl")
 # - Block - #
 th = 0.1
 x₁ = 0.0
-y₁ = 0.2501
+y₁ = 0.25001
 Δx = 0.5
 Δy = 0.1
 # - Seal - #
@@ -198,7 +199,6 @@ global g = 0.0
 # Init optimization variables #
 # # # # # # # # # # # # # # # #
 include("initLab.jl")
-
 # ------------------- #
 # Boundary conditions #
 # ------------------- #
@@ -227,7 +227,7 @@ global upp_hist = zeros(length(d), 300)
 global d_hist2  = zeros(length(d), 300)
 
 test         = [0.0, 0.0]
-testvar      = register[21,1] #443 # 286 # 763 # 362
+testvar      = 17#register[19,1] # register[21,1] #443 # 286 # 763 # 362
 perturbation = 1e-5
 
 dh0 = deepcopy(dh)
@@ -235,7 +235,6 @@ dh0 = deepcopy(dh)
 # Test sensitivity
 for pert in 1:2
     if pert == 1 #  perturbera d
-
         dh = deepcopy(dh0)
         global d[testvar] = d[testvar] + perturbation
     else # perturbera d och resetta dh
@@ -244,7 +243,7 @@ for pert in 1:2
     end
 
     global nloadsteps = 10 #10
-    global μ = 2e3 #1e3
+    global μ = 1e4 #1e3
     global coord₀ = getCoord(getX(dh0), dh0) # x₀
     Ψ, _, Kψ, _, λ = fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
 
@@ -255,14 +254,14 @@ for pert in 1:2
     #global X_ordered      = getXfromCoord(coord) # ta bort och byta då målfunk anropas
     #
     global nloadsteps = 10
-    global ε = 1e4
+    global ε = 1e5
     a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
     #test[pert] = a' * Fₑₓₜ
 
     # test[pert] = -T' * Fᵢₙₜ
-    p = 2
+    p = 1
     X_ordered = getXfromCoord(coord)
-    test[pert] = contact_area(X_ordered, a, ε)
+    test[pert] = 1-contact_area(X_ordered, a, 1.0)./5
 end
 
 ∂rᵤ_∂x = similar(K)
@@ -278,12 +277,12 @@ dr_dd = drψ(dr_dd, dh0, Ψ, λ, d, Γ_robin, coord₀)
 # ∂g_∂x = -T' * ∂rᵤ_∂x#drᵤ_dx(dr, dh, mp, t, a, coord, enod) ## stämmer? innehåller kontaktkänslighet men dessa träffar bara kontaktdofs som inte är kopplade till bc.
 # ∂g_∂u = -T' * K
 X_ordered = getXfromCoord(coord)
-p = 2
-∂g_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, ε, ), getXinDofOrder(dh, X_ordered, coord))
-∂g_∂u = ForwardDiff.gradient(u -> contact_area(X_ordered, u, ε, ), a)
+p = 1
+∂g_∂x = ForwardDiff.gradient(x -> contact_area_ordered(x, a, 1.0, ), getXinDofOrder(dh, X_ordered, coord))
+∂g_∂u = ForwardDiff.gradient(u -> contact_area(X_ordered, u, 1.0, ), a)
 
-solveq!(λᵤ, K', ∂g_∂u, bcdofs_opt, bcval_opt)
-solveq!(λψ, Kψ', ∂g_∂x - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt)
+solveq!(λᵤ, K', -∂g_∂u./5, bcdofs_opt, bcval_opt.*0)
+solveq!(λψ, Kψ', -∂g_∂x./5 - ∂rᵤ_∂x' * λᵤ, bcdofs_opt, bcval_opt.*0)
 
 ∂g_∂d = -transpose(λψ) * dr_dd
 asens = ∂g_∂d[testvar]
