@@ -16,6 +16,21 @@ include("run_linear.jl")
 include("sensitivitiesLin.jl")
 include("..//mma.jl")
 
+# Extract and plot contact tractions  #
+function plotTraction()
+    traction = ExtractContactTraction(a, ε, coord)
+    X_c   = []
+    tract = []
+    for (key, val) ∈ traction
+        append!(X_c, coord[key, 1])
+        append!(tract, val)
+    end
+    ϵᵢⱼₖ = sortperm(X_c)
+    tract = tract[ϵᵢⱼₖ]
+    X_c = X_c[ϵᵢⱼₖ]
+    return X_c, tract
+end
+
 # - - - - - - - - - - - - #
 # Plot objective function #
 # - - - - - - - - - - - - #
@@ -35,6 +50,33 @@ height= h_cm*cm_convert
 px_per_cm = 1200 # dpi
 
 reso = (w_cm * px_per_cm / width)
+
+@load "results//seal//v5//packning.jld2"
+begin
+    f = Figure( resolution = (width,height), fontsize = 12,font="CMU", px_per_unit = reso)
+    ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
+           xgridvisible = false, ygridvisible = false,
+           ylabel = L"Objective function $|f|$ [N$^3$]",
+           limits = (0, true_iteration, 4, -g_hist[true_iteration]*1.25),
+           leftspinecolor = :blue,
+           ylabelcolor = :blue,
+           xminorticksvisible = true, yminorticksvisible = true,
+           topspinevisible = false)
+    ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
+           xgridvisible = false, ygridvisible = false,
+           ylabel = L" Contact force constraint $g_1$", xlabel = L"\text{Iteration}",
+           limits = (0, true_iteration, -0.5, 0.5),
+           rightspinecolor = :red,
+           leftspinecolor = :blue,
+           ylabelcolor = :red,
+           xminorticksvisible = true, yminorticksvisible = true,
+           topspinevisible = false)
+    lines!(ax1,1:true_iteration,-g_hist[1:true_iteration], color = :blue )
+    lines!(ax2,1:true_iteration,au_hist[1:true_iteration], color = :red )
+    f
+    Makie.save("optimization_history_seal.pdf",f)
+end
+
 begin
     f = Figure( resolution = (width,height),font="CMU", fontsize = 12, px_per_unit = reso)
     ax = Axis(f[1, 1],
@@ -42,7 +84,7 @@ begin
         ygridvisible = false,
         xlabel = L"\text{Iteration}", #
         ylabelrotation = 0,
-        ylabel = L"$f^{1/p}$ [N/m$^2$]", #
+        ylabel = L"$f$ [N$^3$]", #
         xtickalign = 1,  # Ticks inwards
         ytickalign = 1,   # # Ticks inwards
         xticks = 0:50:200,
@@ -51,10 +93,10 @@ begin
         xminorticksvisible = false, yminorticksvisible = false,
         limits = (0, 120, 40.0, 85.0),
     )
-    @load "results//seal//v2//p = 1/packning.jld2" g_hist true_iteration
-    lines!(1:true_iteration,(abs.(g_hist[1:true_iteration])), color = :blue, label = L"p = 1")
+    #@load "results//seal//v2//p = 1/packning.jld2" g_hist true_iteration
+    #lines!(1:true_iteration,(abs.(g_hist[1:true_iteration])), color = :blue, label = L"p = 1")
     @load "results//seal//v2//p = 3/packning.jld2" g_hist true_iteration
-    lines!(1:true_iteration,(abs.(g_hist[1:true_iteration]).^(1/3)), color = :green, label = L"p = 3")
+    lines!(1:true_iteration,(g_hist[1:true_iteration]), color = :green, label = L"p = 3")
     #f[1,2] = Legend(f, ax, framevisible = false, orientation = :vertical, tellwidth = true, tellheight = false)
     axislegend(ax, position = :rc, framevisible = false)
     f
@@ -67,20 +109,7 @@ end
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
-# Extract and plot contact tractions  #
-function plotTraction()
-    traction = ExtractContactTraction(a, ε, coord)
-    X_c   = []
-    tract = []
-    for (key, val) ∈ traction
-        append!(X_c, coord[key, 1])
-        append!(tract, val)
-    end
-    ϵᵢⱼₖ = sortperm(X_c)
-    tract = tract[ϵᵢⱼₖ]
-    X_c = X_c[ϵᵢⱼₖ]
-    return X_c, tract
-end
+
 
 
 cm_convert = 28.3465
@@ -114,7 +143,7 @@ begin
     nloadsteps = 10
     mp₁        = [180 80].*1e3     # [K G]
     mp₂        = [2.5 0.1].*1e3    #
-    #
+    #=
     @load "results//seal//v2//p = 1/packning.jld2" dh
     coord, enod = getTopology(dh);
     n_bot = getnodeset(dh.grid,"n_bot")
@@ -178,9 +207,11 @@ begin
     #    vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
     #end
     #xc2,tract2 = plotTraction()
+    =#
 
-
-    @load "results//seal//v2//p = 3/packning.jld2" dh
+    #@load "results//seal//v2//p = 3/packning.jld2" dh
+    #@load "results//seal//v5//packning.jld2"
+    @load "results//seal//v5//LabOpt.jld2" dh
     coord, enod = getTopology(dh);
     n_bot = getnodeset(dh.grid,"n_bot")
     n_top = getnodeset(dh.grid,"n_top")
@@ -209,7 +240,7 @@ begin
         traction[dofs] = val
     end
     #
-    vtk_grid("results/seal/v2/p = 3/p = 3-contact", dh) do vtkfile
+    vtk_grid("results/seal/v5/p = 3-contact", dh) do vtkfile
         vtk_point_data(vtkfile, dh, a) # displacement field
         vtk_point_data(vtkfile, σx, "σx")
         vtk_point_data(vtkfile, σy, "σy")
@@ -219,26 +250,24 @@ begin
     end
     xc3,tract3 = plotTraction()
 end
-begin
-    lines!(convert(Vector{Float32},xc1),convert(Vector{Float32},tract1), color = :blue,  label = L"p = 1", linestyle = :solid)
+#begin
+    #lines!(convert(Vector{Float32},xc1),convert(Vector{Float32},tract1), color = :blue,  label = L"p = 1", linestyle = :solid)
     #lines!(convert(Vector{Float32},xc2),convert(Vector{Float32},tract2), color = :red,   label = L"p = 2")
     lines!(convert(Vector{Float32},xc3),convert(Vector{Float32},tract3), color = :green, label = L"p = 3", linestyle = :solid)
-    @load "initiellt_tryck" X_c tract
-    lines!(convert(Vector{Float32},X_c),convert(Vector{Float32},tract), color = :black, label = L"\text{Initial}", linestyle = :dash)
+    @load "initiellt_tryck.jld2" iX itract
+    lines!(convert(Vector{Float32},iX),convert(Vector{Float32},itract), color = :black, label = L"\text{Initial}", linestyle = :dash)
     axislegend(ax, position = :rc, framevisible = false)
     #f[2, 1] = Legend(f, ax, orientation=:horizontal,framevisible = false,tellwidth = false, tellheight = true, nbanks=2, colgap=5, halign= :right, valign = :top)
     f
-end
+#end
 Makie.save("traction_seal.pdf",f)
-
-
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Plot optimization history: f and g₁ using separate y-axis #
 # / specifically for Cylinder - Block problem               #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 using JLD2
-@load "results//lunarc//flat | volume0.9//OptimizationVariablesy.jld2"
+@load "results//lunarc//cyl_konvergerad_ordentligt//OptimizationVariablesy.jld2"
 using CairoMakie
 set_theme!(theme_latexfonts())
 cm_convert = 28.3465
@@ -252,7 +281,7 @@ f = Figure( resolution = (width,height), fontsize = 12,font="CMU", px_per_unit =
 ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
            xgridvisible = false, ygridvisible = false,
            ylabel = L"Objective function $|f|$ [N]",
-           limits = (0, 400, 4, -g_hist[true_iteration]*1.25),
+           limits = (0, 419, 4, -g_hist[419]*1.25),
            leftspinecolor = :blue,
            ylabelcolor = :blue,
            xminorticksvisible = true, yminorticksvisible = true,
@@ -260,14 +289,14 @@ ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
 ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
            xgridvisible = false, ygridvisible = false,
            ylabel = L"Volume constraint $g_1$", xlabel = L"\text{Iteration}",
-           limits = (0, 400, v_hist[1], 0.5),
+           limits = (0, 419, v_hist[1], 0.5),
            rightspinecolor = :red,
            leftspinecolor = :blue,
            ylabelcolor = :red,
            xminorticksvisible = true, yminorticksvisible = true,
            topspinevisible = false)
-lines!(ax1,1:true_iteration,-g_hist[1:true_iteration], color = :blue )
-lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
+lines!(ax1,1:419,-g_hist[1:419], color = :blue )
+lines!(ax2,1:419,v_hist[1:419], color = :red )
 f
 Makie.save("optimization_history.pdf",f)
 
@@ -322,7 +351,7 @@ begin
     end
     register = getNodeDofs(dh)
     #τ_c = ExtractContactTractionVec(a,ε,coord)
-    τ_c = ExtractContactTractionVec(a, μ, coord)
+    τ_c = ExtractContactTractionVec(Ψ, μ, coord)
     traction = zeros(size(a))
     for (key,val) in τ_c
         dofs = register[key,:]
