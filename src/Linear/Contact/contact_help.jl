@@ -96,9 +96,9 @@ function gap_function(X::AbstractVector{T}) where {T}
     #     # To compute the projected gap vector we multiply g[j,:] with the normal at node j
     #     g0[j, :] = slave - master
     # end
-    for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1)))))
+    for (j, A) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1)))))
         slave = [0; 0]
-        for (jj,B) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1), size(M, 1))))) # slave_dofs
+        for (jj,B) in (enumerate(intersect(slave_dofs, 1:min(size(D, 1))))) # slave_dofs
             slave += D[A, B] * coords[B]
         end
         master = [0; 0]
@@ -275,8 +275,8 @@ function contact_traction(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) wher
         if λ_A != 0 && κ[i] != 0
             τ = λ_A * normals[A]/ κ[i]
             #push!(τ_c, A => λ_A )
-            #push!(τ_c, A => λ_A / κ[i])
-            push!(τ_c, A => τ[2])
+            push!(τ_c, A => λ_A / κ[i])
+            #push!(τ_c, A => τ[2])
         else
             push!(τ_c, A => 0.0)
         end

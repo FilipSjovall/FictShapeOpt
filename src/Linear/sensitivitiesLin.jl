@@ -411,7 +411,7 @@ function contact_area_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε) 
     return A
 end
 
-function contact_pressure(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) where {T1,T2}
+function contact_pressure(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p, λ_target) where {T1,T2}
 
     # Order displacements according to nodes and not dofs
     a_ordered = getDisplacementsOrdered(dh, a)
@@ -441,6 +441,7 @@ function contact_pressure(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) w
 
     # Loop over master side dofs
     λ_list = Dict{Int64, Real}()
+    fc = 0.0
     for (i, A) in enumerate(slave_dofs)
         λ_A = penalty(g[i, :] ⋅ normals[slave_dofs[i]], ε)
         if ( λ_A != 0.0 && κ[i] != 0 )
@@ -448,19 +449,29 @@ function contact_pressure(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) w
         else
             λ_list[A] = 0.0
         end
+        ##
+            x = dh.grid.nodes[A].x[1]
+            pmax = 75
+            mid  = 0.5
+            P    = 5
+            width= 0.12
+            λ_target = pmax*exp( -( ((x-mid)^2) / width^2 )^P )
+        ##
+        fc += (λ_list[A] - λ_target)^2
     end
     #γᶜ = Mortar2D.calculate_assembly_area(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list)
+    #fc = Mortar2D.calculate_assembly_force(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list,p)
     γᶜ = 1
-    fc = Mortar2D.calculate_assembly_force(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list,p)
+    fc = fc^(1/2)
     return fc/γᶜ
 end
 
-function contact_pressure_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p) where {T1,T2}
+function contact_pressure_ordered(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p, λ_target) where {T1,T2}
 
     # Order  X
     X_ordered = getX_from_Dof_To_Node_order(dh, X)
 
-    pressure = contact_pressure(X_ordered, a, ε,p)
+    pressure = contact_pressure(X_ordered, a, ε, p, λ_target)
 
     return pressure
 end
