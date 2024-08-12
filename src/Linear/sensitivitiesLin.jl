@@ -451,9 +451,9 @@ function contact_pressure(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p, �
         end
         ##
             x = dh.grid.nodes[A].x[1]
-            pmax = 75
+            pmax = 50
             mid  = 0.5
-            P    = 5
+            P    = 6
             width= 0.12
             λ_target = pmax*exp( -( ((x-mid)^2) / width^2 )^P )
         ##

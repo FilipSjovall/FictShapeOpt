@@ -36,7 +36,7 @@ H  = 0.15
 r  = 0.025 #0.0125
 #r2 = 0.05# 0.025 ## radius of cavity
 # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
-# grid size
+# grid size3
 h = 0.075 # 0.075 #0.04 # 0.075
 # # # # # # # # # #
 # Finite element  #
@@ -52,7 +52,7 @@ fv = FaceVectorValues(qr_face, ip)
 grid1 = createQuarterLabyrinthMeshRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h/2);
 #grid1 = createQuarterLabyrinthMeshRoundedCavity("mesh_1", x₀, y₀, th, B, b, Δl, H, r, r2, h);
 Γ_1 = getBoundarySet(grid1);
-grid2 = createBoxMeshRev2("mesh_2", x₁, y₁, Δx, Δy, h/4);
+grid2 = createBoxMeshRev2("mesh_2", x₁, y₁, Δx, Δy, h/3);
 #grid2 = createBoxMesh("mesh_2", x₁, y₁, Δx, Δy, h);
 Γ_2 = getBoundarySet(grid2);
 grid_tot = merge_grids(grid1, grid2; tol=1e-8);
@@ -285,9 +285,9 @@ function Optimize(dh)
     # # # # # #
     for (i,node) in enumerate(nₛ)
         x = dh.grid.nodes[node].x[1]
-        pmax = 75
+        pmax = 50
         mid  = 0.5
-        P    = 5
+        P    = 6
         width= 0.12
         λ_target[i] = pmax*exp( -( ((x-mid)^2) / width^2 )^P )
         #λ_target[i] = pmax*(1-3000*(x-mid)^4)# h(x)
@@ -465,7 +465,7 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        if true_iteration > 250
+        if true_iteration > 100
             global α = 0.1
         end
         d_new = d_old   + α .* (d_new - d_old)
