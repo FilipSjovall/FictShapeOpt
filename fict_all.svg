@@ -25,8 +25,8 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="0.01"
-     inkscape:cx="-35300"
-     inkscape:cy="37800"
+     inkscape:cx="124300"
+     inkscape:cy="14300"
      inkscape:window-width="1920"
      inkscape:window-height="1016"
      inkscape:window-x="0"
@@ -49,8 +49,8 @@
     <inkscape:grid
        type="xygrid"
        id="grid386402"
-       originx="34812.638"
-       originy="3818.2714" />
+       originx="34812.634"
+       originy="3818.2718" />
   </sodipodi:namedview>
   <defs
      id="defs2">
@@ -24605,7 +24605,7 @@
        style="font-size:300px;line-height:1.25;font-family:'Times New Roman';-inkscape-font-specification:'Times New Roman, ';white-space:pre;shape-inside:url(#rect7247)"><tspan
          x="-19492.875"
          y="14547.304"
-         id="tspan498918">Noder för stora</tspan></text>
+         id="tspan506844">Noder för stora</tspan></text>
     <path
        style="mix-blend-mode:multiply;fill:#3b3b3b;fill-opacity:1;stroke:#1e1e1e;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-start:url(#DotL-6);marker-mid:url(#DotL-3-6)"
        d="m 3987.33,5104.8443 191.6742,-262.4087 339.9063,-2.1849 591.3321,-0.1076 402.1325,2.9251 131.2429,254.816 v 0 0"
@@ -24990,9 +24990,9 @@
        style="font-size:1889.76px;line-height:1.25;font-family:'Times New Roman';-inkscape-font-specification:'Times New Roman, ';white-space:pre;shape-inside:url(#rect56867)"><tspan
          x="32840.234"
          y="31499.265"
-         id="tspan498922"><tspan
+         id="tspan506848"><tspan
            dx="0 0 -0.00012207031 0 0.00018310547 -0.00012207031 -0.00024414062 0.00024414062 -0.00012207031 0 0.00024414062 0 -0.00012207031 0 -0.00018310547 0 -0.00012207031 0.00024414062 0 0.00048828125 -0.00054931641 0.00024414062 -0.00036621094 -0.00073242188 0 0.0012207031 -0.00073242188"
-           id="tspan498920">Gör bild i paraview istället</tspan></tspan></text>
+           id="tspan506846">Gör bild i paraview istället</tspan></tspan></text>
     <rect
        style="fill:#4d4d4d;fill-opacity:1;stroke:#000000;stroke-width:0.70575;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
        id="rect103423"
@@ -38054,7 +38054,7 @@
     </g>
     <g
        id="surface12454496"
-       transform="matrix(0.35277778,0,0,0.35277778,29077.321,9034.9496)">
+       transform="matrix(0.35277778,0,0,0.35277778,29078.154,9036.6194)">
       <path
          style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
          d="M 0,0 H 276.75 V 212.25 H 0 Z m 0,0"
@@ -39355,8 +39355,8 @@
        id="rect376572"
        width="806.05341"
        height="191.75307"
-       x="28996.934"
-       y="8755.1475" />
+       x="28973.641"
+       y="8742.9385" />
     <path
        style="fill:none;stroke:#000000;stroke-width:0.1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker497941)"
        d="m 28986.355,9084.3902 0.507,-16.834"

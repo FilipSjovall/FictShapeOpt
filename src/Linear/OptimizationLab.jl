@@ -37,7 +37,7 @@ r  = 0.025 #0.0125
 #r2 = 0.05# 0.025 ## radius of cavity
 # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
 # grid size3
-h = 0.075 # 0.075 #0.04 # 0.075
+h = 0.05 # 0.075 #0.04 # 0.075
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -285,7 +285,7 @@ function Optimize(dh)
     # # # # # #
     for (i,node) in enumerate(nₛ)
         x = dh.grid.nodes[node].x[1]
-        pmax = 50
+        pmax = 60
         mid  = 0.5
         P    = 6
         width= 0.12
@@ -529,7 +529,7 @@ function Optimize(dh)
         GC.gc() # Collect garbage
 
         #@save "packningen.jld2" lägg till relevanta variabler så som a, dh, ψ etc
-        @save "LabOpt.jld2" a Ψ dh dh0 OptIter g d FΨ Fᵢₙₜ g_hist v_hist ε μ true_iteration
+        @save "LabOpt.jld2" a Ψ dh dh0 OptIter g d FΨ Fᵢₙₜ g_hist v_hist ε μ true_iteration X_c tract λ_target
     end
     return g_hist, v_hist, al_hist, au_hist, OptIter
 end

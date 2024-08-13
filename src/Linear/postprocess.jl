@@ -5,17 +5,18 @@ using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
 using SparseDiffTools, Printf, JLD2, Statistics, AlgebraicMultigrid
 using CairoMakie #, Plots926
 #
-include("Contact//Mortar2D//Mortar2D.jl")
-include("..//mesh_reader.jl")
-include("Contact//contact_help.jl")
-include("assemLin.jl")
-include("assemElemLin.jl")
-include("..//material.jl")
-include("..//fem.jl")
-include("run_linear.jl")
-include("sensitivitiesLin.jl")
-include("..//mma.jl")
-
+begin
+    include("Contact//Mortar2D//Mortar2D.jl")
+    include("..//mesh_reader.jl")
+    include("Contact//contact_help.jl")
+    include("assemLin.jl")
+    include("assemElemLin.jl")
+    include("..//material.jl")
+    include("..//fem.jl")
+    include("run_linear.jl")
+    include("sensitivitiesLin.jl")
+    include("..//mma.jl")
+end
 # Extract and plot contact tractions  #
 function plotTraction()
     traction = ExtractContactTraction(a, ε, coord)
@@ -64,7 +65,7 @@ begin
            topspinevisible = false)
     ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
            xgridvisible = false, ygridvisible = false,
-           ylabel = L" Contact force constraint $g_1$", xlabel = L"\text{Iteration}",
+           ylabel = "Contact force constraint", xlabel = L"\text{Iteration}",
            limits = (0, true_iteration, -0.5, 0.5),
            rightspinecolor = :red,
            leftspinecolor = :blue,
@@ -262,6 +263,118 @@ end
 #end
 Makie.save("traction_seal.pdf",f)
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# - - - - - - - - - - - #
+# LSQ Pressure profile  #
+# - - - - - - - - - - - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+cm_convert = 28.3465
+w_cm  = 13# 8
+h_cm  = 8# 13
+width = w_cm*cm_convert
+height= h_cm*cm_convert
+px_per_cm = 1200 # dpi
+reso = (w_cm * px_per_cm / width)
+
+f = Figure( resolution = (width,height), fontsize = 12, px_per_unit = reso)
+ax = Axis(f[1, 1],
+    xgridvisible = false,
+    ygridvisible = false,
+    #title  = L"\text{Contact traction λ}", # L enables LaTeX strings
+    xlabel = L"\text{Horizontal position [mm]}", #
+    #ylabelrotation = 3π/2,
+    ylabel = L"$λ$ [MPa]", #
+    xtickalign = 1,  # Ticks inwards
+    ytickalign = 1,   # # Ticks inwards
+    topspinevisible = false,
+    rightspinevisible = false,
+    xminorticksvisible = true, yminorticksvisible = true,
+    limits = (0.34, 0.52, 0.0, 100.0),
+)
+# run
+begin
+    Δ          = -0.025
+    ε          = 1e5
+    nloadsteps = 10
+    mp₁        = [180 80].*1e3     # [K G]
+    mp₂        = [2.5 0.1].*1e3    #
+    @load "results//seal//lsq_seal_v1//packning.jld2" dh
+    coord, enod = getTopology(dh);
+    n_bot = getnodeset(dh.grid,"n_bot")
+    n_top = getnodeset(dh.grid,"n_top")
+    n_sym = getnodeset(dh.grid,"n_sym")
+    nₛ    = getnodeset(dh.grid,"nₛ")
+    nₘ    = getnodeset(dh.grid,"nₘ")
+
+    contact_dofs = getContactDofs(nₛ, nₘ)
+    contact_nods = getContactNods(nₛ, nₘ)
+    freec_dofs = setdiff(1:dh.ndofs.x, contact_dofs)
+    Γs = getfaceset(dh.grid,"Γ_slave")
+    Γm = getfaceset(dh.grid,"Γ_master")
+    global order = Dict{Int64,Int64}()
+    for (i, nod) ∈ enumerate(contact_nods)
+        push!(order, nod => i)
+
+    end
+    t = 1
+    a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
+    σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
+    # Ny shit
+    τ_c = ExtractContactTractionVec(a, ε, coord)
+    traction = zeros(size(a))
+    for (key,val) in τ_c
+        dofs = register[key,:]
+        traction[dofs] = val
+    end
+    #
+    xc3,tract3 = plotTraction()
+    λ_target = ones(length(nₛ),1)
+    for (i,node) in enumerate(nₛ)
+        x = dh.grid.nodes[node].x[1]
+        pmax = 50
+        mid  = 0.5
+        P    = 6
+        width= 0.12
+        λ_target[i] = pmax*exp( -( ((x-mid)^2) / width^2 )^P )
+        #λ_target[i] = pmax*(1-3000*(x-mid)^4)# h(x)
+    end
+end
+    scatter!(convert(Vector{Float64},xc3), vec(sort(λ_target,dims=1)), color= :red, marker = 'x', label = "Target")
+    lines!(convert(Vector{Float64},xc3),convert(Vector{Float64},tract3), color = :green, label = "Optimized", linestyle = :solid)
+    @load "results//seal//lsq_seal_v1//initiellt_tryck.jld2" iX itract
+    lines!(convert(Vector{Float64},iX),convert(Vector{Float64},itract), color = :blue, label = "Initial", linestyle = :dash)
+    axislegend(ax, position = :rt, framevisible = false, patchsize=(50,10))
+    f
+    Makie.save("LSQ_profile.pdf",f)
+#
+@load "results//seal//lsq_seal_v1//packning.jld2"
+begin
+    f = Figure( resolution = (width,height), fontsize = 12,font="CMU", px_per_unit = reso)
+    ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
+           xgridvisible = false, ygridvisible = false,
+           ylabel = L"Objective function $f$ [N/mm$^2$]",
+           limits = (0, true_iteration, 0, 125),
+           leftspinecolor = :blue,
+           ylabelcolor = :blue,
+           xminorticksvisible = true, yminorticksvisible = true,
+           topspinevisible = false)
+    ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
+           xgridvisible = false, ygridvisible = false,
+           ylabel = "Volume constraint", xlabel = L"\text{Iteration}",
+           limits = (0, true_iteration, -0.015, 0.015),
+           rightspinecolor = :red,
+           leftspinecolor = :blue,
+           ylabelcolor = :red,
+           xminorticksvisible = true, yminorticksvisible = true,
+           topspinevisible = false)
+    lines!(ax1,1:true_iteration,g_hist[1:true_iteration], color = :blue )
+    lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
+    f
+    Makie.save("optimization_history_seal_ex2.pdf",f)
+end
+#
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Plot optimization history: f and g₁ using separate y-axis #
 # / specifically for Cylinder - Block problem               #
