@@ -341,7 +341,7 @@ begin
         #λ_target[i] = pmax*(1-3000*(x-mid)^4)# h(x)
     end
 end
-    scatter!(convert(Vector{Float64},xc3), vec(sort(λ_target,dims=1)), color= :red, marker = 'x', label = "Target")
+    scatter!(convert(Vector{Float64},xc3), vec(sort(λ_target,dims=1)), color= :red, marker = 'x', label = "Target") # Testa marker :xcross
     lines!(convert(Vector{Float64},xc3),convert(Vector{Float64},tract3), color = :green, label = "Optimized", linestyle = :solid)
     @load "results//seal//lsq_seal_v1//initiellt_tryck.jld2" iX itract
     lines!(convert(Vector{Float64},iX),convert(Vector{Float64},itract), color = :blue, label = "Initial", linestyle = :dash)
@@ -432,14 +432,14 @@ begin
     end
     register = getNodeDofs(dh)
     #τ_c = ExtractContactTractionVec(a,ε,coord)
-    τ_c = ExtractContactTractionVec(Ψ.*0, μ, coord)
+    τ_c = ExtractContactTractionVec(Ψ.*0, μ, coord) # coord räknas från dh som har x = X₀ + Ψ, vi vill alltså inte lägga på Ψ igen!
     traction = zeros(size(a))
     for (key,val) in τ_c
         dofs = register[key,:]
         traction[dofs] = val
     end
     vtk_grid("results/cylinder_traction_🚜", dh) do vtkfile
-                vtk_point_data(vtkfile, dh, a) # displacement field
+                vtk_point_data(vtkfile, dh, 0*Ψ) # displacement field
                 vtk_point_data(vtkfile, dh, traction, "traction")
     end
 end

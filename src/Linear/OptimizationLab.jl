@@ -37,7 +37,7 @@ r  = 0.025 #0.0125
 #r2 = 0.05# 0.025 ## radius of cavity
 # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
 # grid size3
-h = 0.05 # 0.075 #0.04 # 0.075
+h = 0.075 # 0.075 #0.04 # 0.075
 # # # # # # # # # #
 # Finite element  #
 # # # # # # # # # #
@@ -285,10 +285,10 @@ function Optimize(dh)
     # # # # # #
     for (i,node) in enumerate(nₛ)
         x = dh.grid.nodes[node].x[1]
-        pmax = 60
+        pmax = 75
         mid  = 0.5
         P    = 6
-        width= 0.12
+        width= 0.13
         λ_target[i] = pmax*exp( -( ((x-mid)^2) / width^2 )^P )
         #λ_target[i] = pmax*(1-3000*(x-mid)^4)# h(x)
     end
@@ -387,9 +387,9 @@ function Optimize(dh)
         # ∂g_∂u = -T' * K
         p    = 3
         X_ordered = getXfromCoord(coord)
-        g         = contact_pressure(X_ordered, a, ε, p, λ_target)
-        ∂g_∂x     = ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p, λ_target), getXinDofOrder(dh, X_ordered, coord))
-        ∂g_∂u     = ForwardDiff.gradient(u -> contact_pressure(X_ordered, u, ε, p, λ_target), a)
+        g         = -contact_pressure(X_ordered, a, ε, p, λ_target)
+        ∂g_∂x     = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p, λ_target), getXinDofOrder(dh, X_ordered, coord))
+        ∂g_∂u     = -ForwardDiff.gradient(u -> contact_pressure(X_ordered, u, ε, p, λ_target), a)
         # # # # # # #
         # Adjoints  #
         # # # # # # #
