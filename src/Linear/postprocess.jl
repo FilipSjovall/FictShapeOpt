@@ -52,7 +52,8 @@ px_per_cm = 1200 # dpi
 
 reso = (w_cm * px_per_cm / width)
 
-@load "results//seal//v5//packning.jld2"
+#@load "results//seal//v5//packning.jld2"
+@load "results//seal//v6(byt_till_denna)//packning.jld2"
 begin
     f = Figure( resolution = (width,height), fontsize = 12,font="CMU", px_per_unit = reso)
     ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
@@ -96,7 +97,8 @@ begin
     )
     #@load "results//seal//v2//p = 1/packning.jld2" g_hist true_iteration
     #lines!(1:true_iteration,(abs.(g_hist[1:true_iteration])), color = :blue, label = L"p = 1")
-    @load "results//seal//v2//p = 3/packning.jld2" g_hist true_iteration
+    #@load "results//seal//v2//p = 3/packning.jld2" g_hist true_iteration
+    @load "results//seal//v6(byt_till_denna)//packning.jld2" g_hist true_iteration
     lines!(1:true_iteration,(g_hist[1:true_iteration]), color = :green, label = L"p = 3")
     #f[1,2] = Legend(f, ax, framevisible = false, orientation = :vertical, tellwidth = true, tellheight = false)
     axislegend(ax, position = :rc, framevisible = false)
@@ -144,75 +146,9 @@ begin
     nloadsteps = 10
     mp₁        = [180 80].*1e3     # [K G]
     mp₂        = [2.5 0.1].*1e3    #
-    #=
-    @load "results//seal//v2//p = 1/packning.jld2" dh
-    coord, enod = getTopology(dh);
-    n_bot = getnodeset(dh.grid,"n_bot")
-    n_top = getnodeset(dh.grid,"n_top")
-    n_sym = getnodeset(dh.grid,"n_sym")
-    nₛ    = getnodeset(dh.grid,"nₛ")
-    nₘ    = getnodeset(dh.grid,"nₘ")
-    contact_dofs = getContactDofs(nₛ, nₘ)
-    contact_nods = getContactNods(nₛ, nₘ)
-    freec_dofs = setdiff(1:dh.ndofs.x, contact_dofs)
-    Γs = getfaceset(dh.grid,"Γ_slave")
-    Γm = getfaceset(dh.grid,"Γ_master")
-    global order = Dict{Int64,Int64}()
-    for (i, nod) ∈ enumerate(contact_nods)
-        push!(order, nod => i)
-    end
-    t = 1
-    a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
-    σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
-    # Ny shit
-    τ_c = ExtractContactTractionVec(a, ε, coord)
-    traction = zeros(size(a))
-    for (key,val) in τ_c
-        dofs = register[key,:]
-        traction[dofs] = val
-    end
-    #
-    vtk_grid("results/seal/v2/p = 1/p = 1 - contact", dh) do vtkfile
-        vtk_point_data(vtkfile, dh, a)
-        vtk_point_data(vtkfile, σx, "σx")
-        vtk_point_data(vtkfile, σy, "σy")
-        vtk_point_data(vtkfile, τ, "τ")
-        vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
-        vtk_point_data(vtkfile, dh, traction, "traction") # ny shit
-    end
-    xc1,tract1 = plotTraction()
-    #@load "results//seal//v2//p = 2/packning.jld2" dh
-    #coord, enod = getTopology(dh);
-    #n_bot = getnodeset(dh.grid,"n_bot")
-    #n_top = getnodeset(dh.grid,"n_top")
-    #n_sym = getnodeset(dh.grid,"n_sym")
-    #nₛ    = getnodeset(dh.grid,"nₛ")
-    #nₘ    = getnodeset(dh.grid,"nₘ")
-    #contact_dofs = getContactDofs(nₛ, nₘ)
-    #contact_nods = getContactNods(nₛ, nₘ)
-    #freec_dofs = setdiff(1:dh.ndofs.x, contact_dofs)
-    #Γs = getfaceset(dh.grid,"Γ_slave")
-    #Γm = getfaceset(dh.grid,"Γ_master")
-    #global order = Dict{Int64,Int64}()
-    #for (i, nod) ∈ enumerate(contact_nods)
-    #    push!(order, nod => i)
-    #end
-    #t = 1
-    #a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
-    #σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
-    #vtk_grid("results/seal/v2/p = 2/p = 2-contact", dh) do vtkfile
-    #    vtk_point_data(vtkfile, dh, a) # displacement field
-    #    vtk_point_data(vtkfile, σx, "σx")
-    #    vtk_point_data(vtkfile, σy, "σy")
-    #    vtk_point_data(vtkfile, τ, "τ")
-    #    vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
-    #end
-    #xc2,tract2 = plotTraction()
-    =#
-
-    #@load "results//seal//v2//p = 3/packning.jld2" dh
-    #@load "results//seal//v5//packning.jld2"
-    @load "results//seal//v5//LabOpt.jld2" dh
+    # # # # # # # # #
+    #@load "results//seal//v5//LabOpt.jld2" dh
+    @load "results//seal//v6(byt_till_denna)//packning.jld2" dh
     coord, enod = getTopology(dh);
     n_bot = getnodeset(dh.grid,"n_bot")
     n_top = getnodeset(dh.grid,"n_top")
