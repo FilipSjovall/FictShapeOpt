@@ -1,37 +1,38 @@
-using Pkg
-Pkg.activate()
-using ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
-using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
-using SparseDiffTools, Printf, JLD2, Statistics, AlgebraicMultigrid
-using CairoMakie #, Plots926
-#
 begin
-    include("Contact//Mortar2D//Mortar2D.jl")
-    include("..//mesh_reader.jl")
-    include("Contact//contact_help.jl")
-    include("assemLin.jl")
-    include("assemElemLin.jl")
-    include("..//material.jl")
-    include("..//fem.jl")
-    include("run_linear.jl")
-    include("sensitivitiesLin.jl")
-    include("..//mma.jl")
-end
-# Extract and plot contact tractions  #
-function plotTraction()
-    traction = ExtractContactTraction(a, ε, coord)
-    X_c   = []
-    tract = []
-    for (key, val) ∈ traction
-        append!(X_c, coord[key, 1])
-        append!(tract, val)
+    using Pkg
+    Pkg.activate()
+    using ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
+    using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
+    using SparseDiffTools, Printf, JLD2, Statistics, AlgebraicMultigrid
+    using CairoMakie #, Plots926
+    #
+    begin
+        include("Contact//Mortar2D//Mortar2D.jl")
+        include("..//mesh_reader.jl")
+        include("Contact//contact_help.jl")
+        include("assemLin.jl")
+        include("assemElemLin.jl")
+        include("..//material.jl")
+        include("..//fem.jl")
+        include("run_linear.jl")
+        include("sensitivitiesLin.jl")
+        include("..//mma.jl")
     end
-    ϵᵢⱼₖ = sortperm(X_c)
-    tract = tract[ϵᵢⱼₖ]
-    X_c = X_c[ϵᵢⱼₖ]
-    return X_c, tract
+    # Extract and plot contact tractions  #
+    function plotTraction()
+        traction = ExtractContactTraction(a, ε, coord)
+        X_c   = []
+        tract = []
+        for (key, val) ∈ traction
+            append!(X_c, coord[key, 1])
+            append!(tract, val)
+        end
+        ϵᵢⱼₖ = sortperm(X_c)
+        tract = tract[ϵᵢⱼₖ]
+        X_c = X_c[ϵᵢⱼₖ]
+        return X_c, tract
+    end
 end
-
 # - - - - - - - - - - - - #
 # Plot objective function #
 # - - - - - - - - - - - - #
@@ -59,22 +60,24 @@ begin
     ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
            xgridvisible = false, ygridvisible = false,
            ylabel = L"Objective function $|f|$ [N$^3$]",
-           limits = (0, true_iteration, 4, -g_hist[true_iteration]*1.25),
+           limits = (0, true_iteration, 1/1e4, -g_hist[true_iteration]*1.25e-4),
            leftspinecolor = :blue,
            ylabelcolor = :blue,
            xminorticksvisible = true, yminorticksvisible = true,
+           #ytickformat = values -> ["$(value)⋅10⁵" for value in values],
+           ytickformat = "{:0.1f}×10⁴",
            topspinevisible = false)
     ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
            xgridvisible = false, ygridvisible = false,
-           ylabel = "Contact force constraint", xlabel = L"\text{Iteration}",
-           limits = (0, true_iteration, -0.5, 0.5),
+           ylabel = "Volume constraint", xlabel = L"\text{Iteration}",
+           limits = (0, true_iteration, -0.01, 0.01),
            rightspinecolor = :red,
            leftspinecolor = :blue,
            ylabelcolor = :red,
            xminorticksvisible = true, yminorticksvisible = true,
            topspinevisible = false)
-    lines!(ax1,1:true_iteration,-g_hist[1:true_iteration], color = :blue )
-    lines!(ax2,1:true_iteration,au_hist[1:true_iteration], color = :red )
+    lines!(ax1,1:true_iteration,-g_hist[1:true_iteration]./1e4, color = :blue )
+    lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
     f
     Makie.save("optimization_history_seal.pdf",f)
 end
@@ -164,7 +167,6 @@ begin
     global order = Dict{Int64,Int64}()
     for (i, nod) ∈ enumerate(contact_nods)
         push!(order, nod => i)
-
     end
     t = 1
     a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
@@ -177,23 +179,23 @@ begin
         traction[dofs] = val
     end
     #
-    vtk_grid("results/seal/v5/p = 3-contact", dh) do vtkfile
-        vtk_point_data(vtkfile, dh, a) # displacement field
-        vtk_point_data(vtkfile, σx, "σx")
-        vtk_point_data(vtkfile, σy, "σy")
-        vtk_point_data(vtkfile, τ, "τ")
-        vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
-        vtk_point_data(vtkfile, dh, traction, "traction") # ny shit
-    end
+    #vtk_grid("results/seal/v5/p = 3-contact", dh) do vtkfile
+    #    vtk_point_data(vtkfile, dh, a) # displacement field
+    #    vtk_point_data(vtkfile, σx, "σx")
+    #    vtk_point_data(vtkfile, σy, "σy")
+    #    vtk_point_data(vtkfile, τ, "τ")
+    #    vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
+    #    vtk_point_data(vtkfile, dh, traction, "traction") # ny shit
+    #end
     xc3,tract3 = plotTraction()
 end
 #begin
     #lines!(convert(Vector{Float32},xc1),convert(Vector{Float32},tract1), color = :blue,  label = L"p = 1", linestyle = :solid)
     #lines!(convert(Vector{Float32},xc2),convert(Vector{Float32},tract2), color = :red,   label = L"p = 2")
-    lines!(convert(Vector{Float32},xc3),convert(Vector{Float32},tract3), color = :green, label = L"p = 3", linestyle = :solid)
-    @load "initiellt_tryck.jld2" iX itract
+    lines!(convert(Vector{Float32},xc3),convert(Vector{Float32},tract3), color = :green, label = L"\text{Optimized}", linestyle = :solid)
+    @load "results//seal//v6(byt_till_denna)//initiellt_tryck.jld2" iX itract
     lines!(convert(Vector{Float32},iX),convert(Vector{Float32},itract), color = :black, label = L"\text{Initial}", linestyle = :dash)
-    axislegend(ax, position = :rc, framevisible = false)
+    axislegend(ax, position = :rt, framevisible = false)
     #f[2, 1] = Legend(f, ax, orientation=:horizontal,framevisible = false,tellwidth = false, tellheight = true, nbanks=2, colgap=5, halign= :right, valign = :top)
     f
 #end
@@ -384,11 +386,16 @@ end
 begin
     #@load "results//lunarc//flat_first_design_updates//OptimizationVariablesy2.jld2"
     @load "results//lunarc//flat_first_design_updates//OptimizationVariablesy2_nofilter.jld2"
+    mp    = [175 80.769230769230759]
+    Δ     = -0.05
     coord, enod = getTopology(dh);
     n_bot = getnodeset(dh.grid,"n_bot")
     n_top = getnodeset(dh.grid,"n_top")
     nₛ    = getnodeset(dh.grid,"nₛ")
     nₘ    = getnodeset(dh.grid,"nₘ")
+    n_left  = getnodeset(dh.grid,"nₗ")
+    n_right = getnodeset(dh.grid,"nᵣ")
+    K       = create_sparsity_pattern(dh)
     contact_dofs = getContactDofs(nₛ, nₘ)
     contact_nods = getContactNods(nₛ, nₘ)
     freec_dofs = setdiff(1:dh.ndofs.x, contact_dofs)

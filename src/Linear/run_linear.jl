@@ -923,7 +923,6 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
         end
         σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp)
         vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
-            #vtk_grid("contact" * string(iter), dh) do vtkfile
             vtk_point_data(vtkfile, dh, a) # displacement field
             vtk_point_data(vtkfile, σx, "σx")
             vtk_point_data(vtkfile, σy, "σy")
@@ -933,7 +932,6 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
         fill!(Fₑₓₜ, 0.0)
         Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
     end
-    τ_c = ExtractContactTraction(a, ε, coord)
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K, τ_c
 end
 
