@@ -32,16 +32,7 @@ begin
         X_c = X_c[ϵᵢⱼₖ]
         return X_c, tract
     end
-end
-# - - - - - - - - - - - - #
-# Plot objective function #
-# - - - - - - - - - - - - #
-# Load results
-
-# Kombinera dessa i en bild..
-#
-#
-using JLD2
+    using JLD2
 using CairoMakie
 set_theme!(theme_latexfonts())
 cm_convert = 28.3465
@@ -52,6 +43,16 @@ height= h_cm*cm_convert
 px_per_cm = 1200 # dpi
 
 reso = (w_cm * px_per_cm / width)
+end
+# - - - - - - - - - - - - #
+# Plot objective function #
+# - - - - - - - - - - - - #
+# Load results
+
+# Kombinera dessa i en bild..
+#
+#
+
 
 #@load "results//seal//v5//packning.jld2"
 @load "results//seal//v6(byt_till_denna)//packning.jld2"
@@ -238,7 +239,7 @@ begin
     nloadsteps = 10
     mp₁        = [180 80].*1e3     # [K G]
     mp₂        = [2.5 0.1].*1e3    #
-    @load "results//seal//lsq_seal_v1//packning.jld2" dh
+    @load "results//seal//lsq_seal_v2//packning.jld2" dh
     coord, enod = getTopology(dh);
     n_bot = getnodeset(dh.grid,"n_bot")
     n_top = getnodeset(dh.grid,"n_top")
@@ -281,13 +282,13 @@ begin
 end
     scatter!(convert(Vector{Float64},xc3), vec(sort(λ_target,dims=1)), color= :red, marker = 'x', label = "Target") # Testa marker :xcross
     lines!(convert(Vector{Float64},xc3),convert(Vector{Float64},tract3), color = :green, label = "Optimized", linestyle = :solid)
-    @load "results//seal//lsq_seal_v1//initiellt_tryck.jld2" iX itract
+    @load "results//seal//lsq_seal_v2//initiellt_tryck.jld2" iX itract
     lines!(convert(Vector{Float64},iX),convert(Vector{Float64},itract), color = :blue, label = "Initial", linestyle = :dash)
     axislegend(ax, position = :rt, framevisible = false, patchsize=(50,10))
     f
     Makie.save("LSQ_profile.pdf",f)
 #
-@load "results//seal//lsq_seal_v1//packning.jld2"
+@load "results//seal//lsq_seal_v2//packning.jld2"
 begin
     f = Figure( resolution = (width,height), fontsize = 12,font="CMU", px_per_unit = reso)
     ax1 = Axis(f[1, 1], yticklabelcolor = :blue,

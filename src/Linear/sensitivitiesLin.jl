@@ -450,18 +450,18 @@ function contact_pressure(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p, �
             λ_list[A] = 0.0
         end
         ## LSQ formulering
-        #    x = dh.grid.nodes[A].x[1]
-        #    pmax = 75
-        #    mid  = 0.5
-        #    P    = 6
-        #    width= 0.13
-        #    λ_target = pmax*exp( -( ((x-mid)^2) / width^2 )^P )
-        #    fc += (λ_list[A] - λ_target)^2
+        x = dh.grid.nodes[A].x[1]
+        pmax = 50
+        mid  = 0.5
+        P    = 6
+        width= 0.12
+        λ_target = pmax*exp( -( ((x-mid)^2) / width^2 )^P )
+        fc += (λ_list[A] - λ_target)^2
         ##
     end
-    #fc = fc^(1/2)
+    fc = fc^(1/2)
     ## Målfunk ∫λᵖdγ
-    fc = Mortar2D.calculate_assembly_force(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list,p)
+    #fc = Mortar2D.calculate_assembly_force(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list,p)
     ### γᶜ = Mortar2D.calculate_assembly_area(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list)
     ##
     γᶜ = 1

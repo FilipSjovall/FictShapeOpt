@@ -921,7 +921,7 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
             p = plot(X_c, tract, legend=false, marker=4, lc=:tomato, mc=:tomato)
             display(p)
         end
-        σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp)
+        σx, σy, τ, σᵛᵐ = StressExtract(dh, a, mp)
         vtk_grid("results/contact" * string(loadstep), dh) do vtkfile
             vtk_point_data(vtkfile, dh, a) # displacement field
             vtk_point_data(vtkfile, σx, "σx")

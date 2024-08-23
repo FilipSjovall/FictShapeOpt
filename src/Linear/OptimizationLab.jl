@@ -285,10 +285,10 @@ function Optimize(dh)
     # # # # # #
     for (i,node) in enumerate(nₛ)
         x = dh.grid.nodes[node].x[1]
-        pmax = 75
+        pmax = 50
         mid  = 0.5
         P    = 6
-        width= 0.13
+        width= 0.12
         λ_target[i] = pmax*exp( -( ((x-mid)^2) / width^2 )^P )
         #λ_target[i] = pmax*(1-3000*(x-mid)^4)# h(x)
     end
@@ -385,11 +385,12 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
+        # - om p^3 | + om || λ - p* ||₂
         p    = 3
         X_ordered = getXfromCoord(coord)
-        g         = -contact_pressure(X_ordered, a, ε, p, λ_target)
-        ∂g_∂x     = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p, λ_target), getXinDofOrder(dh, X_ordered, coord))
-        ∂g_∂u     = -ForwardDiff.gradient(u -> contact_pressure(X_ordered, u, ε, p, λ_target), a)
+        g         = contact_pressure(X_ordered, a, ε, p, λ_target)
+        ∂g_∂x     = ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p, λ_target), getXinDofOrder(dh, X_ordered, coord))
+        ∂g_∂u     = ForwardDiff.gradient(u -> contact_pressure(X_ordered, u, ε, p, λ_target), a)
         # # # # # # #
         # Adjoints  #
         # # # # # # #
@@ -402,10 +403,12 @@ function Optimize(dh)
         # # # # # # # # # # #
         # Volume constraint #
         # # # # # # # # # # #
-        g₁    = volume(dh, coord, enod)./ Vₘₐₓ - 1.0
-        ∂Ω_∂x = volume_sens(dh, coord)./ Vₘₐₓ
-        solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
-        ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd)
+                # g₁    = volume(dh, coord, enod)./ Vₘₐₓ - 1.0
+                # ∂Ω_∂x = volume_sens(dh, coord)./ Vₘₐₓ
+                # solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
+                # ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd)
+        g₁   = -10.
+        ∂Ω∂d =  zeros(size(dr_dd))
         # # # # # # # # # #
         # Area constraint #
         # # # # # # # # # #
