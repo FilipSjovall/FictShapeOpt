@@ -299,17 +299,17 @@ begin
            ylabelcolor = :blue,
            xminorticksvisible = true, yminorticksvisible = true,
            topspinevisible = false)
-    ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
-           xgridvisible = false, ygridvisible = false,
-           ylabel = "Volume constraint", xlabel = L"\text{Iteration}",
-           limits = (0, true_iteration, -0.015, 0.015),
-           rightspinecolor = :red,
-           leftspinecolor = :blue,
-           ylabelcolor = :red,
-           xminorticksvisible = true, yminorticksvisible = true,
-           topspinevisible = false)
+    #ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
+    #       xgridvisible = false, ygridvisible = false,
+    #       ylabel = "Volume constraint", xlabel = L"\text{Iteration}",
+    #       limits = (0, true_iteration, -0.015, 0.015),
+    #       rightspinecolor = :red,
+    #       leftspinecolor = :blue,
+    #       ylabelcolor = :red,
+    #       xminorticksvisible = true, yminorticksvisible = true,
+    #       topspinevisible = false)
     lines!(ax1,1:true_iteration,g_hist[1:true_iteration], color = :blue )
-    lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
+    #lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
     f
     Makie.save("optimization_history_seal_ex2.pdf",f)
 end
