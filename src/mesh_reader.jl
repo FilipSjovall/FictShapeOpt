@@ -1589,6 +1589,10 @@ function getBoundarySet(grid)
     setCoordinates = Set{Vec{2,Float64}}()
     for (cellid,faceid) ∈ grid.facesets[""]
         nodes =  grid.cells[cellid].nodes
+        @show Ferrite.FaceIndex(cellid,faceid)
+        @show Ferrite.EdgeIndex(cellid,faceid)
+        @show Ferrite.VertexIndex(cellid,faceid)
+
         idx = Ferrite.facedof_indices(ip)[faceid]
         push!(setCoordinates, grid.nodes[nodes[idx[1]]].x)
         push!(setCoordinates, grid.nodes[nodes[idx[2]]].x)

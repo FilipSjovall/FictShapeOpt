@@ -552,7 +552,7 @@ function plotTraction()
 end
 
 
-g_hist, v_hist, al_hist, au_hist, OptIter = Optimize(dh)
+#g_hist, v_hist, al_hist, au_hist, OptIter = Optimize(dh)
 
 
 g_ini = any

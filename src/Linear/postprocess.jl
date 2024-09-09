@@ -33,16 +33,16 @@ begin
         return X_c, tract
     end
     using JLD2
-using CairoMakie
-set_theme!(theme_latexfonts())
-cm_convert = 28.3465
-w_cm  = 13
-h_cm  = 8
-width = w_cm*cm_convert
-height= h_cm*cm_convert
-px_per_cm = 1200 # dpi
+    using CairoMakie
+    set_theme!(theme_latexfonts())
+    cm_convert = 28.3465
+    w_cm  = 13
+    h_cm  = 8
+    width = w_cm*cm_convert
+    height= h_cm*cm_convert
+    px_per_cm = 1200 # dpi
 
-reso = (w_cm * px_per_cm / width)
+    reso = (w_cm * px_per_cm / width)
 end
 # - - - - - - - - - - - - #
 # Plot objective function #
@@ -318,40 +318,42 @@ end
 # Plot optimization history: f and g₁ using separate y-axis #
 # / specifically for Cylinder - Block problem               #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-using JLD2
-@load "results//lunarc//cyl_konvergerad_ordentligt//OptimizationVariablesy.jld2"
-using CairoMakie
-set_theme!(theme_latexfonts())
-cm_convert = 28.3465
-w_cm  = 13
-h_cm  = 10
-width = w_cm*cm_convert
-height= h_cm*cm_convert
-px_per_cm = 600 # dpi
-reso = w_cm * px_per_cm / width
-f = Figure( resolution = (width,height), fontsize = 12,font="CMU", px_per_unit = reso)
-ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
-           xgridvisible = false, ygridvisible = false,
-           ylabel = L"Objective function $|f|$ [N]",
-           limits = (0, 419, 4, -g_hist[419]*1.25),
-           leftspinecolor = :blue,
-           ylabelcolor = :blue,
-           xminorticksvisible = true, yminorticksvisible = true,
-           topspinevisible = false)
-ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
-           xgridvisible = false, ygridvisible = false,
-           ylabel = L"Volume constraint $g_1$", xlabel = L"\text{Iteration}",
-           limits = (0, 419, v_hist[1], 0.5),
-           rightspinecolor = :red,
-           leftspinecolor = :blue,
-           ylabelcolor = :red,
-           xminorticksvisible = true, yminorticksvisible = true,
-           topspinevisible = false)
-lines!(ax1,1:419,-g_hist[1:419], color = :blue )
-lines!(ax2,1:419,v_hist[1:419], color = :red )
-f
-Makie.save("optimization_history.pdf",f)
-
+begin
+    using JLD2
+    @load "results//lunarc//samma_interferens_aktuell//OptimizationVariablesy.jld2"
+    using CairoMakie
+    set_theme!(theme_latexfonts())
+    cm_convert = 28.3465
+    w_cm  = 13
+    h_cm  = 10
+    width = w_cm*cm_convert
+    height= h_cm*cm_convert
+    px_per_cm = 600 # dpi
+    n_iter = 417
+    reso = w_cm * px_per_cm / width
+    f = Figure( resolution = (width,height), fontsize = 12,font="CMU", px_per_unit = reso)
+    ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
+            xgridvisible = false, ygridvisible = false,
+            ylabel = L"Objective function $|f|$ [N]",
+            limits = (0, n_iter, 4, -g_hist[n_iter]*1.25),
+            leftspinecolor = :blue,
+            ylabelcolor = :blue,
+            xminorticksvisible = true, yminorticksvisible = true,
+            topspinevisible = false)
+    ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
+            xgridvisible = false, ygridvisible = false,
+            ylabel = L"Volume constraint $g_1$", xlabel = L"\text{Iteration}",
+            limits = (0, n_iter, v_hist[1], 0.5),
+            rightspinecolor = :red,
+            leftspinecolor = :blue,
+            ylabelcolor = :red,
+            xminorticksvisible = true, yminorticksvisible = true,
+            topspinevisible = false)
+    lines!(ax1,1:n_iter,-g_hist[1:n_iter], color = :blue )
+    lines!(ax2,1:n_iter,v_hist[1:n_iter], color = :red )
+    f
+    Makie.save("optimization_history.pdf",f)
+end
 ## plot traction in paraview
 begin
     @load "results//lunarc//flat | volume0.9//OptimizationVariablesy2_filter.jld2"
