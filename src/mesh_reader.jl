@@ -669,8 +669,12 @@ end
 function getTopology(dh)
     coord   = zeros( length(dh.grid.nodes), 2)
     enod    = Array{Int64}[]
-    for cell in CellIterator(dh)
-        push!(enod,[ [cellid(cell)]; cell.nodes])
+    #for cell in CellIterator(dh)
+    #    push!(enod,[ [cellid(cell)]; cell.nodes])
+    #end
+    for (cellid,cell) in enumerate(dh.grid.cells)
+        push!(enod,[cellid; collect(cell.nodes)])
+        #push!(enod,collect( [[cellid]; cell.nodes] ))
     end
     nod_nr = 0
     for node in dh.grid.nodes
@@ -1589,13 +1593,12 @@ function getBoundarySet(grid)
     setCoordinates = Set{Vec{2,Float64}}()
     for (cellid,faceid) ∈ grid.facesets[""]
         nodes =  grid.cells[cellid].nodes
-        @show Ferrite.FaceIndex(cellid,faceid)
-        @show Ferrite.EdgeIndex(cellid,faceid)
-        @show Ferrite.VertexIndex(cellid,faceid)
-
-        idx = Ferrite.facedof_indices(ip)[faceid]
-        push!(setCoordinates, grid.nodes[nodes[idx[1]]].x)
-        push!(setCoordinates, grid.nodes[nodes[idx[2]]].x)
+        facenods =  Ferrite.faces(ip)[faceid]
+        push!(setCoordinates, grid.nodes[nodes[facenods[1]]].x)
+        push!(setCoordinates, grid.nodes[nodes[facenods[2]]].x)
+        #idx = Ferrite.facedof_indices(ip)[faceid]
+        #push!(setCoordinates, grid.nodes[nodes[idx[1]]].x)
+        #push!(setCoordinates, grid.nodes[nodes[idx[2]]].x)
     end
     return setCoordinates
 end
@@ -1604,9 +1607,12 @@ function getBoundarySet(grid, FaceSet)
     setCoordinates = Set{Int64}()
     for (cellid, faceid) ∈ FaceSet
         nodes = grid.cells[cellid].nodes
-        idx = Ferrite.facedof_indices(ip)[faceid]
-        push!(setCoordinates, nodes[idx[1]])
-        push!(setCoordinates, nodes[idx[2]])
+        facenods =  Ferrite.faces(ip)[faceid]
+        push!(setCoordinates, nodes[facenods[1]])
+        push!(setCoordinates, nodes[facenods[2]])
+        #idx = Ferrite.facedof_indices(ip)[faceid]
+        #push!(setCoordinates, nodes[idx[1]])
+        #push!(setCoordinates, nodes[idx[2]])
     end
     return setCoordinates
 end

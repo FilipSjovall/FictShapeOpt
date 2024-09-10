@@ -143,3 +143,30 @@ function calculate_segment_force(slave_element_id, elements, element_types,
     end
     return fce
 end
+
+function calculate_segment_lsq(slave_element_id, elements, element_types,
+                                   coords, normals, segmentation, λ)
+    @assert element_types[slave_element_id] == :Seg2
+    # Initialization + calculate jacobian
+    fce = 0. # zeros(2,1) # zeros(1, 1)
+    scon = elements[slave_element_id]
+    xs1 = coords[scon[1]]
+    xs2 = coords[scon[2]]
+    ns1 = normals[scon[1]]
+    ns2 = normals[scon[2]]
+    J = norm(xs2-xs1)/2.0
+    # 1. calculate Ae
+    for (mid, (xi1, xi2)) in segmentation[slave_element_id]
+        s = abs(xi2-xi1)/2.0
+        for (w, ip) in seg_integration_points[3]
+            xi_s = (1-ip)/2*xi1 + (1+ip)/2*xi2
+            N1 = [(1-xi_s)/2, (1+xi_s)/2]
+            λ_gp = N1[1]*λ[scon[1]] + N1[2]*λ[scon[2]] #N1 * [λ[scon[1]]; λ[scon[2]]]
+            x_gp = N1[1]*xs1 + N1[2]*xs2
+            if all(λ_gp .> 0.)
+                fce += (λ_gp - target_func(x_gp[1]) )^2 * w * s * J
+            end
+        end
+    end
+    return fce
+end

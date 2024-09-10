@@ -180,3 +180,29 @@ function calculate_assembly_force(elements, element_types, coords,
     end
     return fc
 end
+
+function calculate_assembly_lsq(elements, element_types, coords,
+                                   slave_element_ids, master_element_ids, λ)
+    S = Int[]
+    M = Int[]
+    for sid in slave_element_ids
+        push!(S, elements[sid]...)
+    end
+    for mid in master_element_ids
+        push!(M, elements[mid]...)
+    end
+    S = sort(unique(S))
+    M = sort(unique(M))
+    normals      = calculate_normals(elements, element_types, coords)
+    segmentation = calculate_segments(slave_element_ids, master_element_ids,elements, element_types, coords, normals)
+    fc = 0.
+    for sid in slave_element_ids
+        mids = [mid for (mid, xi) in segmentation[sid]]
+        isempty(mids) && continue
+        fce = calculate_segment_lsq(sid, elements, element_types,
+                                           coords, normals, segmentation,
+                                           λ)
+        fc += fce
+    end
+    return fc
+end

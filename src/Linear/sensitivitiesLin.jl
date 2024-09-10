@@ -8,7 +8,8 @@ function drψ(dr_dd,dh,Ψ,λ,d,Γ_robin,coord₀)
         dfe = zeros(6,6) ## 12x1 eller 12x12 ??
         for face in 1:nfaces(cell)
             if (cellid(cell), face) in Γ_robin
-                face_nods = [ Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2] ]
+                #face_nods = [ Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2] ]
+                face_nods = [Ferrite.faces(ip)[face][1]; Ferrite.faces(ip)[face][2]]
                 face_dofs = [ face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2 ]
                 X         = coord₀[ enod[ie][face_nods.+1] ,: ]
                 dfe[face_dofs,face_dofs],_ = Robin(X,Ψ[cell_dofs[face_dofs]],d[cell_dofs[face_dofs]],λ)
@@ -449,19 +450,21 @@ function contact_pressure(X::AbstractVector{T1}, a::AbstractVector{T2}, ε, p, �
         else
             λ_list[A] = 0.0
         end
-        ## LSQ formulering
-        x = dh.grid.nodes[A].x[1]
-        pmax = 50
-        mid  = 0.5
-        P    = 6
-        width= 0.12
-        λ_target = pmax*exp( -( ((x-mid)^2) / width^2 )^P )
-        fc += (λ_list[A] - λ_target)^2
+        ## LSQ formulering (Gamla)
+        #x = dh.grid.nodes[A].x[1]
+        #pmax = 50
+        #mid  = 0.5
+        #P    = 6
+        #width= 0.12
+        #λ_target = pmax*exp( -( ((x-mid)^2) / width^2 )^P )
+        #fc += (λ_list[A] - λ_target)^2
         ##
     end
-    fc = fc^(1/2)
     ## Målfunk ∫λᵖdγ
     #fc = Mortar2D.calculate_assembly_force(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list,p)
+    ## Målfunk LSQ
+    fc = Mortar2D.calculate_assembly_lsq(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list)
+    fc = fc^(1/2)
     ### γᶜ = Mortar2D.calculate_assembly_area(elements, element_types, coords, slave_element_ids, master_element_ids,λ_list)
     ##
     γᶜ = 1

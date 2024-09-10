@@ -20,6 +20,7 @@ include("..//mma.jl")
 # ------------------- #
 # Geometry parameters #
 # ------------------- #
+begin
 # - Block - #
 th = 0.1
 x₁ = 0.0
@@ -46,6 +47,7 @@ qr = QuadratureRule{2,RefTetrahedron}(3)
 qr_face = QuadratureRule{1,RefTetrahedron}(2)
 cv = CellVectorValues(qr, ip)
 fv = FaceVectorValues(qr_face, ip)
+end
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
@@ -62,7 +64,10 @@ grid2 = nothing;
 # Create dofhandler with displacement field u #
 # ------------------------------------------- #
 global dh = DofHandler(grid_tot);
-add!(dh, :u, 2);
+#add!(dh, :u, 2, ip);
+push!(dh.field_names, :u)
+push!(dh.field_dims, 2)
+push!(dh.field_interpolations, ip)
 close!(dh);
 # Extract CALFEM-style matrices
 global coord, enod = getTopology(dh);
@@ -255,6 +260,15 @@ global low_hist = zeros(length(d), 1000)
 global upp_hist = zeros(length(d), 1000)
 global d_hist2  = zeros(length(d), 1000)
 
+
+function target_func(x)
+    pmax = 50
+    mid  = 0.5
+    P    = 6
+    width= 0.12
+    return pmax*exp( -( ((x-mid)^2) / width^2 )^P )
+end
+
 # -------------------- #
 # Optimization program #
 # -------------------- #
@@ -285,12 +299,13 @@ function Optimize(dh)
     # # # # # #
     for (i,node) in enumerate(nₛ)
         x = dh.grid.nodes[node].x[1]
-        pmax = 50
-        mid  = 0.5
-        P    = 6
-        width= 0.12
-        λ_target[i] = pmax*exp( -( ((x-mid)^2) / width^2 )^P )
-        #λ_target[i] = pmax*(1-3000*(x-mid)^4)# h(x)
+        λ_target[i] = target_func(x)
+        #pmax = 50
+        #mid  = 0.5
+        #P    = 6
+        #width= 0.12
+        #λ_target[i] = pmax*exp( -( ((x-mid)^2) / width^2 )^P )
+        ##λ_target[i] = pmax*(1-3000*(x-mid)^4)# h(x)
     end
     #
     while kktnorm > tol || OptIter < 2 && true_iteration < 500
@@ -385,7 +400,8 @@ function Optimize(dh)
         # g     = -T' * Fᵢₙₜ
         # ∂g_∂x = -T' * ∂rᵤ_∂x
         # ∂g_∂u = -T' * K
-        # - om p^3 | + om || λ - p* ||₂
+        # Om byte av målfunktioner ska ske
+        # Minus framför om g = p^3 | Plus om g =  || λ - p* ||₂
         p    = 3
         X_ordered = getXfromCoord(coord)
         g         = contact_pressure(X_ordered, a, ε, p, λ_target)
@@ -552,15 +568,15 @@ function plotTraction()
 end
 
 
-#g_hist, v_hist, al_hist, au_hist, OptIter = Optimize(dh)
+g_hist, v_hist, al_hist, au_hist, OptIter = Optimize(dh)
 
 
-g_ini = any
-locked_d = any
-mp = any
-n = 0
-n_right = any
-traction = 1
-xval = d
-Γ_right = any
-@save "packning.jld2"
+#g_ini = any
+#locked_d = any
+#mp = any
+#n = 0
+#n_right = any
+#traction = 1
+#xval = d
+#Γ_right = any
+#@save "packning.jld2"
