@@ -468,7 +468,7 @@ function Optimize(dh)
         #
         # Skalning: p = 3 g = g?  || g = LSQ
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
-                                                                        xold1[:], xold2[:], g*10  , ∂g_∂d[free_d]*10 ,
+                                                                        xold1[:], xold2[:], g  , ∂g_∂d[free_d] ,
                                                                         g₁ .* 1e3,
                                                                         ∂Ω∂d[free_d]'.* 1e3,
                                                                         low, upp, a0, am, C, d2)
