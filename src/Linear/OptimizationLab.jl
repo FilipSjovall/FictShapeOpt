@@ -261,10 +261,10 @@ global upp_hist = zeros(length(d), 1000)
 global d_hist2  = zeros(length(d), 1000)
 
 function target_func(x)
-    pmax = 60
+    pmax = 50
     mid  = 0.5
-    P    = 8
-    width= 0.10
+    P    = 2
+    width= 0.075
     return pmax*exp( -( ((x-mid)^2) / width^2 )^P )
 end
 

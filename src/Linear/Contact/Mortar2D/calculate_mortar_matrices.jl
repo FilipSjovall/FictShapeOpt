@@ -148,12 +148,13 @@ function calculate_segment_lsq(slave_element_id, elements, element_types,
                                    coords, normals, segmentation, λ)
     @assert element_types[slave_element_id] == :Seg2
     function target_func(x)
-        pmax = 60
+        pmax = 50
         mid  = 0.5
-        P    = 8
-        width= 0.10
+        P    = 2
+        width= 0.075
         return pmax*exp( -( ((x-mid)^2) / width^2 )^P )
     end
+
     # Initialization + calculate jacobian
     fce = 0. # zeros(2,1) # zeros(1, 1)
     scon = elements[slave_element_id]
