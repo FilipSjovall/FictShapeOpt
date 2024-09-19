@@ -261,10 +261,10 @@ global upp_hist = zeros(length(d), 1000)
 global d_hist2  = zeros(length(d), 1000)
 
 function target_func(x)
-    pmax = 50
+    pmax = 70
     mid  = 0.5
     P    = 2
-    width= 0.075
+    width= 0.05
     return pmax*exp( -( ((x-mid)^2) / width^2 )^P )
 end
 
@@ -291,6 +291,7 @@ function Optimize(dh)
     #global T[bcdof_top[iseven.(bcdof_top)]] .=  1.0
     g₁ = 0.0
     λ_target = ones(length(nₛ),1)
+    itract = λ_target
     # # # # # #
     # Konstant eller funktion av x i optimeringen?
     # # # # # #
@@ -476,8 +477,13 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        if true_iteration > 100
+        # if true_iteration > 100
+        #     global α = 0.1
+        # end
+        if true_iteration == 50
             global α = 0.1
+        elseif true_iteration == 100
+            global α = 0.02
         end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
@@ -524,11 +530,12 @@ function Optimize(dh)
         X_c,tract = plotTraction()
         if true_iteration == 1
             jldsave("initiellt_tryck.jld2"; iX=X_c, itract=tract)
+            itract = tract
         end
         #p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
-        p4 = plot(X_c, [tract, sort(λ_target,dims=1)], label=["λ" "Target"]  ,
-                  marker=4, lc=[:tomato :red], grid=false, legend=:outerleft,
-                  xlimits = (0.35, 0.5), ylimits = (0, 120))
+        p4 = plot(X_c, [tract, itract ,sort(λ_target,dims=1)], label=["λ" "Initial" "Target"]  ,
+                  marker=4, lc=[:tomato :olive :red], grid=false, legend=:outerleft,
+                  xlimits = (0.35, 0.5), ylimits = (0, 100))
         p = plot(p2, p3, p4, layout=(3, 1), size=(600, 600))
         display(p)
 
