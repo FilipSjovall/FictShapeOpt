@@ -261,10 +261,10 @@ global upp_hist = zeros(length(d), 1000)
 global d_hist2  = zeros(length(d), 1000)
 
 function target_func(x)
-    pmax = 70
+    pmax = 60
     mid  = 0.5
-    P    = 2
-    width= 0.05
+    P    = 6
+    width= 0.06
     return pmax*exp( -( ((x-mid)^2) / width^2 )^P )
 end
 
@@ -292,6 +292,7 @@ function Optimize(dh)
     g₁ = 0.0
     λ_target = ones(length(nₛ),1)
     itract = λ_target
+    iX = zeros(length(nₛ))
     # # # # # #
     # Konstant eller funktion av x i optimeringen?
     # # # # # #
@@ -468,12 +469,16 @@ function Optimize(dh)
         upp_old = upp
         #
         # Skalning: p = 3 g = g?  || g = LSQ
+        # d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
+        #                                                                 xold1[:], xold2[:], g  , ∂g_∂d[free_d] ,
+        #                                                                 g₁ .* 1e3,
+        #                                                                 ∂Ω∂d[free_d]'.* 1e3,
+        #                                                                 low, upp, a0, am, C, d2)
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
-                                                                        xold1[:], xold2[:], g  , ∂g_∂d[free_d] ,
-                                                                        g₁ .* 1e3,
-                                                                        ∂Ω∂d[free_d]'.* 1e3,
+                                                                        xold1[:], xold2[:], g*10 , ∂g_∂d[free_d]*10 ,
+                                                                        g₁ ,
+                                                                        ∂Ω∂d[free_d]',
                                                                         low, upp, a0, am, C, d2)
-
         # ----------------- #
         # Test - new update #
         # ----------------- #
@@ -531,9 +536,10 @@ function Optimize(dh)
         if true_iteration == 1
             jldsave("initiellt_tryck.jld2"; iX=X_c, itract=tract)
             itract = tract
+            iX = X_c
         end
         #p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
-        p4 = plot(X_c, [tract, itract ,sort(λ_target,dims=1)], label=["λ" "Initial" "Target"]  ,
+        p4 = plot([X_c, iX, iX], [tract, itract ,sort(λ_target,dims=1)], label=["λ" "Initial" "Target"]  ,
                   marker=4, lc=[:tomato :olive :red], grid=false, legend=:outerleft,
                   xlimits = (0.35, 0.5), ylimits = (0, 100))
         p = plot(p2, p3, p4, layout=(3, 1), size=(600, 600))

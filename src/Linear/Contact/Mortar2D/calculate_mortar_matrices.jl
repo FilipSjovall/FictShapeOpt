@@ -147,11 +147,11 @@ end
 function calculate_segment_lsq(slave_element_id, elements, element_types,
                                    coords, normals, segmentation, λ)
     @assert element_types[slave_element_id] == :Seg2
-   function target_func(x)
-        pmax = 70
+   function t_func(x)
+        pmax = 60
         mid  = 0.5
-        P    = 2
-        width= 0.05
+        P    = 6
+        width= 0.06
         return pmax*exp( -( ((x-mid)^2) / width^2 )^P )
     end
 
@@ -171,7 +171,7 @@ function calculate_segment_lsq(slave_element_id, elements, element_types,
             λ_gp = N1[1]*λ[scon[1]] + N1[2]*λ[scon[2]] #N1 * [λ[scon[1]]; λ[scon[2]]]
             x_gp = N1[1]*xs1[1] + N1[2]*xs2[1]
             #if all(λ_gp .> 0.)
-            fce += (λ_gp - target_func(x_gp) )^2 * w * s * J
+            fce += (λ_gp - t_func(x_gp) )^2 * w * s * J
             #end
         end
     end
