@@ -177,6 +177,13 @@ end
 
 # Plot LSQ - pressure profiles
 begin
+    function t_func(x)
+        pmax = 60
+        mid  = 0.5
+        P    = 6
+        width= 0.06
+        return pmax*exp( -( ((x-mid)^2) / width^2 )^P )
+    end
     cm_convert = 28.3465
     w_cm  = 13# 8
     h_cm  = 8# 13
@@ -199,10 +206,13 @@ begin
         xminorticksvisible = false, yminorticksvisible = false,
         limits = (0.34, 0.52, 0.0, 100.0),
     )
-    @load "results//seal//lsq_seal_v2//LabOpt.jld2" X_c tract λ_target
-    scatter!(convert(Vector{Float64},X_c), vec(sort(λ_target,dims=1)), color= :red, marker = :xcross, markersize=10, label = "Target") # Testa marker :xcross
+    @load "results//seal//lsq_seal_v4//LabOpt.jld2" X_c tract λ_target
     lines!(convert(Vector{Float64},X_c),convert(Vector{Float64},tract), color = :green, label = "Optimized", linestyle = :solid)
-    @load "results//seal//lsq_seal_v2//initiellt_tryck.jld2" iX itract
+    for (i,x) in enumerate(X_c)
+        λ_target[i] = t_func(x)
+    end
+    scatter!(convert(Vector{Float64},X_c), vec(sort(λ_target,dims=1)), color= :red, marker = :xcross, markersize=10, label = "Target") # Testa marker :xcross
+    @load "results//seal//lsq_seal_v4//initiellt_tryck.jld2" iX itract
     lines!(convert(Vector{Float64},iX),convert(Vector{Float64},itract), color = :blue, label = "Initial", linestyle = :dash)
     axislegend(ax, position = :rt, framevisible = false, patchsize=(50,10))
     # test
@@ -214,13 +224,13 @@ begin
     Makie.save("LSQ_profile.pdf",f)
 end
 # Objective function
-@load "results//seal//lsq_seal_v2//packning.jld2"
+@load "results//seal//lsq_seal_v4//LabOpt.jld2"
 begin
     f = Figure( resolution = (width,height), fontsize = 12,font="CMU", px_per_unit = reso)
     ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
            xgridvisible = false, ygridvisible = false,
            ylabel = L"Objective function $f$ [N/mm$^2$]",
-           limits = (0, true_iteration, 0, 125),
+           limits = (0, true_iteration, 0, 20),
            leftspinecolor = :blue,
            ylabelcolor = :blue,
            xminorticksvisible = true, yminorticksvisible = true,

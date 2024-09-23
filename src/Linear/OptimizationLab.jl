@@ -550,7 +550,6 @@ function Optimize(dh)
         upp_hist[free_d, true_iteration] = upp
         d_hist2[free_d, true_iteration]  = d[free_d]
         #@save "asymptoter.jld2" low_hist upp_hist d_hist2
-
         # Clean up and save
         GC.gc() # Collect garbage
         @save "LabOpt.jld2" a Ψ dh dh0 OptIter g d FΨ Fᵢₙₜ g_hist v_hist ε μ true_iteration X_c tract λ_target
@@ -576,12 +575,12 @@ end
 g_hist, v_hist, al_hist, au_hist, OptIter = Optimize(dh)
 
 
-#g_ini = any
-#locked_d = any
-#mp = any
-#n = 0
-#n_right = any
-#traction = 1
-#xval = d
-#Γ_right = any
-#@save "packning.jld2"
+g_ini = any
+locked_d = any
+mp = any
+n = 0
+n_right = any
+traction = 1
+xval = d
+Γ_right = any
+@save "packning.jld2"
