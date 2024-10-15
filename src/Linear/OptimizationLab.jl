@@ -1,9 +1,13 @@
 using Pkg
-Pkg.activate()
+Pkg.update()       # Updates all packages to the latest versions allowed by your Project.toml
+Pkg.instantiate()  # Ensures that all the necessary dependencies are installed
+Pkg.resolve()      # Resolves any dependency conflicts
+
+# Pkg.activate()
 # kolla Pkg.status() vid problem / jämför med att bara starta julia i en terminal
 using ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
 using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
-using SparseDiffTools, Plots, Printf, JLD2, Statistics, AlgebraicMultigrid
+using SparseDiffTools, Plots, Printf, JLD2,  AlgebraicMultigrid
 # kan behöva köra export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 plotlyjs()
 #
@@ -21,32 +25,32 @@ include("..//mma.jl")
 # Geometry parameters #
 # ------------------- #
 begin
-# - Block - #
-th = 0.1
-x₁ = 0.0
-y₁ = 0.25001#1
-Δx = 0.5
-Δy = 0.1
-# - Seal - #
-x₀ = 0.0
-y₀ = 0.0
-B  = 0.15
-b  = 0.1 # 0.1 #+ 0.0125*2
-Δl = (Δx - B)  #0.05
-H  = 0.15
-r  = 0.025 #0.0125
-#r2 = 0.05# 0.025 ## radius of cavity
-# för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
-# grid size3
-h = 0.075 # 0.075 #0.04 # 0.075
-# # # # # # # # # #
-# Finite element  #
-# # # # # # # # # #
-ip = Lagrange{2,RefTetrahedron,1}()
-qr = QuadratureRule{2,RefTetrahedron}(3)
-qr_face = QuadratureRule{1,RefTetrahedron}(2)
-cv = CellVectorValues(qr, ip)
-fv = FaceVectorValues(qr_face, ip)
+    # - Block - #
+    th = 0.1
+    x₁ = 0.0
+    y₁ = 0.25001#1
+    Δx = 0.5
+    Δy = 0.1
+    # - Seal - #
+    x₀ = 0.0
+    y₀ = 0.0
+    B  = 0.15
+    b  = 0.1 # 0.1 #+ 0.0125*2
+    Δl = (Δx - B)  #0.05
+    H  = 0.15
+    r  = 0.025 #0.0125
+    #r2 = 0.05# 0.025 ## radius of cavity
+    # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
+    # grid size3
+    h = 0.075 # 0.075 #0.04 # 0.075
+    # # # # # # # # # #
+    # Finite element  #
+    # # # # # # # # # #
+    ip = Lagrange{2,RefTetrahedron,1}()
+    qr = QuadratureRule{2,RefTetrahedron}(3)
+    qr_face = QuadratureRule{1,RefTetrahedron}(2)
+    cv = CellVectorValues(qr, ip)
+    fv = FaceVectorValues(qr_face, ip)
 end
 # # # # # # # # #
 # Create grids  #

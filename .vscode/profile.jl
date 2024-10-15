@@ -1,35 +1,35 @@
-using LinearSolve, LinearSolvePardiso, SparseArrays, 
-      StaticArrays,FerriteMeshParser, Ferrite, 
-      IterativeSolvers, AlgebraicMultigrid, IncompleteLU    
+# using LinearSolve, LinearSolvePardiso, SparseArrays,
+#       StaticArrays,FerriteMeshParser, Ferrite,
+#       IterativeSolvers, AlgebraicMultigrid, IncompleteLU
 
 
 
-function load_files()
-    include("mesh_reader.jl")
+# function load_files()
+#     include("mesh_reader.jl")
 
-    include("material.jl")
+#     include("material.jl")
 
-    include("element_routines.jl")
+#     include("element_routines.jl")
 
-    include("fem.jl")
+#     include("fem.jl")
 
-    include("assemElem.jl")
+#     include("assemElem.jl")
 
-    include("assem.jl")
+#     include("assem.jl")
 
-    include("sensitivities.jl")
-end
+#     include("sensitivities.jl")
+# end
 
 
-init_hyper()
+# init_hyper()
 
-dh0 = deepcopy(dh);
+# dh0 = deepcopy(dh);
 
-using Profile, ProfileView
-@profile begin
-    g_hist,v_hist, OptIter = Optimize(dh)
-end
+# using Profile, ProfileView
+# @profile begin
+#     g_hist,v_hist, OptIter = Optimize(dh)
+# end
 
-Profile.view()
+# Profile.view()
 
-@profview Optimize(dh)
+# @profview Optimize(dh)
