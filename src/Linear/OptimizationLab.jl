@@ -42,7 +42,7 @@ begin
     #r2 = 0.05# 0.025 ## radius of cavity
     # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
     # grid size3
-    h = 0.075 # 0.075 #0.04 # 0.075
+    h = 0.075 * 0.5 # 0.075 # 0.075 <-> från artikel
     # # # # # # # # # #
     # Finite element  #
     # # # # # # # # # #
@@ -486,14 +486,11 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        # if true_iteration > 100
+        # if true_iteration == 50
         #     global α = 0.1
+        # elseif true_iteration == 100
+        #     global α = 0.02
         # end
-        if true_iteration == 50
-            global α = 0.1
-        elseif true_iteration == 100
-            global α = 0.02
-        end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
@@ -538,7 +535,7 @@ function Optimize(dh)
                    legend=:outerleft, lc=:purple, grid=false)
         X_c,tract = plotTraction()
         if true_iteration == 1
-            jldsave("initiellt_tryck.jld2"; iX=X_c, itract=tract)
+            jldsave("initiellt_tryck_v2.jld2"; iX=X_c, itract=tract)
             itract = tract
             iX = X_c
         end
@@ -556,7 +553,7 @@ function Optimize(dh)
         #@save "asymptoter.jld2" low_hist upp_hist d_hist2
         # Clean up and save
         GC.gc() # Collect garbage
-        @save "LabOpt.jld2" a Ψ dh dh0 OptIter g d FΨ Fᵢₙₜ g_hist v_hist ε μ true_iteration X_c tract λ_target
+        @save "LabOpt_v2.jld2" a Ψ dh dh0 OptIter g d FΨ Fᵢₙₜ g_hist v_hist ε μ true_iteration X_c tract λ_target
     end
     return g_hist, v_hist, al_hist, au_hist, OptIter
 end

@@ -1,31 +1,3 @@
-#-------------------------------------------------------------
-#
-#    Copyright (C) 2007, 2008 Krister Svanberg
-#
-#    This file, mmasub.m, is part of GCMMA-MMA-code.
-#
-#    GCMMA-MMA-code is free software; you can redistribute it and/or
-#    modify it under the terms of the GNU General Public License as
-#    published by the Free Software Foundation; either version 3 of
-#    the License, or (at your option) any later version.
-#
-#    This code is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    (file COPYING) along with this file.  If not, see
-#    <http://www.gnu.org/licenses/>.
-#
-#    You should have received a file README along with this file,
-#    containing contact information.  If not, see
-#    <http://www.smoptit.se/> or e-mail mmainfo@smoptit.se or krille@math.kth.se.
-#
-#    Version September 2007 (and a small change August 2008)
-#
-#
-
 function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,upp,a0,a,c,d);
   #
   #    This function mmasub performs one MMA-iteration, aimed at
@@ -98,6 +70,11 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
 #
 asyincr = 1.1;
 asydecr = 0.6;
+if iter > 50
+    asyincr = 1.03
+    asydecr = 0.9
+    move = 0.01
+end
 
   eeen = ones(n);
   eeem = ones(m);
@@ -187,34 +164,6 @@ asydecr = 0.6;
   #
   return xmma,ymma,zmma,lam,xsi,eta,mu,zet,s,low,upp
 end
-
-
-#-------------------------------------------------------------
-#
-#    Copyright (C) 2006 Krister Svanberg
-#
-#    This file, subsolv.m, is part of GCMMA-MMA-code.
-#
-#    GCMMA-MMA-code is free software; you can redistribute it and/or
-#    modify it under the terms of the GNU General Public License as
-#    published by the Free Software Foundation; either version 3 of
-#    the License, or (at your option) any later version.
-#
-#    This code is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    (file COPYING) along with this file.  If not, see
-#    <http://www.gnu.org/licenses/>.
-#
-#    You should have received a file README along with this file,
-#    containing contact information.  If not, see
-#    <http://www.smoptit.se/> or e-mail mmainfo@smoptit.se or krille@math.kth.se.
-#
-#    Version Dec 2006.
-#
 #
 function subsolv(m,n,epsimin,low,upp,alfa,beta,p0,q0,P,Q,a0,a,b,c,d);
   #
