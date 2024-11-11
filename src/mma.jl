@@ -70,11 +70,11 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
 #
 asyincr = 1.1;
 asydecr = 0.6;
-if iter > 50
-    asyincr = 1.03
-    asydecr = 0.9
-    move = 0.01
-end
+# if OptIter > 100
+#     asyincr = 1.05
+#     asydecr = 0.5
+#     move = 0.001
+# end
 
   eeen = ones(n);
   eeem = ones(m);

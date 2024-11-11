@@ -42,7 +42,7 @@ begin
     #r2 = 0.05# 0.025 ## radius of cavity
     # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
     # grid size3
-    h = 0.075 * 0.5 # 0.075 # 0.075 <-> från artikel
+    h = 0.075 * 0.5 # 0.075 <-> från artikel
     # # # # # # # # # #
     # Finite element  #
     # # # # # # # # # #
@@ -357,8 +357,8 @@ function Optimize(dh)
         # # # # #
         # Reset #
         # # # # #
-        #if (true_iteration % 10 == 0 && true_iteration < 101)
-        if (true_iteration % 10 == 0 && true_iteration < 200)
+        #if (true_iteration % 10 == 0 && true_iteration < 101) # λ^p ? dubbelkolla
+        if (true_iteration % 10 == 0 && true_iteration < 200) # LSQ målfunk
             dh0 = deepcopy(dh)
             global d = zeros(dh.ndofs.x)
             global xold1 = d[:]
@@ -486,11 +486,11 @@ function Optimize(dh)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        # if true_iteration == 50
-        #     global α = 0.1
-        # elseif true_iteration == 100
-        #     global α = 0.02
-        # end
+        if true_iteration == 50
+            global α = 0.1
+        elseif true_iteration == 100
+            global α = 0.02
+        end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
