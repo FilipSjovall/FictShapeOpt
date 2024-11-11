@@ -407,9 +407,9 @@ function Optimize(dh)
         # Minus framför om g = p^3 | Plus om g =  || λ - p* ||₂
         p    = 3
         X_ordered = getXfromCoord(coord)
-        g         = contact_pressure(X_ordered, a, ε, p, λ_target)
-        ∂g_∂x     = ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p, λ_target), getXinDofOrder(dh, X_ordered, coord))
-        ∂g_∂u     = ForwardDiff.gradient(u -> contact_pressure(X_ordered, u, ε, p, λ_target), a)
+        g         = -contact_pressure(X_ordered, a, ε, p, λ_target)
+        ∂g_∂x     = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p, λ_target), getXinDofOrder(dh, X_ordered, coord))
+        ∂g_∂u     = -ForwardDiff.gradient(u -> contact_pressure(X_ordered, u, ε, p, λ_target), a)
 
         # # # # # # #
         # Adjoints  #
@@ -472,25 +472,35 @@ function Optimize(dh)
         low_old = low
         upp_old = upp
         #
-        # Skalning: p = 3 g = g?  || g = LSQ
+        # Skalning: p = 3 g = g?  || g = LSQ * 10
         # d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
         #                                                                 xold1[:], xold2[:], g  , ∂g_∂d[free_d] ,
         #                                                                 g₁ .* 1e3,
         #                                                                 ∂Ω∂d[free_d]'.* 1e3,
         #                                                                 low, upp, a0, am, C, d2)
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
-                                                                        xold1[:], xold2[:], g*10 , ∂g_∂d[free_d]*10 ,
+                                                                        xold1[:], xold2[:], g, ∂g_∂d[free_d],
                                                                         g₁ ,
                                                                         ∂Ω∂d[free_d]',
                                                                         low, upp, a0, am, C, d2)
         # ----------------- #
         # Test - new update #
         # ----------------- #
-        if true_iteration == 50
+        # ! ! #
+        # λ^p #
+        # ! ! #
+        if true_iteration == 100
             global α = 0.1
-        elseif true_iteration == 100
-            global α = 0.02
         end
+
+        # ! ! #
+        # LSQ #
+        # ! ! #
+        # if true_iteration == 50
+        #     global α = 0.1
+        # elseif true_iteration == 100
+        #     global α = 0.02
+        # end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
@@ -539,10 +549,14 @@ function Optimize(dh)
             itract = tract
             iX = X_c
         end
-        #p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
-        p4 = plot([X_c, iX, iX], [tract, itract ,sort(λ_target,dims=1)], label=["λ" "Initial" "Target"]  ,
-                  marker=4, lc=[:tomato :olive :red], grid=false, legend=:outerleft,
-                  xlimits = (0.35, 0.5), ylimits = (0, 100))
+        if mod(true_iteration,5) == 0
+            str = "tryck_at_"*string(true_iteration)*".jld2"
+            jldsave(str;X_c,tract,a,dh,coord,ε)
+        end
+        p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
+        # p4 = plot([X_c, iX, iX], [tract, itract ,sort(λ_target,dims=1)], label=["λ" "Initial" "Target"]  ,
+        #           marker=4, lc=[:tomato :olive :red], grid=false, legend=:outerleft,
+        #           xlimits = (0.35, 0.5), ylimits = (0, 100))
         p = plot(p2, p3, p4, layout=(3, 1), size=(600, 600))
         display(p)
 
