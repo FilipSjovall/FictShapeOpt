@@ -49,7 +49,7 @@ begin
     width = w_cm*cm_convert
     height= h_cm*cm_convert
     px_per_cm = 1200 # dpi
-
+    #
     reso = (w_cm * px_per_cm / width)
 end
 # - - - - - - - - - - - - #
@@ -359,7 +359,78 @@ begin
     end
 end
 
+using Pkg
+Pkg.activate()
+using ForwardDiff, Ferrite, FerriteGmsh, FerriteMeshParser
+using LinearSolve, SparseArrays, IterativeSolvers, IncompleteLU
+using Printf, JLD2, Statistics # AlgebraicMultigrid # SparseDiffToolss
+using CairoMakie #, Plots926
+set_theme!(theme_latexfonts())
+# series = [5 25 50 75 100 200]
+first_string = "results//seal//v7(finare)//tryck_at_"
+last_string = ".jld2"
+begin
+    @load "results//seal//v7(finare)//initiellt_tryck_v2.jld2" iX itract
+    f = plot_λ_series(iX, itract, 1)
+    Makie.save("results//seal//v7(finare)//pressure_hist//initial_pressure_hist.pdf",f)
+    for num in 5:5:410 #series
+        load_str = first_string*string(num)*last_string
+        @load load_str X_c tract
+        f = plot_λ_series(X_c, tract,num)
+        Makie.save("results//seal//v7(finare)//pressure_hist//pressure_hist_"*string(num)*".pdf",f)
+    end
+    @load "results//seal//v7(finare)//LabOpt_v2.jld2" X_c tract OptIter
+    f = plot_λ_series(X_c, tract, OptIter+190)
+    Makie.save("results//seal//v7(finare)//pressure_hist//pressure_hist_"*string(OptIter+190)*".pdf",f) # OptIter resettas fram till 200
+    println(OptIter)
+end
+function plot_λ_series(x,y,num)
+    function axisarrows!(ax::Axis=current_axis(); kwargs...)
+        points = [
+                ax.xaxis.attributes[:endpoints].val[2],
+                ax.yaxis.attributes[:endpoints].val[2],
+            ]
+        directions = [Vec2f(1, 0), Vec2f(0, 1)]
+        arrows!(ax.parent.scene, points, directions; kwargs...)
+    end
+    cm_convert = 28.3465
+    w_cm  = 6 # 8
+    h_cm  = 6 # 13
+    width = w_cm*cm_convert
+    height= h_cm*cm_convert
+    px_per_cm = 1200 # dpi
+    reso = (w_cm * px_per_cm / width)
+    f = Figure( resolution = (width,height), fontsize = 8, px_per_unit = reso)
+    ax = Axis(f[1, 1],
+        xgridvisible = false,
+        ygridvisible = false,
+        title  = "Design iteration " * string(num), # L enables LaTeX strings
+        xlabel = L"Horizontal position $x$ [mm]", #
+        #ylabelrotation = 3π/2,
+        ylabel = L"$λ$ [MPa]", #
+        xtickalign = 1,  # Ticks inwards
+        ytickalign = 1,   # # Ticks inwards
+        topspinevisible = false,
+        rightspinevisible = false,
+        xminorticksvisible = false, yminorticksvisible = false,
+        limits = (0.34, 0.52, -0.1, 220.0),
+    )
+    lines!(convert(Vector{Float64},x),convert(Vector{Float64},y), color = :blue, linestyle = :solid)
+    #scatter!(x,y, color = :blue)
+    # axislegend(ax, position = :rt, framevisible = false, patchsize=(50,10))
+    # test
+    # ax.yticks = [0,100,200]
+    # ax.xticks = [0.35, 0.40, 0.50]
+    axisarrows!(arrowsize=10)
+    hidespines!(ax, :t, :r)
+    f
+    return f
+end
 
+
+#=
+#
+#
 # # # # # # # # # # # # # # # # # # # # # # # # #
 #  Plot heat maps using FerriteViz and GLMakie  #
 # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -369,7 +440,7 @@ end
 # a, _, Fₑₓₜ, Fᵢₙₜ, K = solver_Lab(dh, coord, Δ, nloadsteps)
 # plotter = FerriteViz.MakiePlotter(dh,a);
 # FerriteViz.solutionplot(plotter,colormap=:jet)
-
+#
 ### Från Jakob
 function default_theme2(; size = (140, 70), rasterize=600, font="CMU", fontsizemajor=8, fontsizeminor=6)
    rasterize !== false ? rasterize = rasterize / 72 : nothing
@@ -425,3 +496,6 @@ function default_theme2(; size = (140, 70), rasterize=600, font="CMU", fontsizem
    )
    return theme
 end
+#
+#
+=#
