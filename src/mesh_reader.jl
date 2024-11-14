@@ -1933,8 +1933,12 @@ end
 function createQuarterLabyrinthMeshRounded(filename, x₀, y₀, t, B, b, Δx, H, r, h)
     # Initialize gmsh
     Gmsh.initialize()
-    gmsh.option.set_number("General.Verbosity", 2)
-
+    gmsh.option.setNumber("General.Verbosity", 2)
+    gmsh.option.setNumber("Mesh.Algorithm", 9) # Packing of parallellograms
+    gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 2)
+    gmsh.option.setNumber("Mesh.Smoothing", 1)
+    gmsh.option.setNumber("Mesh.Optimize", 1)
+    gmsh.option.setNumber("Mesh.RandomSeed", 1)
     # Points
     p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
     p2 = gmsh.model.geo.add_point(x₀, y₀ + t, 0.0, h)

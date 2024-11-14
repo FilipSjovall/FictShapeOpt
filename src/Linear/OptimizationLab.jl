@@ -42,7 +42,7 @@ begin
     #r2 = 0.05# 0.025 ## radius of cavity
     # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
     # grid size3
-    h = 0.075 * 0.5 # 0.075 <-> från artikel
+    h = 0.075 # 0.075 * 0.5 # 0.075 <-> från artikel
     # # # # # # # # # #
     # Finite element  #
     # # # # # # # # # #
@@ -357,7 +357,6 @@ function Optimize(dh)
         # # # # #
         # Reset #
         # # # # #
-        #if (true_iteration % 10 == 0 && true_iteration < 101) # λ^p ? dubbelkolla
         if (true_iteration % 10 == 0 && true_iteration < 200) # LSQ målfunk
             dh0 = deepcopy(dh)
             global d = zeros(dh.ndofs.x)
@@ -425,12 +424,12 @@ function Optimize(dh)
         # # # # # # # # # # #
         # Volume constraint #
         # # # # # # # # # # #
-                # g₁    = volume(dh, coord, enod)./ Vₘₐₓ - 1.0
-                # ∂Ω_∂x = volume_sens(dh, coord)./ Vₘₐₓ
-                # solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
-                # ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd)
-        g₁   = -10.
-        ∂Ω∂d =  zeros(size(dr_dd))
+        g₁    = volume(dh, coord, enod)./ Vₘₐₓ - 1.0
+        ∂Ω_∂x = volume_sens(dh, coord)./ Vₘₐₓ
+        solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
+        ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd)
+        # g₁   = -10.
+        # ∂Ω∂d =  zeros(size(dr_dd))
 
         # # # # # # # # # #
         # Area constraint #
@@ -480,8 +479,8 @@ function Optimize(dh)
         #                                                                 low, upp, a0, am, C, d2)
         d_new, ymma, zmma, lam, xsi, eta, mu, zet, S, low, upp = mmasub(m, n_mma, OptIter, d[free_d], xmin[:], xmax[:],
                                                                         xold1[:], xold2[:], g, ∂g_∂d[free_d],
-                                                                        g₁ ,
-                                                                        ∂Ω∂d[free_d]',
+                                                                        g₁ .*1e2 ,
+                                                                        ∂Ω∂d[free_d]' .*1e2,
                                                                         low, upp, a0, am, C, d2)
         # ----------------- #
         # Test - new update #
@@ -489,7 +488,7 @@ function Optimize(dh)
         # ! ! #
         # λ^p #
         # ! ! #
-        if true_iteration == 100
+        if true_iteration > 100
             global α = 0.1
         end
 
