@@ -72,7 +72,8 @@ function calculate_segments(slave_element_ids, master_element_ids, elements,
             # first project from slave to master, to find out
             # are we completely outside of domain
             # test
-            norm( (xs1+xs2)/2  - (xm1+xm2)/2 ) > 0.05 && continue
+            norm( (xs1+xs2)/2  - (xm1+xm2)/2 ) > 0.025 && continue
+            # norm( (xs1+xs2)/2  - (xm1+xm2)/2 ) > 0.05 && continue
             # end of test
             xi2a = project_from_slave_to_master(Val{:Seg2}, xs1, ns1, xm1, xm2)
             xi2b = project_from_slave_to_master(Val{:Seg2}, xs2, ns2, xm1, xm2)
