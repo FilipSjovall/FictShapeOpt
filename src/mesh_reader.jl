@@ -9,8 +9,8 @@ using  Gmsh
 #file = open(mesh_path,"r")
 function postprocess_opt(Ψ, dh, str)
     begin
-        vtk_grid(str, dh) do vtkfile
-            vtk_point_data(vtkfile, dh, Ψ)
+        VTKGridFile(str, dh) do vtkfile
+            write_solution(vtkfile, dh, Ψ)
         end
     end
 end
@@ -218,14 +218,15 @@ function updateCoords!(dh,Ψ)
     Ψ_sorted = sortNodalDisplacements(dh,Ψ)
     x_new    = Ferrite.Vec{2,Float64}
     for i in 1:length(c)
-        x_new = Ferrite.Vec{2}(dh.grid.nodes[i].x + Ψ_sorted[:,i])
+        #x_new = Ferrite.Vec{2}(dh.grid.nodes[i].x + Ψ_sorted[:,i])
+        x_new = Ferrite.Vec{2}(dh.grid.nodes[i].x + Ψ_sorted[i])
         c[i] = Node(x_new)
     end
     copyto!(dh.grid.nodes, c)
 end
 
 function sortNodalDisplacements(dh,a)
-    return reshape_to_nodes(dh, a, :u)[1:2,:]
+    return evaluate_at_grid_nodes(dh, a, :u)
 end
 
 function getX(dh)
@@ -337,7 +338,6 @@ function createBoxMesh(filename,x₀,y₀,Δx,Δy,h)
     return grid
 end
 
-
 function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
 
     # Initialize gmsh
@@ -371,7 +371,7 @@ function createBoxMeshRev(filename, x₀, y₀, Δx, Δy, h)
 
     # Create the physical domains
     #gmsh.model.add_physical_group(1, [l2, l3], -1, "Γ")
-    gmsh.model.add_physical_group(1, [-l3,-l2], -1, "Γ")
+    gmsh.model.add_physical_group(1, [-l3,-l2], -1, "")
     gmsh.model.add_physical_group(2, [surf])
 
     gmsh.model.mesh.embed(0, [p5], 2 ,1)
@@ -426,7 +426,7 @@ function createBoxMeshRev2(filename, x₀, y₀, Δx, Δy, h)
 
     # Create the physical domains
     #gmsh.model.add_physical_group(1, [l2, l3], -1, "Γ")
-    gmsh.model.add_physical_group(1, [-l3,-l2], -1, "Γ")
+    gmsh.model.add_physical_group(1, [-l3,-l2], -1, "") # Γ
     gmsh.model.add_physical_group(2, [surf])
 
     gmsh.model.mesh.embed(0, [p5], 2 ,1)
@@ -636,7 +636,7 @@ function createCircleMeshUp(filename, x₀, y₀, r, h)
     return grid
 end
 
-function merge_grids(grid1::Grid{dim,CellType}, grid2::Grid{dim,CellType}; tol=1e-6) where {N, dim, CellType <: Cell{<:Any, N}}
+function merge_grids(grid1::Grid{dim,CellType,Float64}, grid2::Grid{dim,CellType,Float64}; tol=1e-6) where {N, dim, CellType <: Cell{<:Any, N}}
     cells′ = copy(grid1.cells)
     nodes′ = copy(grid1.nodes)
     nodemap = Dict{Int,Int}()
@@ -663,6 +663,42 @@ function merge_grids(grid1::Grid{dim,CellType}, grid2::Grid{dim,CellType}; tol=1
         cell′ = CellType(t)
         push!(cells′, cell′)
     end
+    return Grid(cells′, nodes′)
+end
+#
+function merge_grids2(grid1::Grid{dim,CellType,Float64}, grid2::Grid{dim,CellType,Float64}; tol=1e-6) where {dim, CellType}
+    cells′ = copy(grid1.cells)
+    nodes′ = copy(grid1.nodes)
+    nodemap = Dict{Int,Int}()
+    next = getnnodes(grid1) + 1
+
+    # Iterate over nodes in grid2 and merge with grid1's nodes based on the tolerance
+    for (i2, n2) in enumerate(grid2.nodes)
+        found = false
+        for (i1, n1) in enumerate(grid1.nodes)
+            if norm(n1.x - n2.x) < tol
+                nodemap[i2] = i1
+                found = true
+                break
+            end
+        end
+        if !found
+            push!(nodes′, n2)
+            nodemap[i2] = next
+            next += 1
+        end
+    end
+
+    # Remap the cells of grid2 to the merged node set
+    for c in grid2.cells
+        t = ntuple(length(c.nodes)) do i  # Get the correct number of nodes per cell
+            nodemap[c.nodes[i]]
+        end
+        cell′ = CellType(t)
+        push!(cells′, cell′)
+    end
+
+    # Return the merged grid
     return Grid(cells′, nodes′)
 end
 
@@ -953,10 +989,11 @@ end
 function index_nod_to_grid(dh, coord)
     coord = getCoord(getX(dh), dh)
     X = getX(dh)
-    X_nods = reshape_to_nodes(dh, X, :u)[1:2, :]
+    # X_nods = Ferrite.reshape_to_nodes(dh, X, :u)[1:2, :] # evaluate_at_grid_nodes
+    X_nods = evaluate_at_grid_nodes(dh, X, :u)
     index_register = zeros(Int, length(dh.grid.nodes), 2)
     for ii in 1:length(coord[:, 1])
-        temp2 = X_nods[:, ii]
+        temp2 = X_nods[:][ii]
         for jj in 1:length(coord[:, 1])
             temp1 = coord[jj, :]
             if temp1 == temp2
@@ -1591,28 +1628,44 @@ end
 
 function getBoundarySet(grid)
     setCoordinates = Set{Vec{2,Float64}}()
-    for (cellid,faceid) ∈ grid.facesets[""]
+    for (cellid,faceid) ∈ grid.facetsets[""]
         nodes =  grid.cells[cellid].nodes
-        facenods =  Ferrite.faces(ip)[faceid]
-        push!(setCoordinates, grid.nodes[nodes[facenods[1]]].x)
-        push!(setCoordinates, grid.nodes[nodes[facenods[2]]].x)
-        #idx = Ferrite.facedof_indices(ip)[faceid]
-        #push!(setCoordinates, grid.nodes[nodes[idx[1]]].x)
-        #push!(setCoordinates, grid.nodes[nodes[idx[2]]].x)
+        idx = Ferrite.facetdof_indices(ip)[faceid]
+        #idx = [Ferrite.faces(ip)[faceid][1]; Ferrite.faces(ip)[faceid][2]]
+        push!(setCoordinates, grid.nodes[nodes[idx[1]]].x)
+        push!(setCoordinates, grid.nodes[nodes[idx[2]]].x)
     end
     return setCoordinates
 end
-
-function getBoundarySet(grid, FaceSet)
-    setCoordinates = Set{Int64}()
-    for (cellid, faceid) ∈ FaceSet
-        nodes = grid.cells[cellid].nodes
-        facenods =  Ferrite.faces(ip)[faceid]
-        push!(setCoordinates, nodes[facenods[1]])
-        push!(setCoordinates, nodes[facenods[2]])
+#
+function getCellSet(grid,name::String)
+    #setCoordinates = Set{Vec{2,Float64}}()
+    #setCoordinates = Set{Array{Float64}}()
+    #setCoordinates = Array{Float64}()
+    setCoordinates = []
+    for cell ∈ grid.cellsets[name]
+        cell
+        nodes =  grid.cells[cell].nodes
         #idx = Ferrite.facedof_indices(ip)[faceid]
-        #push!(setCoordinates, nodes[idx[1]])
-        #push!(setCoordinates, nodes[idx[2]])
+        # idx = [Ferrite.faces(ip)[faceid][1]; Ferrite.faces(ip)[faceid][2]]
+        #push!(setCoordinates, grid.nodes[nodes[idx[1]]].x)
+        #push!(setCoordinates, grid.nodes[nodes[idx[2]]].x)
+        push!(setCoordinates, grid.nodes[nodes[1]].x)
+        push!(setCoordinates, grid.nodes[nodes[2]].x)
+        push!(setCoordinates, grid.nodes[nodes[3]].x)
+        #push!(setCoordinates, [grid.nodes[nodes[1]].x; grid.nodes[nodes[2]].x; grid.nodes[nodes[3]].x] )
+    end
+    return setCoordinates
+end
+#
+function getBoundarySet(grid, facetset)
+    setCoordinates = Set{Int64}()
+    for (cellid, faceid) ∈ facetset
+        nodes = grid.cells[cellid].nodes
+        #idx = [Ferrite.faces(ip)[faceid][1]; Ferrite.faces(ip)[faceid][2]]
+        idx = Ferrite.facetdof_indices(ip)[faceid]
+        push!(setCoordinates, nodes[idx[1]])
+        push!(setCoordinates, nodes[idx[2]])
     end
     return setCoordinates
 end
@@ -1929,16 +1982,12 @@ function createHalfLabyrinthMeshRounded(filename, x₀, y₀, t, B, b, Δx, H, r
     return grid
 end
 
-
 function createQuarterLabyrinthMeshRounded(filename, x₀, y₀, t, B, b, Δx, H, r, h)
     # Initialize gmsh
     Gmsh.initialize()
     gmsh.option.setNumber("General.Verbosity", 2)
     gmsh.option.setNumber("Mesh.Algorithm", 9) # Packing of parallellograms
     gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 2)
-    gmsh.option.setNumber("Mesh.Smoothing", 1)
-    gmsh.option.setNumber("Mesh.Optimize", 1)
-    gmsh.option.setNumber("Mesh.RandomSeed", 1)
     # Points
     p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
     p2 = gmsh.model.geo.add_point(x₀, y₀ + t, 0.0, h)
@@ -1972,11 +2021,12 @@ function createQuarterLabyrinthMeshRounded(filename, x₀, y₀, t, B, b, Δx, H
     # Physical surface
     #gmsh.model.add_physical_group(1, [l3, l4, l5], -1, "")
     #gmsh.model.add_physical_group(1, [-l5,-l4,-l3], -1, "") # istället för reverse (behåller ccw)
-    gmsh.model.add_physical_group(1, [-l5,-l4], -1, "") # istället för reverse (behåller ccw)
+    gmsh.model.add_physical_group(1, [-l5,-l4,-l3], -1, "") # istället för reverse (behåller ccw)
 
     gmsh.model.add_physical_group(2, [surf], -1, "")
     # Generate mesh
     gmsh.model.mesh.embed(0, [p_mitt], 2, 1)
+    gmsh.model.mesh.set_algorithm(2,1,6)
     gmsh.model.mesh.generate(2)
     gmsh.model.mesh.optimize()
     #gmsh.model.mesh.
@@ -2037,6 +2087,246 @@ function createQuarterLabyrinthMeshRoundedCavity(filename, x₀, y₀, t, B, b, 
     gmsh.model.mesh.set_algorithm(2,1,6) # Frontal-Delaunay algorithm ?
     gmsh.model.mesh.generate(2)
     gmsh.model.mesh.optimize()
+    #gmsh.model.mesh.
+    #gmsh.model.mesh.reverse(2)
+    # Write to file
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
+    return grid
+end
+
+function createQuarterLabyrinthMeshVeryRounded(filename, x₀, y₀, t, B, b, Δx, H, r, h)
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.setNumber("Mesh.RandomFactor", 1e-9)
+    gmsh.option.setNumber("Mesh.RandomSeed",1)
+    gmsh.option.set_number("General.Verbosity", 2)
+    #gmsh.option.set_number("Mesh.Algorithm",9)
+    #gmsh.option.set_number("Mesh.RecombinationAlgorithm",2)
+    # Points
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀, y₀ + t, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + t, 0.0, h/4)
+
+    # p4 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2 - r , y₀ + t + H - r, 0.0, h/4)
+    # p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H - r, 0.0, h/4)
+    p4 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2 - r , y₀ + t + H - r, 0.0, h/4)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H - r, 0.0, h/4)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H, 0.0, h/4)
+    p_mitt_top = gmsh.model.geo.add_point(x₀ + Δx + B , y₀ + t + H, 0.0, h/4)
+
+    p_mitt = gmsh.model.geo.add_point(x₀ + Δx + B, y₀, 0.0, h)
+    # Lines
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    #
+    l3 = gmsh.model.geo.add_line(p3, p4)
+    l4 = gmsh.model.geo.add_circle_arc(p4, p5, p6)
+    #
+    l5 = gmsh.model.geo.add_line(p6, p_mitt_top)
+    #l5 = gmsh.model.geo.addBSpline([p6,p7,p8,p9,p_mitt_top,p_mitt_top,p_mitt_top,p_mitt_top,p_mitt_top])
+    l6 = gmsh.model.geo.add_line(p_mitt_top, p_mitt)
+    l7 = gmsh.model.geo.add_line(p_mitt, p1)
+    # Loop
+    loop = gmsh.model.geo.add_curve_loop([-l7,-l6,-l5,-l4,-l3,-l2,-l1])
+    # Surface
+    surf = gmsh.model.geo.add_plane_surface([loop])
+    gmsh.model.geo.synchronize()
+    # Physical surface
+    #gmsh.model.add_physical_group(1, [l3, l4, l5], -1, "")
+    #gmsh.model.add_physical_group(1, [-l5,-l4,-l3], -1, "") # istället för reverse (behåller ccw)
+    gmsh.model.add_physical_group(1, [-l5,-l4], -1, "") # istället för reverse (behåller ccw)
+
+    gmsh.model.add_physical_group(2, [surf], -1, "")
+    # Generate mesh
+    gmsh.model.mesh.embed(0, [p_mitt], 2, 1)
+    gmsh.model.mesh.set_algorithm(2,1,6)
+    gmsh.model.mesh.generate(2)
+    #gmsh.model.mesh.optimize()
+    #gmsh.model.mesh.
+    #gmsh.model.mesh.reverse(2)
+    # Write to file
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
+    return grid
+end
+
+function createQuarterLabyrinthMeshVeryRounded2(filename, x₀, y₀, t, B, b, Δx, H, r, h)
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.setNumber("Mesh.RandomFactor", 1e-9)
+    gmsh.option.setNumber("Mesh.RandomSeed",1)
+    gmsh.option.set_number("General.Verbosity", 2)
+    #gmsh.option.set_number("Mesh.Algorithm",9)
+    #gmsh.option.set_number("Mesh.RecombinationAlgorithm",2)
+    # Points
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀, y₀ + t, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + t, 0.0, h/4)
+
+    # p4 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2 - r , y₀ + t + H - r, 0.0, h/4)
+    # p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H - r, 0.0, h/4)
+    p4 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2 - r , y₀ + t + H - r, 0.0, h/4)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H - r, 0.0, h/4)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H, 0.0, h/4)
+    p_mitt_top = gmsh.model.geo.add_point(x₀ + Δx + B , y₀ + t + H, 0.0, h/4)
+
+    p_mitt = gmsh.model.geo.add_point(x₀ + Δx + B, y₀, 0.0, h)
+    # Lines
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    #
+    l3 = gmsh.model.geo.add_line(p3, p4)
+    l4 = gmsh.model.geo.add_circle_arc(p4, p5, p6)
+    #
+    l5 = gmsh.model.geo.add_line(p6, p_mitt_top)
+    #l5 = gmsh.model.geo.addBSpline([p6,p7,p8,p9,p_mitt_top,p_mitt_top,p_mitt_top,p_mitt_top,p_mitt_top])
+    l6 = gmsh.model.geo.add_line(p_mitt_top, p_mitt)
+    l7 = gmsh.model.geo.add_line(p_mitt, p1)
+    # Loop
+    loop = gmsh.model.geo.add_curve_loop([-l7,-l6,-l5,-l4,-l3,-l2,-l1])
+    # Surface
+    surf = gmsh.model.geo.add_plane_surface([loop])
+    gmsh.model.geo.synchronize()
+    # Physical surface
+    #gmsh.model.add_physical_group(1, [l3, l4, l5], -1, "")
+    #gmsh.model.add_physical_group(1, [-l5,-l4,-l3], -1, "") # istället för reverse (behåller ccw)
+    gmsh.model.add_physical_group(1, [-l5,-l4], -1, "") # istället för reverse (behåller ccw)
+
+    gmsh.model.add_physical_group(2, [surf], -1, "")
+    # Generate mesh
+    gmsh.model.mesh.embed(0, [p_mitt], 2, 1)
+    gmsh.model.mesh.set_algorithm(2,1,1)
+    gmsh.model.mesh.generate(2)
+    #gmsh.model.mesh.optimize()
+    #gmsh.model.mesh.
+    #gmsh.model.mesh.reverse(2)
+    # Write to file
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
+    return grid
+end
+
+function createQuarterLabyrinthMeshVeryRoundedXtra(filename, x₀, y₀, t, B, b, Δx, H, r, h)
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.setNumber("Mesh.RandomFactor", 1e-9)
+    gmsh.option.setNumber("Mesh.RandomSeed",1)
+    gmsh.option.set_number("General.Verbosity", 2)
+    #gmsh.option.set_number("Mesh.Algorithm",9)
+    #gmsh.option.set_number("Mesh.RecombinationAlgorithm",2)
+    # Points
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀, y₀ + t, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + t, 0.0, h/4)
+
+    # p4 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2 - r , y₀ + t + H - r, 0.0, h/4)
+    # p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H - r, 0.0, h/4)
+    p4 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2 - r , y₀ + t + H - r, 0.0, h/4)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H - r, 0.0, h/4)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H, 0.0, h/4)
+    p_mitt_top = gmsh.model.geo.add_point(x₀ + Δx + B , y₀ + t + H, 0.0, h/4)
+
+    p_mitt = gmsh.model.geo.add_point(x₀ + Δx + B, y₀, 0.0, h)
+    # Lines
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    #
+    l3 = gmsh.model.geo.add_line(p3, p4)
+    l4 = gmsh.model.geo.add_circle_arc(p4, p5, p6)
+    #
+    l5 = gmsh.model.geo.add_line(p6, p_mitt_top)
+    #l5 = gmsh.model.geo.addBSpline([p6,p7,p8,p9,p_mitt_top,p_mitt_top,p_mitt_top,p_mitt_top,p_mitt_top])
+    l6 = gmsh.model.geo.add_line(p_mitt_top, p_mitt)
+    l7 = gmsh.model.geo.add_line(p_mitt, p1)
+    # Loop
+    loop = gmsh.model.geo.add_curve_loop([-l7,-l6,-l5,-l4,-l3,-l2,-l1])
+    # Surface
+    surf = gmsh.model.geo.add_plane_surface([loop])
+    gmsh.model.geo.synchronize()
+    # Physical surface
+    #gmsh.model.add_physical_group(1, [l3, l4, l5], -1, "")
+    #gmsh.model.add_physical_group(1, [-l5,-l4,-l3], -1, "") # istället för reverse (behåller ccw)
+    gmsh.model.add_physical_group(1, [-l5,-l4,-l3], -1, "") # istället för reverse (behåller ccw)
+
+    gmsh.model.add_physical_group(2, [surf], -1, "")
+    # Generate mesh
+    gmsh.model.mesh.embed(0, [p_mitt], 2, 1)
+    gmsh.model.mesh.set_algorithm(2,1,6)
+    gmsh.model.mesh.generate(2)
+    #gmsh.model.mesh.optimize()
+    #gmsh.model.mesh.
+    #gmsh.model.mesh.reverse(2)
+    # Write to file
+    grid = mktempdir() do dir
+        path = joinpath(filename * ".msh")
+        gmsh.write(path)
+        togrid(path)
+    end
+    Gmsh.finalize()
+    return grid
+end
+
+function createQuarterLabyrinthMeshVeryRounded2M(filename, x₀, y₀, t, B, b, Δx, H, r, h)
+    # Initialize gmsh
+    Gmsh.initialize()
+    gmsh.option.setNumber("Mesh.RandomFactor", 1e-9)
+    gmsh.option.setNumber("Mesh.RandomSeed",1)
+    gmsh.option.set_number("General.Verbosity", 2)
+    #gmsh.option.set_number("Mesh.Algorithm",9)
+    #gmsh.option.set_number("Mesh.RecombinationAlgorithm",2)
+    # Points
+    p1 = gmsh.model.geo.add_point(x₀, y₀, 0.0, h)
+    p2 = gmsh.model.geo.add_point(x₀, y₀ + t, 0.0, h)
+    p3 = gmsh.model.geo.add_point(x₀ + Δx, y₀ + t, 0.0, h/4)
+
+    # p4 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2 - r , y₀ + t + H - r, 0.0, h/4)
+    # p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H - r, 0.0, h/4)
+    p4 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2 - r , y₀ + t + H - r, 0.0, h/4)
+    p5 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H - r, 0.0, h/4)
+    p6 = gmsh.model.geo.add_point(x₀ + Δx + B / 2 - b / 2, y₀ + t + H, 0.0, h/4)
+    p_mitt_top = gmsh.model.geo.add_point(x₀ + Δx + B , y₀ + t + H, 0.0, h/4)
+
+    p_mitt = gmsh.model.geo.add_point(x₀ + Δx + B, y₀, 0.0, h)
+    # Lines
+    l1 = gmsh.model.geo.add_line(p1, p2)
+    l2 = gmsh.model.geo.add_line(p2, p3)
+    #
+    l3 = gmsh.model.geo.add_line(p3, p4)
+    l4 = gmsh.model.geo.add_circle_arc(p4, p5, p6)
+    #
+    l5 = gmsh.model.geo.add_line(p6, p_mitt_top)
+    #l5 = gmsh.model.geo.addBSpline([p6,p7,p8,p9,p_mitt_top,p_mitt_top,p_mitt_top,p_mitt_top,p_mitt_top])
+    l6 = gmsh.model.geo.add_line(p_mitt_top, p_mitt)
+    l7 = gmsh.model.geo.add_line(p_mitt, p1)
+    # Loop
+    loop = gmsh.model.geo.add_curve_loop([-l7,-l6,-l5,-l4,-l3,-l2,-l1])
+    # Surface
+    surf = gmsh.model.geo.add_plane_surface([loop])
+    gmsh.model.geo.synchronize()
+    # Physical surface
+    #gmsh.model.add_physical_group(1, [l3, l4, l5], -1, "")
+    #gmsh.model.add_physical_group(1, [-l5,-l4,-l3], -1, "") # istället för reverse (behåller ccw)
+    gmsh.model.add_physical_group(1, [-l5,-l4,-l3], -1, "") # istället för reverse (behåller ccw)
+
+    gmsh.model.add_physical_group(2, [surf], -1, "")
+    # Generate mesh
+    gmsh.model.mesh.embed(0, [p_mitt], 2, 1)
+    gmsh.model.mesh.set_algorithm(2,1,1)
+    gmsh.model.mesh.generate(2)
+    #gmsh.model.mesh.optimize()
     #gmsh.model.mesh.
     #gmsh.model.mesh.reverse(2)
     # Write to file

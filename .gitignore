@@ -17,5 +17,9 @@ products/
 
 *.eps
 
+*.err
+
+*.out
+
 results/
 

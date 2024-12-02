@@ -36,14 +36,14 @@ begin
     x₀ = 0.0
     y₀ = 0.0
     B  = 0.15
-    b  = 0.1 # 0.1 #+ 0.0125*2
     Δl = (Δx - B)  #0.05
     H  = 0.15
-    r  = 0.025 #0.0125
+    r  = 0.1 #0.025 #0.0125
+    b  = B - 2r  # 0.1 #+ 0.0125*2
     #r2 = 0.05# 0.025 ## radius of cavity
     # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
     # grid size3
-    h = 0.075 # 0.075 * 0.5 # 0.075 <-> från artikel
+    h = 0.075 * 0.5 # 0.075 * 0.5 # 0.075 <-> från artikel
     # # # # # # # # # #
     # Finite element  #
     # # # # # # # # # #
@@ -57,10 +57,11 @@ end
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createQuarterLabyrinthMeshVeryRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h/2);
+results_dir = joinpath(@__DIR__, "../../results/round_safe")
+grid1 = createQuarterLabyrinthMeshRounded(joinpath(results_dir,"mesh_1"), x₀, y₀, th, B, b, Δl, H, r, h/2);
 #grid1 = createQuarterLabyrinthMeshRoundedCavity("mesh_1", x₀, y₀, th, B, b, Δl, H, r, r2, h);
 Γ_1 = getBoundarySet(grid1);
-grid2 = createBoxMeshRev2("mesh_2", x₁, y₁, Δx, Δy, h/3);
+grid2 = createBoxMeshRev2(joinpath(results_dir,"mesh_2"), x₁, y₁, Δx, Δy, h/3);
 #grid2 = createBoxMesh("mesh_2", x₁, y₁, Δx, Δy, h);
 Γ_2 = getBoundarySet(grid2);
 grid_tot = merge_grids2(grid1, grid2; tol=1e-8);
@@ -272,7 +273,6 @@ function target_func(x)
     return pmax*exp( -( ((x-mid)^2) / width^2 )^P )
 end
 
-@show getncells(dh.grid)
 
 # -------------------- #
 # Optimization program #
@@ -489,18 +489,18 @@ function Optimize(dh)
         # ! ! #
         # λ^p #
         # ! ! #
-        if true_iteration > 100
-            global α = 0.1
-        end
+        # if true_iteration > 100
+        #     global α = 0.1
+        # end
 
         # ! ! #
         # LSQ #
         # ! ! #
-        # if true_iteration == 50
-        #     global α = 0.1
-        # elseif true_iteration == 100
-        #     global α = 0.02
-        # end
+        if true_iteration == 50
+            global α = 0.1
+        elseif true_iteration == 100
+            global α = 0.02
+        end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
@@ -526,7 +526,7 @@ function Optimize(dh)
         # # # # # # # # #
         # Write to vtu  #
         # # # # # # # # #
-        results_dir = joinpath(@__DIR__, "../../results/normal")
+        results_dir = joinpath(@__DIR__, "../../results/round_safe")
         postprocess_opt(Ψ, dh0, joinpath(results_dir,"Current design" * string(true_iteration)))
         postprocess_opt(d, dh0, joinpath(results_dir,"design_variables" * string(true_iteration)))
         #postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
@@ -600,12 +600,4 @@ end
 g_hist, v_hist, al_hist, au_hist, OptIter = Optimize(dh)
 
 
-g_ini = any
-locked_d = any
-mp = any
-n = 0
-n_right = any
-traction = 1
-xval = d
-Γ_right = any
-@save "packning.jld2"
+

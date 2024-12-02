@@ -11,7 +11,7 @@ function create_contact_list(dh, Γs, Γm, coord_dual)
         i += 1
         face_el = face[1]
         #face_nods = reverse(Ferrite.faces(dh.grid.cells[face_el])[face[2]]) # " face = (El, nod) "
-        face_nods = Ferrite.faces(dh.grid.cells[face_el])[face[2]] # " face = (El, nod) "
+        face_nods = Ferrite.facets(dh.grid.cells[face_el])[face[2]] # " face = (El, nod) "
         push!(elements,face_el => [face_nods[1],face_nods[2]])
         push!(coords, face_nods[1] => coord_dual[face_nods[1], :])
         push!(coords, face_nods[2] => coord_dual[face_nods[2], :])
@@ -23,7 +23,7 @@ function create_contact_list(dh, Γs, Γm, coord_dual)
     for face in Γm
         i += 1
         face_el = face[1]
-        face_nods = Ferrite.faces(dh.grid.cells[face_el])[face[2]]
+        face_nods = Ferrite.facets(dh.grid.cells[face_el])[face[2]]
         push!(elements, face_el => [face_nods[1], face_nods[2]])
         push!(coords, face_nods[1] => coord_dual[face_nods[1], :])
         push!(coords, face_nods[2] => coord_dual[face_nods[2], :])

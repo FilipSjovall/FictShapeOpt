@@ -12,7 +12,7 @@ function solver(dh,coord)
       # ------------- #
       # Assem pattern #
       # ------------- #
-      K  = create_sparsity_pattern(dh)
+      K  = allocate_matrix(dh)
       # ------ #
       #  Init  #
       # ------ #
@@ -70,7 +70,7 @@ function fictitious_solver(d,dh0,coord₀)
       ndof     = size(coord₀,1)*2
       nelm     = size(enod,1)
 
-      Kψ       = create_sparsity_pattern(dh0)
+      Kψ       = allocate_matrix(dh0)
 
       #  ----- #
       # Init   #
@@ -138,17 +138,17 @@ function solver_C(dh, coord, Δ, nloadsteps)
     iter = 1
     # ------------- #.0
     # ------------- #
-    #K = create_sparsity_pattern(dh)
+    #K = allocate_matrix(dh)
     # ------ #
     #  Init  #
     # ------ #
-    global Fᵢₙₜ = zeros(dh.ndofs.x)
-    global rc   = zeros(dh.ndofs.x)
-    global Fₑₓₜ = zeros(dh.ndofs.x)
-    global a    = zeros(dh.ndofs.x)
-    global Δa   = zeros(dh.ndofs.x)
-    global res  = zeros(dh.ndofs.x)
-    global K    = create_sparsity_pattern(dh)
+    global Fᵢₙₜ = zeros(dh.ndofs)
+    global rc   = zeros(dh.ndofs)
+    global Fₑₓₜ = zeros(dh.ndofs)
+    global a    = zeros(dh.ndofs)
+    global Δa   = zeros(dh.ndofs)
+    global res  = zeros(dh.ndofs)
+    global K    = allocate_matrix(dh)
     # ---------- #
     # Set BCS    #
     # ---------- #
@@ -165,7 +165,7 @@ function solver_C(dh, coord, Δ, nloadsteps)
     global bcvals = bcvals[ϵᵢⱼₖ]
     # - For Linear solver..
     global pdofs = bcdofs
-    global fdofs = setdiff(1:dh.ndofs.x, pdofs)
+    global fdofs = setdiff(1:dh.ndofs, pdofs)
     bcval₀ = bcvals
     global β = 1.0
     loadstep = 0
@@ -244,13 +244,13 @@ function fictitious_solver_C(d, dh0, coord₀)
     #  ----- #
     # Init   #
     #  ----- #
-    global Kψ = create_sparsity_pattern(dh)
-    global Ψ = zeros(dh.ndofs.x)
-    global Fᵢₙₜ = zeros(dh.ndofs.x)
-    global Fₑₓₜ = zeros(dh.ndofs.x)
-    global Ψ = zeros(dh.ndofs.x)
-    global ΔΨ = zeros(dh.ndofs.x)
-    global res = zeros(dh.ndofs.x)
+    global Kψ = allocate_matrix(dh)
+    global Ψ = zeros(dh.ndofs)
+    global Fᵢₙₜ = zeros(dh.ndofs)
+    global Fₑₓₜ = zeros(dh.ndofs)
+    global Ψ = zeros(dh.ndofs)
+    global ΔΨ = zeros(dh.ndofs)
+    global res = zeros(dh.ndofs)
     res = zeros(ndof)
     bcdof_top, bcval_top = setBCXY(0.0, dh, n_top)
     bcdof_bot, bcval_bot = setBCXY(0.0, dh, n_bot)
@@ -325,18 +325,18 @@ function solver_C2(dh, coord)
     iter = 1
     # ------------- #.0
     # ------------- #
-    #K = create_sparsity_pattern(dh)
+    #K = allocate_matrix(dh)
 
     # ------ #
     #  Init  #
     # ------ #
-    global Fᵢₙₜ = zeros(dh.ndofs.x)
-    global rc = zeros(dh.ndofs.x)
-    global Fₑₓₜ = zeros(dh.ndofs.x)
-    global a = zeros(dh.ndofs.x)
-    global Δa = zeros(dh.ndofs.x)
-    global res = zeros(dh.ndofs.x)
-    global K = create_sparsity_pattern(dh)
+    global Fᵢₙₜ = zeros(dh.ndofs)
+    global rc = zeros(dh.ndofs)
+    global Fₑₓₜ = zeros(dh.ndofs)
+    global a = zeros(dh.ndofs)
+    global Δa = zeros(dh.ndofs)
+    global res = zeros(dh.ndofs)
+    global K = allocate_matrix(dh)
     # ---------- #
     # Set BCS    #
     # ---------- #
@@ -352,7 +352,7 @@ function solver_C2(dh, coord)
 
     # - For Linear solver..
     pdofs = bcdof
-    fdofs = setdiff(1:dh.ndofs.x, pdofs)
+    fdofs = setdiff(1:dh.ndofs, pdofs)
 
     bcval₀ = bcval
 
@@ -410,13 +410,13 @@ function fictitious_solver_with_contact(d, dh0, coord₀, nloadsteps)
     #  ----- #
     # Init   #
     #  ----- #
-    global Kψ = create_sparsity_pattern(dh0)
-    global Ψ = zeros(dh0.ndofs.x)
-    global FΨ = zeros(dh0.ndofs.x)
-    global Fₑₓₜ = zeros(dh0.ndofs.x)
-    global Ψ = zeros(dh0.ndofs.x)
-    global ΔΨ = zeros(dh0.ndofs.x)
-    global res = zeros(dh0.ndofs.x)
+    global Kψ = allocate_matrix(dh0)
+    global Ψ = zeros(dh0.ndofs)
+    global FΨ = zeros(dh0.ndofs)
+    global Fₑₓₜ = zeros(dh0.ndofs)
+    global Ψ = zeros(dh0.ndofs)
+    global ΔΨ = zeros(dh0.ndofs)
+    global res = zeros(dh0.ndofs)
 
     #bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
     #bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
@@ -517,12 +517,12 @@ function fictitious_solver_with_contact_hook(d, dh0, coord₀, nloadsteps)
     #  ----- #
     # Init   #
     #  ----- #
-    global Kψ  = create_sparsity_pattern(dh0)
-    global Ψ   = zeros(dh0.ndofs.x)
-    global FΨ  = zeros(dh0.ndofs.x)
-    global Ψ   = zeros(dh0.ndofs.x)
-    global ΔΨ  = zeros(dh0.ndofs.x)
-    global res = zeros(dh0.ndofs.x)
+    global Kψ  = allocate_matrix(dh0)
+    global Ψ   = zeros(dh0.ndofs)
+    global FΨ  = zeros(dh0.ndofs)
+    global Ψ   = zeros(dh0.ndofs)
+    global ΔΨ  = zeros(dh0.ndofs)
+    global res = zeros(dh0.ndofs)
 
     global bcdof_o2 = bcdofs_opt
     global bcval_o2 = bcdofs_opt .* 0.0
@@ -611,18 +611,18 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
     iter = 1
     # ------------- #.0
     # ------------- #
-    #K = create_sparsity_pattern(dh)
+    #K = allocate_matrix(dh)
 
     # ------ #
     #  Init  #
     # ------ #
-    global Fᵢₙₜ = zeros(dh.ndofs.x)
-    global rc    = zeros(dh.ndofs.x)
-    global Fₑₓₜ  = zeros(dh.ndofs.x)
-    global a     = zeros(dh.ndofs.x)
-    global Δa    = zeros(dh.ndofs.x)
-    global res   = zeros(dh.ndofs.x)
-    global K     = create_sparsity_pattern(dh)
+    global Fᵢₙₜ = zeros(dh.ndofs)
+    global rc    = zeros(dh.ndofs)
+    global Fₑₓₜ  = zeros(dh.ndofs)
+    global a     = zeros(dh.ndofs)
+    global Δa    = zeros(dh.ndofs)
+    global res   = zeros(dh.ndofs)
+    global K     = allocate_matrix(dh)
 
     # ------------------- #
     # Boundary conditions #
@@ -652,7 +652,7 @@ function solver_C_hook(dh, coord, Δ, nloadsteps)
 
     # - For Linear solver..
     global pdofs = bcdofs
-    global fdofs = setdiff(1:dh.ndofs.x, pdofs)
+    global fdofs = setdiff(1:dh.ndofs, pdofs)
 
     bcval₀ = bcvals
     global β = 1.0
@@ -732,12 +732,12 @@ function fictitious_solver_with_contact_half(d, dh0, coord₀, nloadsteps)
     #  ----- #
     # Init   #
     #  ----- #
-    #global Kψ = create_sparsity_pattern(dh0)
-    global FΨ = zeros(dh0.ndofs.x)
-    global Fₑₓₜ = zeros(dh0.ndofs.x)
-    global Ψ = zeros(dh0.ndofs.x)
-    global ΔΨ = zeros(dh0.ndofs.x)
-    global res = zeros(dh0.ndofs.x)
+    #global Kψ = allocate_matrix(dh0)
+    global FΨ = zeros(dh0.ndofs)
+    global Fₑₓₜ = zeros(dh0.ndofs)
+    global Ψ = zeros(dh0.ndofs)
+    global ΔΨ = zeros(dh0.ndofs)
+    global res = zeros(dh0.ndofs)
 
     #bcdof_top_o2, _ = setBCXY_both(0.0, dh, Γ_top)
     #bcdof_bot_o2, _ = setBCXY_both(0.0, dh, Γ_bot)
@@ -833,17 +833,17 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
     iter = 1
     # ------------- #.0
     # ------------- #
-    #K = create_sparsity_pattern(dh)
+    #K = allocate_matrix(dh)
     # ------ #
     #  Init  #
     # ------ #
-    global Fᵢₙₜ = zeros(dh.ndofs.x)
-    global rc = zeros(dh.ndofs.x)
-    global Fₑₓₜ = zeros(dh.ndofs.x)
-    global a = zeros(dh.ndofs.x)
-    global Δa = zeros(dh.ndofs.x)
-    global res = zeros(dh.ndofs.x)
-    #global K = create_sparsity_pattern(dh)
+    global Fᵢₙₜ = zeros(dh.ndofs)
+    global rc = zeros(dh.ndofs)
+    global Fₑₓₜ = zeros(dh.ndofs)
+    global a = zeros(dh.ndofs)
+    global Δa = zeros(dh.ndofs)
+    global res = zeros(dh.ndofs)
+    #global K = allocate_matrix(dh)
     # ---------- #
     # Set BCS    #
     # ---------- #
@@ -860,7 +860,7 @@ function solver_C_half(dh, coord, Δ, nloadsteps)
     global bcvals = bcvals[ϵᵢⱼₖ]
     # - For Linear solver..
     global pdofs = bcdofs
-    global fdofs = setdiff(1:dh.ndofs.x, pdofs)
+    global fdofs = setdiff(1:dh.ndofs, pdofs)
     bcval₀ = bcvals
     global β = 1.0
     loadstep = 0
@@ -950,12 +950,12 @@ function fictitious_solver_with_contact_hook_half(d, dh0, coord₀, nloadsteps)
     #  ----- #
     # Init   #
     #  ----- #
-    global Kψ = create_sparsity_pattern(dh0)
-    global Ψ = zeros(dh0.ndofs.x)
-    global FΨ = zeros(dh0.ndofs.x)
-    global Ψ = zeros(dh0.ndofs.x)
-    global ΔΨ = zeros(dh0.ndofs.x)
-    global res = zeros(dh0.ndofs.x)
+    global Kψ = allocate_matrix(dh0)
+    global Ψ = zeros(dh0.ndofs)
+    global FΨ = zeros(dh0.ndofs)
+    global Ψ = zeros(dh0.ndofs)
+    global ΔΨ = zeros(dh0.ndofs)
+    global res = zeros(dh0.ndofs)
 
     global bcdof_o2 = bcdofs_opt
     global bcval_o2 = bcdofs_opt .* 0.0
@@ -1037,18 +1037,18 @@ function solver_C_hook_half(dh, coord, Δ, nloadsteps)
     iter = 1
     # ------------- #.0
     # ------------- #
-    #K = create_sparsity_pattern(dh)
+    #K = allocate_matrix(dh)
 
     # ------ #
     #  Init  #
     # ------ #
-    global Fᵢₙₜ = zeros(dh.ndofs.x)
-    global rc = zeros(dh.ndofs.x)
-    global Fₑₓₜ = zeros(dh.ndofs.x)
-    global a = zeros(dh.ndofs.x)
-    global Δa = zeros(dh.ndofs.x)
-    global res = zeros(dh.ndofs.x)
-    global K = create_sparsity_pattern(dh)
+    global Fᵢₙₜ = zeros(dh.ndofs)
+    global rc = zeros(dh.ndofs)
+    global Fₑₓₜ = zeros(dh.ndofs)
+    global a = zeros(dh.ndofs)
+    global Δa = zeros(dh.ndofs)
+    global res = zeros(dh.ndofs)
+    global K = allocate_matrix(dh)
 
     # ------------------- #
     # Boundary conditions #
@@ -1069,7 +1069,7 @@ function solver_C_hook_half(dh, coord, Δ, nloadsteps)
 
     # - For Linear solver..
     global pdofs = bcdofs
-    global fdofs = setdiff(1:dh.ndofs.x, pdofs)
+    global fdofs = setdiff(1:dh.ndofs, pdofs)
 
     bcval₀ = bcvals
     global β = 1.0
@@ -1151,18 +1151,18 @@ function solver_C_U(dh, coord, Δ, nloadsteps)
     iter = 1
     # ------------- #.0
     # ------------- #
-    #K = create_sparsity_pattern(dh)
+    #K = allocate_matrix(dh)
 
     # ------ #
     #  Init  #
     # ------ #
-    global Fᵢₙₜ = zeros(dh.ndofs.x)
-    global rc = zeros(dh.ndofs.x)
-    global Fₑₓₜ = zeros(dh.ndofs.x)
-    global a = zeros(dh.ndofs.x)
-    global Δa = zeros(dh.ndofs.x)
-    global res = zeros(dh.ndofs.x)
-    global K = create_sparsity_pattern(dh)
+    global Fᵢₙₜ = zeros(dh.ndofs)
+    global rc = zeros(dh.ndofs)
+    global Fₑₓₜ = zeros(dh.ndofs)
+    global a = zeros(dh.ndofs)
+    global Δa = zeros(dh.ndofs)
+    global res = zeros(dh.ndofs)
+    global K = allocate_matrix(dh)
 
     # ------------------- #
     # Boundary conditions #
@@ -1180,7 +1180,7 @@ function solver_C_U(dh, coord, Δ, nloadsteps)
 
     # - For Linear solver..
     global pdofs = bcdofs
-    global fdofs = setdiff(1:dh.ndofs.x, pdofs)
+    global fdofs = setdiff(1:dh.ndofs, pdofs)
 
     bcval₀ = bcvals
     global β = 1.0
@@ -1258,12 +1258,12 @@ function fictitious_solver_hook(d, dh0, coord₀, nloadsteps)
     #  ----- #
     # Init   #
     #  ----- #
-    global Kψ  = create_sparsity_pattern(dh0)
-    global Ψ   = zeros(dh0.ndofs.x)
-    global FΨ  = zeros(dh0.ndofs.x)
-    global Ψ   = zeros(dh0.ndofs.x)
-    global ΔΨ  = zeros(dh0.ndofs.x)
-    global res = zeros(dh0.ndofs.x)
+    global Kψ  = allocate_matrix(dh0)
+    global Ψ   = zeros(dh0.ndofs)
+    global FΨ  = zeros(dh0.ndofs)
+    global Ψ   = zeros(dh0.ndofs)
+    global ΔΨ  = zeros(dh0.ndofs)
+    global res = zeros(dh0.ndofs)
 
     global bcdof_o2 = bcdofs_opt
     global bcval_o2 = bcdofs_opt .* 0.0
@@ -1319,13 +1319,13 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
     # --------------- #
     #  Init matrices  #
     # --------------- #
-    global Fᵢₙₜ = zeros(dh.ndofs.x)
-    global rc = zeros(dh.ndofs.x)
-    global Fₑₓₜ = zeros(dh.ndofs.x)
-    global a = zeros(dh.ndofs.x)
-    global Δa = zeros(dh.ndofs.x)
-    global res = zeros(dh.ndofs.x)
-    global K = create_sparsity_pattern(dh)
+    global Fᵢₙₜ = zeros(dh.ndofs)
+    global rc = zeros(dh.ndofs)
+    global Fₑₓₜ = zeros(dh.ndofs)
+    global a = zeros(dh.ndofs)
+    global Δa = zeros(dh.ndofs)
+    global res = zeros(dh.ndofs)
+    global K = allocate_matrix(dh)
     # ------------------- #
     # Boundary conditions #
     # ------------------- #
@@ -1346,7 +1346,7 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
     # For Linear solver #
     # - - - - - - - - - #
     global pdofs = bcdofs
-    global fdofs = setdiff(1:dh.ndofs.x, pdofs)
+    global fdofs = setdiff(1:dh.ndofs, pdofs)
     bcval₀   = bcvals
 
     loadstep = 0
@@ -1392,14 +1392,18 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
             @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_top[1]]
         end
         if loadstep < 40 && iter < 20
+            # Get the absolute path to the results directory
+            results_dir = joinpath(@__DIR__, "../../results")
+            # Construct the absolute file path
+            file_path = joinpath(results_dir, "🍌-contact" * string(loadstep) * ".vtu")
             σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
-            vtk_grid("results/🍌-contact" * string(loadstep), dh) do vtkfile
-                vtk_point_data(vtkfile, dh, a) # displacement field
-                vtk_point_data(vtkfile, σx, "σx")
-                vtk_point_data(vtkfile, σy, "σy")
-                vtk_point_data(vtkfile, τ, "τ")
-                vtk_point_data(vtkfile, σᵛᵐ, "σᵛᵐ")
-            end
+            # VTKGridFile(file_path, dh) do vtkfile
+            #     write_solution(vtkfile, dh, a) # displacement field
+            #     write_node_data(vtkfile, σx, "σx")
+            #     write_node_data(vtkfile, σy, "σy")
+            #     write_node_data(vtkfile, τ, "τ")
+            #     write_node_data(vtkfile, σᵛᵐ, "σᵛᵐ")
+            # end
         end
         #Fₑₓₜ[bcdofs] = -Fᵢₙₜ[bcdofs]
     end
@@ -1410,7 +1414,111 @@ function solver_Lab(dh, coord, Δ, nloadsteps)
     # end
     return a, dh, Fₑₓₜ, Fᵢₙₜ, K
 end
+#
+function solver_Lab_safe(dh, coord, Δ, nloadsteps)
+    # ---------- #
+    # Set params #
+    # ---------- #
+    t = 1.0
+    # ------------- #
+    # Init-stuff    #
+    # ------------- #
+    imax     = 200
+    TOL      = 1e-8
+    residual = 0.0
+    iter     = 1
+    # --------------- #
+    #  Init matrices  #
+    # --------------- #
+    global Fᵢₙₜ = zeros(dh.ndofs)
+    global rc = zeros(dh.ndofs)
+    global Fₑₓₜ = zeros(dh.ndofs)
+    global a = zeros(dh.ndofs)
+    global Δa = zeros(dh.ndofs)
+    global res = zeros(dh.ndofs)
+    global K = allocate_matrix(dh)
+    # ------------------- #
+    # Boundary conditions #
+    # ------------------- #
+    bcdof_bot, bcval_bot = setBCY(0.0, dh, n_bot)
+    bcdof_top, bcval_top = setBCY(Δ / nloadsteps, dh, n_top)
+    #bcdof_c1, bcval_c1   = setBCY(0.0, dh, nₛ)
+    #bcdof_c2, bcval_c2   = setBCY(0.0, dh, nₘ)
+    bcdof_right, bcval_right = setBCX(0.0, dh, n_sym)
 
+    #bcdofs = [bcdof_bot; bcdof_top; bcdof_right;bcdof_c1; bcdof_c2]
+    #bcvals = [bcval_bot; bcval_top; bcval_right;bcval_c1; bcval_c2]
+    bcdofs = [bcdof_bot; bcdof_top; bcdof_right]
+    bcvals = [bcval_bot; bcval_top; bcval_right]
+    ϵᵢⱼₖ  = sortperm(bcdofs)
+    global bcdofs = bcdofs[ϵᵢⱼₖ]
+    global bcvals = bcvals[ϵᵢⱼₖ]
+    # - - - - - - - - - #
+    # For Linear solver #
+    # - - - - - - - - - #
+    global pdofs = bcdofs
+    global fdofs = setdiff(1:dh.ndofs, pdofs)
+    bcval₀   = bcvals
+
+    loadstep = 0
+    global β = 1.
+    while loadstep < nloadsteps
+        loadstep += 1
+        #τ         = [0.0; 1e1]* loadstep/nloadsteps
+        # global ε = ε * 1.2
+        res = res .* 0
+        bcvals = bcval₀
+        residual = 0 * residual
+        iter = 0
+        fill!(Δa, 0.0)
+        print("\n", "Starting equilibrium iteration at loadstep: ", loadstep, "\n")
+        a_old = a
+        # # # # # # # # # #
+        # Newton solve.   #
+        # # # # # # # # # #
+        while residual > TOL || iter < 2
+            iter += 1
+            if iter % 20 == 0 || norm(res) > 1e3 
+                    a = a_old
+                    bcvals = bcval₀
+                    if β > 1/8
+                        global β = β * 0.5
+                        Δ_remaining = (Δ*nloadsteps - β * Δ - loadstep * Δ)/nloadsteps
+                        remaining_steps = nloadsteps - loadstep
+                        nloadsteps = loadstep + 2remaining_steps + (1 / β - 1)
+                        bcvals = bcvals ./2 #
+                        bcval₀= bcvals
+                    end
+                    fill!(Δa, 0.0)
+                    println("Step length $β ")
+            end
+            a += Δa
+            assemGlobal!(K, Fᵢₙₜ, dh, t, a, coord, enod, ε, mp₁, mp₂)
+            #assemGlobal!(K, Fᵢₙₜ, dh, t, a, coord, enod, ε, mp₁, mp₂, τ)
+            solveq!(Δa, K, -Fᵢₙₜ, bcdofs, bcvals)
+            bcvals = 0 * bcvals
+            res = Fᵢₙₜ - Fₑₓₜ
+            res[bcdofs] = 0 * res[bcdofs]
+            residual = norm(res, 2)
+            @printf "Iteration: %i | Residual: %.4e | Δ: %.4f \n" iter residual a[bcdof_top[1]]
+        end
+        if loadstep < 40 && iter < 20
+            # Get the absolute path to the results directory
+            results_dir = joinpath(@__DIR__, "../../results")
+            # Construct the absolute file path
+            file_path = joinpath(results_dir, "🍌-contact" * string(loadstep) * ".vtu")
+            σx, σy,τ,σᵛᵐ = StressExtract(dh, a, mp₁, mp₂)
+            # VTKGridFile(file_path, dh) do vtkfile
+            #     write_solution(vtkfile, dh, a) # displacement field
+            #     write_node_data(vtkfile, σx, "σx")
+            #     write_node_data(vtkfile, σy, "σy")
+            #     write_node_data(vtkfile, τ, "τ")
+            #     write_node_data(vtkfile, σᵛᵐ, "σᵛᵐ")
+            # end
+        end
+    end
+    return a, dh, Fₑₓₜ, Fᵢₙₜ, K
+end
 function fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
     TOL = 1e-10
     residual = 0.0
@@ -1420,16 +1528,16 @@ function fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
     #  ----- #
     # Init   #
     #  ----- #
-    global Kψ  = create_sparsity_pattern(dh0)
-    global Ψ   = zeros(dh0.ndofs.x)
-    global FΨ  = zeros(dh0.ndofs.x)
-    global Ψ   = zeros(dh0.ndofs.x)
-    global ΔΨ  = zeros(dh0.ndofs.x)
-    global res = zeros(dh0.ndofs.x)
+    global Kψ  = allocate_matrix(dh0)
+    global Ψ   = zeros(dh0.ndofs)
+    global FΨ  = zeros(dh0.ndofs)
+    global Ψ   = zeros(dh0.ndofs)
+    global ΔΨ  = zeros(dh0.ndofs)
+    global res = zeros(dh0.ndofs)
     global bcdof_o2 = bcdofs_opt
     global bcval_o2 = bcdofs_opt .* 0.0
     global pdofs = bcdofs_opt
-    global fdofs = setdiff(1:dh0.ndofs.x, pdofs)
+    global fdofs = setdiff(1:dh0.ndofs, pdofs)
     bcval₀_o2 = bcval_opt
     Δλ = (1.0 / nloadsteps)
     loadstep = 0
@@ -1470,12 +1578,11 @@ function fictitious_solver_with_contact_lab(d, dh0, coord₀, nloadsteps)
             residual        = norm(res, 2)
             Ψ[bcdofs_opt]  .= 0.0
             @printf "Iteration: %i | Residual: %.4e | λ: %.4f \n" iter residual λ
-            postprocess_opt(res, dh0, "results/fictitious_iter_t2" * string(iter))
         end
-        if loadstep < 40 && iter < 20
-                postprocess_opt(Ψ, dh0, "results/fictitious_t2" * string(loadstep))
-                #postprocess_opt(res, dh0, "results/fictitious_iter_t2" * string(iter))
-        end
+        # if loadstep < 40 && iter < 20
+        #     results_dir = joinpath(@__DIR__, "../../results")
+        #     postprocess_opt(Ψ, dh0, joinpath(results_dir, "fictitious" * string(loadstep) * ".vtu"))
+        # end
     end
     return Ψ, dh0, Kψ, FΨ, λ
 end
@@ -1501,13 +1608,13 @@ function solver_arc(dh, coord, Δ, nloadsteps)
     # ------ #
     #  Init  #
     # ------ #
-    global Fᵢₙₜ = zeros(dh.ndofs.x)
-    global rc = zeros(dh.ndofs.x)
-    global Fₑₓₜ = zeros(dh.ndofs.x)
-    global a = zeros(dh.ndofs.x)
-    global Δa = zeros(dh.ndofs.x)
-    global res = zeros(dh.ndofs.x)
-    global K = create_sparsity_pattern(dh)
+    global Fᵢₙₜ = zeros(dh.ndofs)
+    global rc = zeros(dh.ndofs)
+    global Fₑₓₜ = zeros(dh.ndofs)
+    global a = zeros(dh.ndofs)
+    global Δa = zeros(dh.ndofs)
+    global res = zeros(dh.ndofs)
+    global K = allocate_matrix(dh)
 
     # ------------------- #
     # Boundary conditions #
@@ -1527,7 +1634,7 @@ function solver_arc(dh, coord, Δ, nloadsteps)
 
     # - For Linear solver..
     global pdofs = bcdofs
-    global fdofs = setdiff(1:dh.ndofs.x, pdofs)
+    global fdofs = setdiff(1:dh.ndofs, pdofs)
 
     bcval₀ = bcvals
     global β = 1.0
@@ -1596,13 +1703,13 @@ function solver_hook(dh, coord, Δ, nloadsteps)
     # ------ #
     #  Init  #
     # ------ #
-    global Fᵢₙₜ = zeros(dh.ndofs.x)
-    global rc = zeros(dh.ndofs.x)
-    global Fₑₓₜ = zeros(dh.ndofs.x)
-    global a = zeros(dh.ndofs.x)
-    global Δa = zeros(dh.ndofs.x)
-    global res = zeros(dh.ndofs.x)
-    global K = create_sparsity_pattern(dh)
+    global Fᵢₙₜ = zeros(dh.ndofs)
+    global rc = zeros(dh.ndofs)
+    global Fₑₓₜ = zeros(dh.ndofs)
+    global a = zeros(dh.ndofs)
+    global Δa = zeros(dh.ndofs)
+    global res = zeros(dh.ndofs)
+    global K = allocate_matrix(dh)
 
     # ------------------- #
     # Boundary conditions #
@@ -1625,7 +1732,7 @@ function solver_hook(dh, coord, Δ, nloadsteps)
 
     # - For Linear solver..
     global pdofs = bcdofs
-    global fdofs = setdiff(1:dh.ndofs.x, pdofs)
+    global fdofs = setdiff(1:dh.ndofs, pdofs)
 
     bcval₀ = bcvals
     global β = 1.0

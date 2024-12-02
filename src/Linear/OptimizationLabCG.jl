@@ -43,7 +43,7 @@ begin
     #r2 = 0.05# 0.025 ## radius of cavity
     # för vertikal sida på gasket skall B/2 - b/2 - r = 0 gälla.
     # grid size3
-    h = 0.075 # 0.075 * 0.5 # 0.075 <-> från artikel
+    h = 0.075# 0.075 * 0.5 # 0.075 <-> från artikel
     # # # # # # # # # #
     # Finite element  #
     # # # # # # # # # #
@@ -57,10 +57,11 @@ end
 # # # # # # # # #
 # Create grids  #
 # # # # # # # # #
-grid1 = createQuarterLabyrinthMeshVeryRounded("mesh_1", x₀, y₀, th, B, b, Δl, H, r, h/2);
+results_dir = joinpath(@__DIR__, "../../results/normalCG")
+grid1 = createQuarterLabyrinthMeshVeryRoundedXtra(joinpath(results_dir,"mesh_1"), x₀, y₀, th, B, b, Δl, H, r, h/2);
 #grid1 = createQuarterLabyrinthMeshRoundedCavity("mesh_1", x₀, y₀, th, B, b, Δl, H, r, r2, h);
 Γ_1 = getBoundarySet(grid1);
-grid2 = createBoxMeshRev2("mesh_2", x₁, y₁, Δx, Δy, h/3);
+grid2 = createBoxMeshRev2(joinpath(results_dir,"mesh_2"), x₁, y₁, Δx, Δy, h/3);
 #grid2 = createBoxMesh("mesh_2", x₁, y₁, Δx, Δy, h);
 Γ_2 = getBoundarySet(grid2);
 grid_tot = merge_grids2(grid1, grid2; tol=1e-8);
@@ -271,7 +272,6 @@ function target_func(x)
     width= 0.06
     return pmax*exp( -( ((x-mid)^2) / width^2 )^P )
 end
-
 @show getncells(dh.grid)
 
 # -------------------- #
@@ -489,18 +489,11 @@ function Optimize(dh)
         # ! ! #
         # λ^p #
         # ! ! #
-        if true_iteration > 100
+        if true_iteration == 100
             global α = 0.1
+        elseif true_iteration == 200
+            global α = 0.01
         end
-
-        # ! ! #
-        # LSQ #
-        # ! ! #
-        # if true_iteration == 50
-        #     global α = 0.1
-        # elseif true_iteration == 100
-        #     global α = 0.02
-        # end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
@@ -526,9 +519,10 @@ function Optimize(dh)
         # # # # # # # # #
         # Write to vtu  #
         # # # # # # # # #
-        results_dir = joinpath(@__DIR__, "../../results/normal")
+        results_dir = joinpath(@__DIR__, "../../results/normalCG")
         postprocess_opt(Ψ, dh0, joinpath(results_dir,"Current design" * string(true_iteration)))
         postprocess_opt(d, dh0, joinpath(results_dir,"design_variables" * string(true_iteration)))
+        postprocess_opt(a, dh, joinpath(results_dir,"contact" * string(true_iteration)))
         #postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
 
         # # # # #
@@ -608,4 +602,4 @@ n_right = any
 traction = 1
 xval = d
 Γ_right = any
-@save "packning.jld2"
+@save "fine_packning.jld2"

@@ -407,9 +407,9 @@ function Optimize(dh)
         # Minus framför om g = p^3 | Plus om g =  || λ - p* ||₂
         p    = 3
         X_ordered = getXfromCoord(coord)
-        g         = -contact_pressure(X_ordered, a, ε, p, λ_target)
-        ∂g_∂x     = -ForwardDiff.gradient(x -> contact_pressure_ordered(x, a, ε, p, λ_target), getXinDofOrder(dh, X_ordered, coord))
-        ∂g_∂u     = -ForwardDiff.gradient(u -> contact_pressure(X_ordered, u, ε, p, λ_target), a)
+        g         = contact_pressure_lsq(X_ordered, a, ε, p, λ_target)
+        ∂g_∂x     = ForwardDiff.gradient(x -> contact_pressure_lsq_ordered(x, a, ε, p, λ_target), getXinDofOrder(dh, X_ordered, coord))
+        ∂g_∂u     = ForwardDiff.gradient(u -> contact_pressure_lsq(X_ordered, u, ε, p, λ_target), a)
 
         # # # # # # #
         # Adjoints  #
@@ -425,12 +425,12 @@ function Optimize(dh)
         # # # # # # # # # # #
         # Volume constraint #
         # # # # # # # # # # #
-        g₁    = volume(dh, coord, enod)./ Vₘₐₓ - 1.0
-        ∂Ω_∂x = volume_sens(dh, coord)./ Vₘₐₓ
-        solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
-        ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd)
-        # g₁   = -10.
-        # ∂Ω∂d =  zeros(size(dr_dd))
+        #g₁    = volume(dh, coord, enod)./ Vₘₐₓ - 1.0
+        #∂Ω_∂x = volume_sens(dh, coord)./ Vₘₐₓ
+        # solveq!(λᵥₒₗ, Kψ, ∂Ω_∂x, bcdofs_opt, bcval_opt)
+        # ∂Ω∂d = Real.(-transpose(λᵥₒₗ) * dr_dd)
+        g₁   = -10.
+        ∂Ω∂d =  zeros(size(dr_dd))
 
         # # # # # # # # # #
         # Area constraint #
@@ -489,18 +489,18 @@ function Optimize(dh)
         # ! ! #
         # λ^p #
         # ! ! #
-        if true_iteration > 100
-            global α = 0.1
-        end
+        #if true_iteration > 100
+        #    global α = 0.1
+        #end
 
         # ! ! #
         # LSQ #
         # ! ! #
-        # if true_iteration == 50
-        #     global α = 0.1
-        # elseif true_iteration == 100
-        #     global α = 0.02
-        # end
+        if true_iteration == 50
+            global α = 0.1
+        elseif true_iteration == 100
+            global α = 0.005
+        end
         d_new = d_old   + α .* (d_new - d_old)
         low   = low_old + α .* (low - low_old)
         upp   = upp_old + α .* (upp - upp_old)
@@ -526,7 +526,7 @@ function Optimize(dh)
         # # # # # # # # #
         # Write to vtu  #
         # # # # # # # # #
-        results_dir = joinpath(@__DIR__, "../../results/normal")
+        results_dir = joinpath(@__DIR__, "../../results/lsq3")
         postprocess_opt(Ψ, dh0, joinpath(results_dir,"Current design" * string(true_iteration)))
         postprocess_opt(d, dh0, joinpath(results_dir,"design_variables" * string(true_iteration)))
         #postprocess_opt(∂g_∂d, dh, "results/🛸" * string(true_iteration))
@@ -550,14 +550,14 @@ function Optimize(dh)
             itract = tract
             iX = X_c
         end
-        if mod(true_iteration,5) == 0
-            str = joinpath(results_dir,"tryck_at_"*string(true_iteration)*".jld2")
-            jldsave(str;X_c,tract,a,dh,coord,ε)
-        end
-        p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
-        # p4 = plot([X_c, iX, iX], [tract, itract ,sort(λ_target,dims=1)], label=["λ" "Initial" "Target"]  ,
-        #           marker=4, lc=[:tomato :olive :red], grid=false, legend=:outerleft,
-        #           xlimits = (0.35, 0.5), ylimits = (0, 100))
+        # if mod(true_iteration,5) == 0
+        #     str = joinpath(results_dir,"tryck_at_"*string(true_iteration)*".jld2")
+        #     jldsave(str;X_c,tract,a,dh,coord,ε)
+        # end
+        #p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
+        p4 = plot([X_c, iX, iX], [tract, itract ,sort(λ_target,dims=1)], label=["λ" "Initial" "Target"]  ,
+                   marker=4, lc=[:tomato :olive :red], grid=false, legend=:outerleft,
+                   xlimits = (0.35, 0.5), ylimits = (0, 100))
         p = plot(p2, p3, p4, layout=(3, 1), size=(600, 600))
         display(p)
         savefig(joinpath(results_dir,"optim.png")) 

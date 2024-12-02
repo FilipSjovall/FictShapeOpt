@@ -27,9 +27,9 @@ function assemGlobal!(K,Fᵢₙₜ,dh,mp,t,a,coord,enod,Γt,τ)
         ie       += 1
         cell_dofs = celldofs(cell)
         kₑ, fₑ    = assemElem(coord[enod[ie][2:end],:],a[cell_dofs],mp,t)
-        for face in 1:nfaces(cell)
+        for face in 1:nfacets(cell)
             if (cellid(cell), face) in Γt
-                face_nods      = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
+                face_nods      = [Ferrite.facetdof_indices(ip)[face][1]; Ferrite.facetdof_indices(ip)[face][2]]
                 face_dofs      = [face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2]
                 X              = coord[enod[ie][face_nods.+1] ,:]
                 fₑ[face_dofs] += tractionLoad(X,τ)
@@ -50,9 +50,9 @@ function assemGlobal!(K,Fᵢₙₜ,dh0, mp₀,t,Ψ,coord,enod,λ,d,Γ_robin)
         kₑ, fₑ    = assemElem(coord[enod[ie][2:end],:], Ψ[cell_dofs], mp₀, t)
         ke        = zeros(6,6)
         fe        = zeros(6)
-        for face in 1:nfaces(cell)
+        for face in 1:nfacets(cell)
             if (cellid(cell), face) in Γ_robin
-                face_nods = [ Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2] ]
+                face_nods = [ Ferrite.facetdof_indices(ip)[face][1]; Ferrite.facetdof_indices(ip)[face][2] ]
                 face_dofs = [ face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2 ]
                 X         = coord[ enod[ie][face_nods.+1] ,: ]
                 ke[face_dofs,face_dofs],fe[face_dofs]   = Robin(X,Ψ[cell_dofs[face_dofs]],d[cell_dofs[face_dofs]],λ)
@@ -70,9 +70,9 @@ function assemGlobal!(Fₑₓₜ,dh,t,a,coord,enod,Γt,τ,ip)
         fill!(fₑ,0.0)
         ie       += 1
         cell_dofs = celldofs(cell)
-        for face in 1:nfaces(cell)
+        for face in 1:nfacets(cell)
             if (cellid(cell), face) in Γt
-                face_nods      = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
+                face_nods      = [Ferrite.facetdof_indices(ip)[face][1]; Ferrite.facetdof_indices(ip)[face][2]]
                 face_dofs      = [face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2]
                 X              = coord[enod[ie][face_nods.+1] ,:]
                 fₑ[face_dofs]  = tractionLoad(X,τ) # här borde t och a kanske också användas?
@@ -147,10 +147,10 @@ function assemGlobal!(Kψ, Fψ, dh0, mp₀, t, Ψ, coord₀, enod, λ, d, Γ_rob
         kₑ, fₑ    = assemElem(coord₀[cell.nodes, :], Ψ[cell_dofs], mp₀, t)
         ke        = zeros(6, 6)
         fe        = zeros(6)
-        for face in 1:nfaces(cell)
+        for face in 1:nfacets(cell)
             if (cellid(cell), face) in Γ_robin
-                #face_nods = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
-                face_nods = [Ferrite.faces(ip)[face][1]; Ferrite.faces(ip)[face][2]]
+                face_nods = [Ferrite.facetdof_indices(ip)[face][1]; Ferrite.facetdof_indices(ip)[face][2]]
+                #face_nods = [Ferrite.faces(ip)[face][1]; Ferrite.faces(ip)[face][2]]
                 face_dofs = [face_nods[1] * 2 - 1; face_nods[1] * 2; face_nods[2] * 2 - 1; face_nods[2] * 2]
                 Xc        = coord₀[enod[ie][face_nods.+1], :] #  +1 för att första kolumnen i enod motsvarar elementnummer
                 ke[face_dofs, face_dofs], fe[face_dofs] = Robin(Xc, Ψ[cell_dofs[face_dofs]], d[cell_dofs[face_dofs]], λ)
@@ -221,9 +221,9 @@ function assemGlobal!(K, Fᵢₙₜ, dh, t, a, coord, enod, ε, mp₁, mp₂, τ
             mp = mp₂
         end
         kₑ, fₑ = assemElem(coord[enod[ie][2:end], :], a[cell_dofs], mp, t)
-        for face in 1:nfaces(cell)
+        for face in 1:nfacets(cell)
             if (cellid(cell), face) in Γ_top
-                face_nods      = [Ferrite.facedof_indices(ip)[face][1]; Ferrite.facedof_indices(ip)[face][2]]
+                face_nods      = [Ferrite.facetdof_indices(ip)[face][1]; Ferrite.facetdof_indices(ip)[face][2]]
                 face_dofs      = [face_nods[1]*2-1; face_nods[1]*2; face_nods[2]*2-1; face_nods[2]*2]
                 X              = coord[enod[ie][face_nods.+1] ,:]
                 fₑ[face_dofs] += tractionLoad(X,τ)
@@ -252,14 +252,14 @@ function volume(dh,coord,enod)
 end
 
 function StressExtract(dh,a,mp)
-    σx     = zeros(Int(dh.ndofs.x/2))
-    σy     = zeros(Int(dh.ndofs.x/2))
-    σz     = zeros(Int(dh.ndofs.x/2))
-    τxy    = zeros(Int(dh.ndofs.x/2))
-    σᵛᵐ    = zeros(Int(dh.ndofs.x/2))
+    σx     = zeros(Int(dh.ndofs/2))
+    σy     = zeros(Int(dh.ndofs/2))
+    σz     = zeros(Int(dh.ndofs/2))
+    τxy    = zeros(Int(dh.ndofs/2))
+    σᵛᵐ    = zeros(Int(dh.ndofs/2))
     ie     = 0
     cauchy = zeros(3,3,3)
-    occurences = zeros(Int64(dh.ndofs.x/2))
+    occurences = zeros(Int64(dh.ndofs/2))
     for cell in CellIterator(dh)
         # Compute stresses in gauss points - convert to Cauchy
         # Extract GP-stresses to nodes
@@ -297,14 +297,14 @@ function StressExtract(dh,a,mp)
 end
 
 function StressExtract(dh,a,mp₁,mp₂)
-    σx     = zeros(Int(dh.ndofs.x/2))
-    σy     = zeros(Int(dh.ndofs.x/2))
-    σz     = zeros(Int(dh.ndofs.x/2))
-    τxy    = zeros(Int(dh.ndofs.x/2))
-    σᵛᵐ    = zeros(Int(dh.ndofs.x/2))
+    σx     = zeros(Int(dh.ndofs/2))
+    σy     = zeros(Int(dh.ndofs/2))
+    σz     = zeros(Int(dh.ndofs/2))
+    τxy    = zeros(Int(dh.ndofs/2))
+    σᵛᵐ    = zeros(Int(dh.ndofs/2))
     ie     = 0
     cauchy = zeros(3,3,3)
-    occurences = zeros(Int64(dh.ndofs.x/2))
+    occurences = zeros(Int64(dh.ndofs/2))
     for cell in CellIterator(dh)
         # Compute stresses in gauss points - convert to Cauchy
         # Extract GP-stresses to nodes
