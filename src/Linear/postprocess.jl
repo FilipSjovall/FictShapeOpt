@@ -65,33 +65,7 @@ end
 # # # # # # # # # # # # # #
 # Seal objective function #
 # # # # # # # # # # # # # #
-@load "results//seal//v6(byt_till_denna)//packning.jld2"
-begin
-    f = Figure( resolution = (width,height), fontsize = 12,font="CMU", px_per_unit = reso)
-    ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
-           xgridvisible = false, ygridvisible = false,
-           ylabel = L"Objective function $|f|$ [N$^3$]",
-           limits = (0, true_iteration, 1/1e4, -g_hist[true_iteration]*1.25e-4),
-           leftspinecolor = :blue,
-           ylabelcolor = :blue,
-           xminorticksvisible = true, yminorticksvisible = true,
-           #ytickformat = values -> ["$(value)⋅10⁵" for value in values],
-           ytickformat = "{:0.1f}×10⁴",
-           topspinevisible = false)
-    ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
-           xgridvisible = false, ygridvisible = false,
-           ylabel = "Volume constraint", xlabel = L"\text{Iteration}",
-           limits = (0, true_iteration, -0.01, 0.01),
-           rightspinecolor = :red,
-           leftspinecolor = :blue,
-           ylabelcolor = :red,
-           xminorticksvisible = true, yminorticksvisible = true,
-           topspinevisible = false)
-    lines!(ax1,1:true_iteration,-g_hist[1:true_iteration]./1e4, color = :blue )
-    lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
-    f
-    Makie.save("optimization_history_seal.pdf",f)
-end
+
 
 # # # # # # # # # # # # # # # # # # # # # # # #
 # Seal objective function with no constraint  #
@@ -126,6 +100,7 @@ end
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# ∫ λᵖ orig
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
@@ -153,8 +128,9 @@ begin
         #xminorticksvisible = true, yminorticksvisible = true,
         limits = (0.35, 0.5, 1.0, 200.0),
     )
-    @load "results//seal//v6(byt_till_denna)//LabOpt.jld2" X_c tract
+    @load "results//seal//normal//LabOpt_v2.jld2" X_c tract
     lines!(convert(Vector{Float32},X_c),convert(Vector{Float32},tract), color = :green, label = L"\text{Optimized}", linestyle = :solid)
+    #@load "results//seal//normal//initiellt_tryck_v2.jld2" iX itract
     @load "results//seal//v6(byt_till_denna)//initiellt_tryck.jld2" iX itract
     lines!(convert(Vector{Float32},iX),convert(Vector{Float32},itract), color = :black, label = L"\text{Initial}", linestyle = :dash)
     axislegend(ax, position = :rt, framevisible = false)
@@ -165,8 +141,36 @@ begin
     Makie.save("traction_seal.pdf",f)
 end
 #end
+@load "results//seal//normal//LabOpt_v2.jld2" true_iteration v_hist g_hist
+begin
+    f = Figure( resolution = (width,height), fontsize = 12,font="CMU", px_per_unit = reso)
+    ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
+           xgridvisible = false, ygridvisible = false,
+           ylabel = L"Objective function $|f|$ [N$^3$]",
+           limits = (0, true_iteration, 1/1e4, -g_hist[true_iteration]*1.25e-4),
+           leftspinecolor = :blue,
+           ylabelcolor = :blue,
+           xminorticksvisible = true, yminorticksvisible = true,
+           #ytickformat = values -> ["$(value)⋅10⁵" for value in values],
+           ytickformat = "{:0.1f}×10⁴",
+           topspinevisible = false)
+    ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
+           xgridvisible = false, ygridvisible = false,
+           ylabel = "Volume constraint", xlabel = L"\text{Iteration}",
+           limits = (0, true_iteration, -0.01, 0.01),
+           rightspinecolor = :red,
+           leftspinecolor = :blue,
+           ylabelcolor = :red,
+           xminorticksvisible = true, yminorticksvisible = true,
+           topspinevisible = false)
+    lines!(ax1,1:true_iteration,-g_hist[1:true_iteration]./1e4, color = :blue )
+    lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
+    f
+    Makie.save("optimization_history_seal.pdf",f)
+end
 
-
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # - - - - - - - - - - - #
@@ -174,7 +178,8 @@ end
 # - - - - - - - - - - - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
-
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
 # Plot LSQ - pressure profiles
 begin
     function t_func(x)
@@ -428,6 +433,79 @@ function plot_λ_series(x,y,num)
 end
 
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Rounded λᵖ Pressure profile & Convergence history #
+# - - - - - - - - - - - - - - - - - - - - - - - - - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  #
+begin
+    cm_convert = 28.3465
+    w_cm  = 13# 8
+    h_cm  = 8# 13
+    width = w_cm*cm_convert
+    height= h_cm*cm_convert
+    px_per_cm = 1200 # dpi
+    reso = (w_cm * px_per_cm / width)
+    f = Figure( resolution = (width,height), fontsize = 12, px_per_unit = reso)
+    ax = Axis(f[1, 1],
+        xgridvisible = false,
+        ygridvisible = false,
+        #title  = L"\text{Contact traction λ}", # L enables LaTeX strings
+        xlabel = L"Horizontal position $x$ [mm]", #
+        #ylabelrotation = 3π/2,
+        ylabel = L"$λ$ [MPa]", #
+        xtickalign = 1,  # Ticks inwards
+        ytickalign = 1,   # # Ticks inwards
+        topspinevisible = false,
+        rightspinevisible = false,
+        #xminorticksvisible = true, yminorticksvisible = true,
+        limits = (0.35, 0.5, 1.0, 200.0),
+    )
+    @load "results//seal//xtraround//LabOpt_v2.jld2" X_c tract
+    lines!(convert(Vector{Float32},X_c),convert(Vector{Float32},tract), color = :green, label = L"\text{Optimized}", linestyle = :solid)
+    @load "results//seal//xtraround//initiellt_tryck_v2.jld2" iX itract
+    lines!(convert(Vector{Float32},iX),convert(Vector{Float32},itract), color = :black, label = L"\text{Initial}", linestyle = :dash)
+    axislegend(ax, position = :rt, framevisible = false)
+    ax.yticks = [0,50,100,150]
+    axisarrows!(arrowsize=10)
+    hidespines!(ax, :t, :r)
+    f
+    Makie.save("traction_round_seal.pdf",f)
+end
+
+@load "results//seal//xtraround//LabOpt_v2.jld2" true_iteration g_hist v_hist
+begin
+    f = Figure( resolution = (width,height), fontsize = 12,font="CMU", px_per_unit = reso)
+    ax1 = Axis(f[1, 1], yticklabelcolor = :blue,
+           xgridvisible = false, ygridvisible = false,
+           ylabel = L"Objective function $|f|$ [N$^3$]",
+           limits = (0, true_iteration, 1/1e4, -g_hist[true_iteration]*1.25e-4),
+           leftspinecolor = :blue,
+           ylabelcolor = :blue,
+           xminorticksvisible = true, yminorticksvisible = true,
+           #ytickformat = values -> ["$(value)⋅10⁵" for value in values],
+           ytickformat = "{:0.1f}×10⁴",
+           topspinevisible = false)
+    ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right,
+           xgridvisible = false, ygridvisible = false,
+           ylabel = "Volume constraint", xlabel = L"\text{Iteration}",
+           limits = (0, true_iteration, -0.01, 0.01),
+           rightspinecolor = :red,
+           leftspinecolor = :blue,
+           ylabelcolor = :red,
+           xminorticksvisible = true, yminorticksvisible = true,
+           topspinevisible = false)
+    lines!(ax1,1:true_iteration,-g_hist[1:true_iteration]./1e4, color = :blue )
+    lines!(ax2,1:true_iteration,v_hist[1:true_iteration], color = :red )
+    f
+    Makie.save("optimization_history_round_seal.pdf",f)
+end
 #=
 #
 #

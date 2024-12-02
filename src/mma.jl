@@ -70,10 +70,19 @@ function mmasub(m,n,iter,xval,xmin,xmax,xold1,xold2,f0val,df0dx,fval,dfdx,low,up
 #
 asyincr = 1.1;
 asydecr = 0.6;
-# if OptIter > 100
+# if true_iteration > 50 && true_iteration <= 100
+#     asyincr = 1.075
+#     asydecr = 0.575
+#     # move = 0.075
+# elseif true_iteration > 100
 #     asyincr = 1.05
 #     asydecr = 0.5
-#     move = 0.001
+#     # move = 0.05
+# end
+# if true_iteration > 100
+#     asyincr = 1.05
+#     asydecr = 0.5
+#     move = 0.01 ## ändra kanske
 # end
 
   eeen = ones(n);

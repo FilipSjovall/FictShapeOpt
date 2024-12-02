@@ -1,7 +1,8 @@
 using Pkg
-Pkg.update()       # Updates all packages to the latest versions allowed by your Project.toml
-Pkg.instantiate()  # Ensures that all the necessary dependencies are installed
-Pkg.resolve()      # Resolves any dependency conflicts
+Pkg.activate("~/.julia/environments/v1.10")
+# Pkg.update()       # Updates all packages to the latest versions allowed by your Project.toml
+# Pkg.instantiate()  # Ensures that all the necessary dependencies are installed
+# Pkg.resolve()      # Resolves any dependency conflicts
 
 # Pkg.activate()
 # kolla Pkg.status() vid problem / jämför med att bara starta julia i en terminal
@@ -548,16 +549,17 @@ function Optimize(dh)
             itract = tract
             iX = X_c
         end
-        if mod(true_iteration,5) == 0
+        if mod(true_iteration,50) == 0 || true_iteration == 1
             str = "tryck_at_"*string(true_iteration)*".jld2"
             jldsave(str;X_c,tract,a,dh,coord,ε)
         end
         p4 = plot(X_c, tract, label="λ" , marker=4, lc=:tomato, mc=:tomato, grid=false, legend=:outerleft)
         # p4 = plot([X_c, iX, iX], [tract, itract ,sort(λ_target,dims=1)], label=["λ" "Initial" "Target"]  ,
-        #           marker=4, lc=[:tomato :olive :red], grid=false, legend=:outerleft,
-        #           xlimits = (0.35, 0.5), ylimits = (0, 100))
+                #    marker=4, lc=[:tomato :olive :red], grid=false, legend=:outerleft,
+                #    xlimits = (0.35, 0.5), ylimits = (0, 100))
         p = plot(p2, p3, p4, layout=(3, 1), size=(600, 600))
-        display(p)
+        # display(p)
+        savefig("optim.png")
 
         # For investigative purpose
         low_hist[free_d, true_iteration] = low
